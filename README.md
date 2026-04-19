@@ -1,5 +1,10 @@
 # Qovery Deploy Skill
 
+[![Agent Skills](https://img.shields.io/badge/Agent_Skills-compatible-7C3AED)](https://agentskills.io)
+[![Install](https://img.shields.io/badge/Install-curl_skill.qovery.com-2563EB)](https://skill.qovery.com/install.sh)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![GitHub](https://img.shields.io/github/stars/Qovery/qovery-skills?style=social)](https://github.com/Qovery/qovery-skills)
+
 An AI agent skill that deploys any application to Kubernetes using [Qovery](https://www.qovery.com). Compatible with **30+ AI coding tools** that support the [Agent Skills](https://agentskills.io) open standard.
 
 ## Quick Install
