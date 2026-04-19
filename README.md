@@ -1,6 +1,51 @@
 # Qovery Deploy Skill
 
-An AI agent skill that deploys any application to Kubernetes using [Qovery](https://www.qovery.com). Works with OpenCode, Claude Code, and any agent that supports the `SKILL.md` convention.
+An AI agent skill that deploys any application to Kubernetes using [Qovery](https://www.qovery.com). Compatible with **30+ AI coding tools** that support the [Agent Skills](https://agentskills.io) open standard.
+
+## Quick Install
+
+**One command — installs globally for all your projects:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Qovery/qovery-skills/main/install.sh | bash
+```
+
+**Install in the current project only:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Qovery/qovery-skills/main/install.sh | bash -s -- --project
+```
+
+**Uninstall:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Qovery/qovery-skills/main/install.sh | bash -s -- --uninstall
+```
+
+That's it. The installer automatically places the skill in all the right directories so it's discovered by any compatible tool.
+
+## Compatible Tools
+
+This skill follows the [Agent Skills](https://agentskills.io) open standard and works with:
+
+| Tool | Status |
+|------|--------|
+| **Claude Code** | Supported |
+| **OpenCode** | Supported |
+| **Cursor** | Supported |
+| **VS Code Copilot** | Supported |
+| **Gemini CLI** | Supported |
+| **Roo Code** | Supported |
+| **Goose** | Supported |
+| **Amp** | Supported |
+| **Junie (JetBrains)** | Supported |
+| **Kiro** | Supported |
+| **OpenHands** | Supported |
+| **OpenAI Codex** | Supported |
+| **Mistral Vibe** | Supported |
+| **TRAE** | Supported |
+
+And any other tool that discovers skills from `.claude/skills/` or `.agents/skills/` directories.
 
 ## What it does
 
@@ -15,58 +60,6 @@ When you tell your AI agent _"deploy my application with Qovery"_, the skill:
 7. **Sets up environment variables**, secrets, service interconnection, health checks, deployment stages
 8. **Handles Helm charts, Terraform modules, lifecycle jobs, and cron jobs**
 9. **Watches deployments and auto-fixes failures** — diagnoses build errors, port mismatches, health check failures, missing env vars, and OOM issues. Fixes Qovery configuration automatically; asks for permission before modifying user code
-
-## Installation
-
-Copy the `qovery-deploy/` folder into your project's skill directory. The folder name **must** match the skill name (`qovery-deploy`).
-
-### OpenCode
-
-```bash
-# Per-project
-mkdir -p .opencode/skills
-cp -r qovery-deploy .opencode/skills/
-
-# Global (all projects)
-mkdir -p ~/.config/opencode/skills
-cp -r qovery-deploy ~/.config/opencode/skills/
-```
-
-### Claude Code
-
-```bash
-# Per-project
-mkdir -p .claude/skills
-cp -r qovery-deploy .claude/skills/
-
-# Global
-mkdir -p ~/.claude/skills
-cp -r qovery-deploy ~/.claude/skills/
-```
-
-### Generic Agents
-
-```bash
-# Per-project
-mkdir -p .agents/skills
-cp -r qovery-deploy .agents/skills/
-
-# Global
-mkdir -p ~/.agents/skills
-cp -r qovery-deploy ~/.agents/skills/
-```
-
-### Verify
-
-After installing, check that the file exists at one of these paths:
-
-```
-.opencode/skills/qovery-deploy/SKILL.md
-.claude/skills/qovery-deploy/SKILL.md
-.agents/skills/qovery-deploy/SKILL.md
-```
-
-The agent will automatically discover it and list `qovery-deploy` as an available skill.
 
 ## Usage
 
@@ -89,7 +82,7 @@ Other prompts that trigger the skill:
 Before deploying, you need:
 
 1. **A Qovery account** — sign up at [console.qovery.com](https://console.qovery.com)
-2. **A Qovery API token** — generate at Organization Settings > API Tokens
+2. **A Qovery API token** — generate at Organization Settings > API Tokens (or let the skill generate one via the CLI)
 3. **A Kubernetes cluster** — AWS EKS, GCP GKE, Azure AKS, or Scaleway Kapsule
 4. **A git repository** connected to Qovery (GitHub, GitLab, or Bitbucket)
 
@@ -118,14 +111,14 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 | Phase | Description |
 |-------|-------------|
 | **1. Discovery** | Asks questions to understand your project and deployment needs |
-| **2. Prerequisites** | CLI install, authentication, Terraform setup |
+| **2. Prerequisites** | CLI install, authentication, API token generation |
 | **2B. Cluster Setup** | Cloud provider credentials + cluster creation (AWS/GCP/Azure/Scaleway) — skipped if a cluster already exists |
 | **3. Dockerfile** | Creates missing Dockerfiles and `.dockerignore` files |
 | **4. CLI + API** | Quick deployment path using `qovery` CLI and `curl` API calls |
 | **5. Terraform** | Production path with complete `.tf` manifests (applications, databases, Helm, jobs, terraform services, deployment stages) |
-| **6. Environment Variables** | Auto-generated DB vars, aliases, interpolation, scopes |
+| **6. Environment Variables** | Scopes, aliases, interpolation, overrides — avoiding duplication |
 | **7. Full-Stack Example** | Copy-pasteable `qovery.tf` for a typical frontend + backend + database stack |
-| **8. Advanced** | Custom domains, autoscaling, storage, Terraform exporter, monorepos |
+| **8. Advanced** | Custom domains, autoscaling, storage, port-forwarding, Terraform exporter, monorepos |
 | **9. Deployment Watch** | Active deployment monitoring, log fetching, success verification |
 | **10. Auto-Fix** | Error classification, automatic Qovery config fixes, user-code changes only with permission |
 
@@ -139,6 +132,25 @@ Best for development and staging. Uses the Qovery CLI for monitoring and the RES
 ### Terraform Provider (Recommended for Production)
 Creates a `qovery.tf` file that defines your entire infrastructure as code. Reproducible, version-controlled, CI/CD-friendly. Uses the [Qovery Terraform Provider](https://registry.terraform.io/providers/Qovery/qovery/latest/docs) (`qovery/qovery` v0.54+).
 
+## Manual Installation
+
+If you prefer not to use the install script, copy the skill folder manually:
+
+```bash
+git clone https://github.com/Qovery/qovery-skills.git
+cd qovery-skills
+
+# Global install (pick the paths for your tools)
+mkdir -p ~/.claude/skills && cp -r qovery-deploy ~/.claude/skills/
+mkdir -p ~/.config/opencode/skills && cp -r qovery-deploy ~/.config/opencode/skills/
+mkdir -p ~/.agents/skills && cp -r qovery-deploy ~/.agents/skills/
+
+# Or project-local install
+mkdir -p .claude/skills && cp -r qovery-deploy .claude/skills/
+```
+
+Verify the skill is discovered by checking if your tool lists `qovery-deploy` as an available skill.
+
 ## Links
 
 - [Qovery Documentation](https://www.qovery.com/docs/getting-started/introduction)
@@ -147,7 +159,7 @@ Creates a `qovery.tf` file that defines your entire infrastructure as code. Repr
 - [Qovery API Reference](https://www.qovery.com/docs/api-reference/introduction)
 - [Qovery Terraform Provider](https://registry.terraform.io/providers/Qovery/qovery/latest/docs)
 - [Real-World Example (Doktolib)](https://github.com/evoxmusic/Doktolib/blob/main/qovery.tf)
-- [OpenCode Skills Documentation](https://opencode.ai/docs/skills/)
+- [Agent Skills Standard](https://agentskills.io)
 
 ## License
 
