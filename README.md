@@ -7,19 +7,19 @@ An AI agent skill that deploys any application to Kubernetes using [Qovery](http
 **One command — installs globally for all your projects:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Qovery/qovery-skills/main/install.sh | bash
+curl -fsSL https://skill.qovery.com/install.sh | bash
 ```
 
 **Install in the current project only:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Qovery/qovery-skills/main/install.sh | bash -s -- --project
+curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --project
 ```
 
 **Uninstall:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Qovery/qovery-skills/main/install.sh | bash -s -- --uninstall
+curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --uninstall
 ```
 
 That's it. The installer automatically places the skill in all the right directories so it's discovered by any compatible tool.

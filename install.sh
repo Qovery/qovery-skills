@@ -9,7 +9,7 @@ set -euo pipefail
 # ============================================================
 
 SKILL_NAME="qovery-deploy"
-REPO_RAW_URL="https://raw.githubusercontent.com/Qovery/qovery-skills/main"
+REPO_RAW_URL="https://skill.qovery.com"
 
 # Colors (if terminal supports them)
 if [ -t 1 ]; then
@@ -38,13 +38,13 @@ Options:
 
 Examples:
   # Install globally (recommended)
-  curl -fsSL https://raw.githubusercontent.com/Qovery/qovery-skills/main/install.sh | bash
+  curl -fsSL https://skill.qovery.com/install.sh | bash
 
   # Install in current project only
-  curl -fsSL https://raw.githubusercontent.com/Qovery/qovery-skills/main/install.sh | bash -s -- --project
+  curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --project
 
   # Uninstall from everywhere
-  curl -fsSL https://raw.githubusercontent.com/Qovery/qovery-skills/main/install.sh | bash -s -- --uninstall
+  curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --uninstall
 EOF
   exit 0
 }
