@@ -24,6 +24,12 @@ curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --uninstall
 
 That's it. The installer automatically places the skill in all the right directories so it's discovered by any compatible tool.
 
+**Update to the latest version** — just run the install command again. It overwrites the previous version:
+
+```bash
+curl -fsSL https://skill.qovery.com/install.sh | bash
+```
+
 ## Compatible Tools
 
 This skill follows the [Agent Skills](https://agentskills.io) open standard and works with:
