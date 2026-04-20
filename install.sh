@@ -9,7 +9,7 @@ set -euo pipefail
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup")
+SKILLS=("qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup")
 REPO_RAW_URL="https://skill.qovery.com"
 
 # Colors (if terminal supports them)
@@ -175,6 +175,7 @@ fi
 
 echo ""
 echo -e "${BOLD}Skills installed:${NC}"
+echo -e "  ${YELLOW}qovery-onboard${NC}       — Guided onboarding for new Qovery users"
 echo -e "  ${YELLOW}qovery-deploy${NC}        — Deploy any app to Kubernetes with Qovery"
 echo -e "  ${YELLOW}qovery-troubleshoot${NC}  — Diagnose and fix deployment issues"
 echo -e "  ${YELLOW}qovery-optimize${NC}      — Optimize costs and right-size resources"
@@ -186,6 +187,7 @@ echo "  Roo Code, Goose, Amp, Junie (JetBrains), Kiro, OpenHands,"
 echo "  and 20+ more tools supporting the Agent Skills standard."
 echo ""
 echo -e "${BOLD}Try it:${NC} ask your AI agent:"
+echo -e "  ${YELLOW}\"I'm new to Qovery, help me get started\"${NC}"
 echo -e "  ${YELLOW}\"deploy my application with Qovery\"${NC}"
 echo -e "  ${YELLOW}\"my Qovery deployment is failing, can you help?\"${NC}"
 echo -e "  ${YELLOW}\"optimize my Qovery costs\"${NC}"

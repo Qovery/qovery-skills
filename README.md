@@ -9,6 +9,7 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 
 | Skill | What it does |
 |---|---|
+| **qovery-onboard** | Guided onboarding — acts as a personal cloud architect, understands your role/experience/constraints, recommends and sets up the optimal Qovery config (cloud provider, cluster, environments, RBAC, security, cost defaults), handles BYOK and platform migrations |
 | **qovery-deploy** | Deploy any application to Kubernetes — analyzes codebases, creates Dockerfiles, provisions databases, deploys via CLI+API or Terraform |
 | **qovery-troubleshoot** | Diagnose and fix deployment failures, crashes, connectivity issues, performance problems — with MCP Server integration and runbook generation |
 | **qovery-optimize** | Optimize costs and right-size resources — analyzes historical consumption, understands business context (seasonal, growth), estimates cloud costs, generates detailed reports with CSV export |
@@ -66,6 +67,20 @@ This skill follows the [Agent Skills](https://agentskills.io) open standard and 
 And any other tool that discovers skills from `.claude/skills/` or `.agents/skills/` directories.
 
 ## What it does
+
+### qovery-onboard
+
+When you tell your AI agent _"I'm new to Qovery, help me get started"_:
+
+1. **Understands who you are** — asks about your role (developer, DevOps, CTO, founder, non-technical), experience level with cloud infrastructure, and whether you know what Kubernetes is
+2. **Understands what you have** — existing cloud provider account, existing K8s cluster (BYOK path), applications to deploy, migration from another platform
+3. **Understands what you need** — primary goal, industry compliance (HIPAA, PCI-DSS, SOC2, GDPR), constraints (region, budget, private networking), team size
+4. **Recommends the optimal setup** — cloud provider + region, cluster type (managed or BYOK), environment structure (dev/staging/prod), security defaults, cost defaults, RBAC roles
+5. **Executes the full setup** with Console links at every step — cloud credentials, cluster creation (with progress updates while waiting), project/environments, deployment rules, git provider connection
+6. **Invites team members** with appropriate RBAC roles (Admin, DevOps, Viewer, or custom roles for enterprise)
+7. **Handles BYOK** (Bring Your Own Kubernetes) — guides through `qovery cluster install` for existing clusters
+8. **Handles migrations** — detailed guides for Heroku (env var import via `qovery env parse --heroku-json`, concept mapping, FAQ), Vercel/Netlify, Render/Railway, and manual Kubernetes
+9. **Encodes best practices by default** — private databases, internal networking, secrets encryption, deployment stages, deployment rules for cost savings — NOT optional recommendations, but the default setup
 
 ### qovery-deploy
 
@@ -125,6 +140,10 @@ When you tell your AI agent _"my deployments are slow, can you speed them up?"_:
 Just ask your AI agent:
 
 ```
+I'm new to Qovery, help me get started
+```
+
+```
 Deploy my application with Qovery
 ```
 
@@ -132,7 +151,15 @@ Deploy my application with Qovery
 My Qovery deployment is failing, can you help?
 ```
 
-The deploy skill guides the agent through the entire deployment process. The troubleshoot skill systematically diagnoses and fixes issues.
+The onboard skill acts as your personal cloud architect. The deploy skill handles application deployment. The troubleshoot skill diagnoses and fixes issues.
+
+**Prompts that trigger qovery-onboard:**
+- _"I'm new to Qovery, help me get started"_
+- _"Set up Qovery for my organization"_
+- _"Help me onboard onto Qovery"_
+- _"I have an existing Kubernetes cluster, can I use Qovery?"_
+- _"I'm migrating from Heroku to Qovery"_
+- _"Configure Qovery for my company"_
 
 **Prompts that trigger qovery-deploy:**
 - _"Deploy my application with Qovery"_
@@ -194,6 +221,17 @@ The skill includes production-ready Dockerfile templates for:
 If your framework is not listed, the agent will create a custom Dockerfile based on your project structure.
 
 ## What the Skills Cover
+
+### qovery-onboard
+
+| Phase | Description |
+|-------|-------------|
+| **1. Understand the User** | Role, experience level, K8s knowledge, existing cloud/cluster, apps to deploy, migration source, goal, compliance, constraints, team size |
+| **2. Recommend Setup** | Cloud provider + region, cluster type (managed/BYOK), environment structure, security defaults (baked in), cost defaults (baked in), RBAC roles |
+| **3. Execute Setup** | Cloud credentials, cluster creation (with Console links and progress), project/environments, deployment rules, git provider, team invitations |
+| **4. BYOK Path** | Prerequisites check, CLI install, `qovery cluster install`, verification, seamless continuation to project setup |
+| **5. Migration** | Heroku (detailed: concept mapping, Dockerfile, env var import, DB migration, FAQ), Vercel/Netlify, Render/Railway, manual K8s |
+| **6. Next Steps** | Persona-adapted next steps (bootstrapper vs platform team vs enterprise), reference all other skills, enterprise recommendations (RBAC, private networking, SSO) |
 
 ### qovery-deploy
 
@@ -264,15 +302,15 @@ git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
 # Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup ~/.agents/skills/
+mkdir -p ~/.claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup ~/.claude/skills/
+mkdir -p ~/.config/opencode/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup ~/.config/opencode/skills/
+mkdir -p ~/.agents/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup ~/.agents/skills/
 
 # Or project-local install
-mkdir -p .claude/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup .claude/skills/
+mkdir -p .claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup .claude/skills/
 ```
 
-Verify the skills are discovered by checking if your tool lists all four Qovery skills.
+Verify the skills are discovered by checking if your tool lists all five Qovery skills.
 
 ## Links
 
