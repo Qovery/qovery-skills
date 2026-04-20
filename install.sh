@@ -9,7 +9,7 @@ set -euo pipefail
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery-deploy" "qovery-troubleshoot" "qovery-optimize")
+SKILLS=("qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup")
 REPO_RAW_URL="https://skill.qovery.com"
 
 # Colors (if terminal supports them)
@@ -178,6 +178,7 @@ echo -e "${BOLD}Skills installed:${NC}"
 echo -e "  ${YELLOW}qovery-deploy${NC}        — Deploy any app to Kubernetes with Qovery"
 echo -e "  ${YELLOW}qovery-troubleshoot${NC}  — Diagnose and fix deployment issues"
 echo -e "  ${YELLOW}qovery-optimize${NC}      — Optimize costs and right-size resources"
+echo -e "  ${YELLOW}qovery-speedup${NC}       — Speed up deployments and builds"
 echo ""
 echo -e "${BOLD}Compatible with:${NC}"
 echo "  Claude Code, OpenCode, Cursor, VS Code Copilot, Gemini CLI,"
@@ -188,5 +189,6 @@ echo -e "${BOLD}Try it:${NC} ask your AI agent:"
 echo -e "  ${YELLOW}\"deploy my application with Qovery\"${NC}"
 echo -e "  ${YELLOW}\"my Qovery deployment is failing, can you help?\"${NC}"
 echo -e "  ${YELLOW}\"optimize my Qovery costs\"${NC}"
+echo -e "  ${YELLOW}\"my deployments are slow, can you speed them up?\"${NC}"
 echo ""
 echo -e "Documentation: ${BLUE}https://github.com/Qovery/qovery-skills${NC}"

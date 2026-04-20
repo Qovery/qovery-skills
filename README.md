@@ -12,6 +12,7 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | **qovery-deploy** | Deploy any application to Kubernetes — analyzes codebases, creates Dockerfiles, provisions databases, deploys via CLI+API or Terraform |
 | **qovery-troubleshoot** | Diagnose and fix deployment failures, crashes, connectivity issues, performance problems — with MCP Server integration and runbook generation |
 | **qovery-optimize** | Optimize costs and right-size resources — analyzes historical consumption, understands business context (seasonal, growth), estimates cloud costs, generates detailed reports with CSV export |
+| **qovery-speedup** | Speed up deployments — measures pipeline timeline, identifies bottlenecks (build, startup, health check, scheduling), classifies user vs Qovery responsibility, proposes Dockerfile and config fixes |
 
 ## Quick Install
 
@@ -105,6 +106,20 @@ When you tell your AI agent _"optimize my Qovery costs"_:
 7. **Accounts for seasonal patterns** — never right-sizes below seasonal peaks, recommends pre-scaling before known peaks, suggests post-peak review
 8. **Offers Kubecost deployment** for ongoing real-time cost visibility, and suggests sharing the report with Qovery support for professional review
 
+### qovery-speedup
+
+When you tell your AI agent _"my deployments are slow, can you speed them up?"_:
+
+1. **Measures the full deployment pipeline** using the V2 deployment history API — total time, per-stage, per-service, with structured durations
+2. **Breaks down sub-step timing** by parsing deployment logs: git clone, Docker build, image push, pod scheduling, app startup, health check pass
+3. **Generates build runner usage reports** (Grafana snapshots showing CPU, memory, network I/O during builds) using the deployment build usage API
+4. **Classifies each bottleneck as user-controllable or Qovery infrastructure** — clear ownership for every slow step
+5. **Proposes Dockerfile optimizations** — layer ordering, `.dockerignore`, multi-stage builds, build cache mounts, alpine base images, dev dependency removal (10+ patterns with before/after diffs)
+6. **Tunes health check configuration** — right-sizes `initial_delay_seconds`, `period_seconds`, and `failure_threshold` based on actual measured startup time
+7. **Optimizes deployment stage parallelism** — identifies independent services in serial stages that can run in parallel
+8. **Optimizes container image pull time** — image size reduction, layer sharing between services, registry proximity
+9. **Generates diagnostic reports for Qovery support** when the bottleneck is infrastructure-side (queue time, build runner capacity, registry push, Karpenter scheduling)
+
 ## Usage
 
 Just ask your AI agent:
@@ -140,6 +155,14 @@ The deploy skill guides the agent through the entire deployment process. The tro
 - _"Are my services over-provisioned?"_
 - _"How much is my infrastructure costing me?"_
 - _"Generate a cost report"_
+
+**Prompts that trigger qovery-speedup:**
+- _"My deployments are slow"_
+- _"Speed up my Qovery deployment"_
+- _"Why does my deployment take so long?"_
+- _"Optimize my build time"_
+- _"My Docker build is slow"_
+- _"My app takes too long to start"_
 
 ## Prerequisites
 
@@ -211,6 +234,17 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 | **5. Ongoing Monitoring** | Kubecost deployment offer, cloud provider billing dashboard links, Qovery support review offer, report saved to `.qovery/reports/` with follow-up schedule |
 | **6. Seasonal** | Specific guidance per business type: e-commerce pre-scaling, SaaS right-sizing, startup growth buffers, B2B scheduling, ML/AI GPU optimization |
 
+### qovery-speedup
+
+| Phase | Description |
+|-------|-------------|
+| **1. Measure** | V2 deployment history API for structured stage/service timing, build runner Grafana snapshot, deployment log parsing for sub-step timing, trend analysis across 5-10 deployments |
+| **2. Classify** | Each bottleneck classified as user-controllable, Qovery infrastructure, or mixed — with clear decision tree |
+| **3. Diagnose** | Deep analysis: Dockerfile optimization (10+ patterns), build runner resources, app startup, health check tuning, pod scheduling, container image pull, deployment stage parallelism |
+| **4. Fix & Verify** | Apply fixes, trigger new deployment, re-measure, present before/after comparison with percentage improvement |
+| **5. Qovery Support** | For infrastructure bottlenecks: generate diagnostic report with timeline, Grafana snapshot, and applied optimizations — offer to share with support |
+| **6. Targets & Monitoring** | Deployment time targets by framework, benchmark report, maintenance checklist, re-analysis triggers |
+
 ## Deployment Methods
 
 The skill supports two deployment paths — the user chooses which one:
@@ -230,15 +264,15 @@ git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
 # Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize ~/.agents/skills/
+mkdir -p ~/.claude/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup ~/.claude/skills/
+mkdir -p ~/.config/opencode/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup ~/.config/opencode/skills/
+mkdir -p ~/.agents/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup ~/.agents/skills/
 
 # Or project-local install
-mkdir -p .claude/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize .claude/skills/
+mkdir -p .claude/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup .claude/skills/
 ```
 
-Verify the skills are discovered by checking if your tool lists `qovery-deploy`, `qovery-troubleshoot`, and `qovery-optimize` as available skills.
+Verify the skills are discovered by checking if your tool lists all four Qovery skills.
 
 ## Links
 
