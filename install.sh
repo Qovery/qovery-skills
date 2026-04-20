@@ -2,13 +2,14 @@
 set -euo pipefail
 
 # ============================================================
-# Qovery Deploy Skill — Installer
+# Qovery Skills — Installer
+# Installs qovery-deploy and qovery-troubleshoot skills.
 # Compatible with Claude Code, OpenCode, Cursor, VS Code
 # Copilot, Gemini CLI, Roo Code, and 30+ more agent tools.
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILL_NAME="qovery-deploy"
+SKILLS=("qovery-deploy" "qovery-troubleshoot")
 REPO_RAW_URL="https://skill.qovery.com"
 
 # Colors (if terminal supports them)
@@ -25,7 +26,9 @@ fi
 
 usage() {
   cat <<EOF
-${BOLD}Qovery Deploy Skill — Installer${NC}
+${BOLD}Qovery Skills — Installer${NC}
+
+Installs both qovery-deploy and qovery-troubleshoot skills.
 
 Usage:
   install.sh [OPTIONS]
@@ -33,7 +36,7 @@ Usage:
 Options:
   --global      Install globally (default) — available in all projects
   --project     Install in the current project directory only
-  --uninstall   Remove the skill from all known locations
+  --uninstall   Remove all Qovery skills from all known locations
   --help        Show this help message
 
 Examples:
@@ -65,44 +68,45 @@ for arg in "$@"; do
   esac
 done
 
-# Determine target directories
-# We install to ALL compatible paths so the skill is discovered by any tool.
-# The file is ~80KB — installing to 3 locations costs nothing.
-get_targets() {
+# Determine target base directories (without skill name)
+get_base_dirs() {
   local mode="$1"
   if [ "$mode" = "global" ]; then
-    echo "$HOME/.claude/skills/$SKILL_NAME"
-    echo "$HOME/.config/opencode/skills/$SKILL_NAME"
-    echo "$HOME/.agents/skills/$SKILL_NAME"
+    echo "$HOME/.claude/skills"
+    echo "$HOME/.config/opencode/skills"
+    echo "$HOME/.agents/skills"
   elif [ "$mode" = "project" ]; then
-    echo ".claude/skills/$SKILL_NAME"
-    echo ".opencode/skills/$SKILL_NAME"
-    echo ".agents/skills/$SKILL_NAME"
+    echo ".claude/skills"
+    echo ".opencode/skills"
+    echo ".agents/skills"
   fi
 }
 
 # Uninstall
 if [ "$MODE" = "uninstall" ]; then
-  echo -e "${BOLD}Uninstalling ${SKILL_NAME}...${NC}"
+  echo -e "${BOLD}Uninstalling Qovery skills...${NC}"
   echo ""
   found=0
 
-  # Check all possible locations (both global and project)
-  ALL_PATHS=(
-    "$HOME/.claude/skills/$SKILL_NAME"
-    "$HOME/.config/opencode/skills/$SKILL_NAME"
-    "$HOME/.agents/skills/$SKILL_NAME"
-    ".claude/skills/$SKILL_NAME"
-    ".opencode/skills/$SKILL_NAME"
-    ".agents/skills/$SKILL_NAME"
+  # Check all possible locations (both global and project) for all skills
+  BASE_PATHS=(
+    "$HOME/.claude/skills"
+    "$HOME/.config/opencode/skills"
+    "$HOME/.agents/skills"
+    ".claude/skills"
+    ".opencode/skills"
+    ".agents/skills"
   )
 
-  for target in "${ALL_PATHS[@]}"; do
-    if [ -f "$target/SKILL.md" ]; then
-      rm -rf "$target"
-      echo -e "  ${RED}Removed${NC} $target"
-      found=1
-    fi
+  for base in "${BASE_PATHS[@]}"; do
+    for skill in "${SKILLS[@]}"; do
+      target="$base/$skill"
+      if [ -f "$target/SKILL.md" ]; then
+        rm -rf "$target"
+        echo -e "  ${RED}Removed${NC} $target"
+        found=1
+      fi
+    done
   done
 
   if [ "$found" = "0" ]; then
@@ -114,54 +118,65 @@ if [ "$MODE" = "uninstall" ]; then
   exit 0
 fi
 
-# Get the SKILL.md content
-echo -e "${BOLD}Installing ${SKILL_NAME} skill...${NC}"
+# Install
+echo -e "${BOLD}Installing Qovery skills...${NC}"
 echo ""
 
-TEMP_FILE=""
+TEMP_DIR=""
 cleanup() {
-  [ -n "$TEMP_FILE" ] && rm -f "$TEMP_FILE"
+  [ -n "$TEMP_DIR" ] && rm -rf "$TEMP_DIR"
 }
 trap cleanup EXIT
 
-if [ -f "qovery-deploy/SKILL.md" ]; then
-  # Running from cloned repo
-  SOURCE="qovery-deploy/SKILL.md"
-  echo -e "  ${BLUE}Source:${NC} local file (qovery-deploy/SKILL.md)"
-else
-  # Running via curl | bash — download from GitHub
-  TEMP_FILE=$(mktemp)
-  SOURCE="$TEMP_FILE"
-  echo -e "  ${BLUE}Downloading${NC} from GitHub..."
-  if ! curl -fsSL "$REPO_RAW_URL/qovery-deploy/SKILL.md" -o "$SOURCE" 2>/dev/null; then
-    echo -e "  ${RED}Error:${NC} Failed to download SKILL.md from GitHub."
-    echo "  Make sure the repo is public or you have access: https://github.com/Qovery/qovery-skills"
-    exit 1
-  fi
-  echo -e "  ${GREEN}Downloaded${NC} SKILL.md ($(wc -c < "$SOURCE" | tr -d ' ') bytes)"
-fi
-
-echo ""
-
-# Install to all target directories
 installed=0
-while IFS= read -r target; do
-  mkdir -p "$target"
-  cp "$SOURCE" "$target/SKILL.md"
-  echo -e "  ${GREEN}Installed${NC} $target/SKILL.md"
-  installed=$((installed + 1))
-done < <(get_targets "$MODE")
 
-echo ""
-echo -e "${GREEN}${BOLD}Successfully installed to $installed locations.${NC}"
+for skill in "${SKILLS[@]}"; do
+  echo -e "  ${BLUE}[$skill]${NC}"
+
+  if [ -f "$skill/SKILL.md" ]; then
+    # Running from cloned repo
+    SOURCE="$skill/SKILL.md"
+    echo -e "    Source: local file ($skill/SKILL.md)"
+  else
+    # Running via curl | bash — download from GitHub
+    if [ -z "$TEMP_DIR" ]; then
+      TEMP_DIR=$(mktemp -d)
+    fi
+    SOURCE="$TEMP_DIR/$skill.md"
+    echo -e "    Downloading from GitHub..."
+    if ! curl -fsSL "$REPO_RAW_URL/$skill/SKILL.md" -o "$SOURCE" 2>/dev/null; then
+      echo -e "    ${RED}Error:${NC} Failed to download $skill/SKILL.md"
+      echo "    Make sure the repo is public: https://github.com/Qovery/qovery-skills"
+      continue
+    fi
+    echo -e "    ${GREEN}Downloaded${NC} ($(wc -c < "$SOURCE" | tr -d ' ') bytes)"
+  fi
+
+  # Install to all target directories
+  while IFS= read -r base; do
+    target="$base/$skill"
+    mkdir -p "$target"
+    cp "$SOURCE" "$target/SKILL.md"
+    echo -e "    ${GREEN}Installed${NC} $target/SKILL.md"
+    installed=$((installed + 1))
+  done < <(get_base_dirs "$MODE")
+
+  echo ""
+done
+
+echo -e "${GREEN}${BOLD}Successfully installed ${#SKILLS[@]} skills to $installed locations.${NC}"
 echo ""
 
 if [ "$MODE" = "global" ]; then
-  echo -e "The skill is now available ${BOLD}globally${NC} in all your projects."
+  echo -e "Skills are now available ${BOLD}globally${NC} in all your projects."
 else
-  echo -e "The skill is now available in ${BOLD}this project${NC} only."
+  echo -e "Skills are now available in ${BOLD}this project${NC} only."
 fi
 
+echo ""
+echo -e "${BOLD}Skills installed:${NC}"
+echo -e "  ${YELLOW}qovery-deploy${NC}        — Deploy any app to Kubernetes with Qovery"
+echo -e "  ${YELLOW}qovery-troubleshoot${NC}  — Diagnose and fix deployment issues"
 echo ""
 echo -e "${BOLD}Compatible with:${NC}"
 echo "  Claude Code, OpenCode, Cursor, VS Code Copilot, Gemini CLI,"
@@ -170,5 +185,6 @@ echo "  and 20+ more tools supporting the Agent Skills standard."
 echo ""
 echo -e "${BOLD}Try it:${NC} ask your AI agent:"
 echo -e "  ${YELLOW}\"deploy my application with Qovery\"${NC}"
+echo -e "  ${YELLOW}\"my Qovery deployment is failing, can you help?\"${NC}"
 echo ""
 echo -e "Documentation: ${BLUE}https://github.com/Qovery/qovery-skills${NC}"

@@ -1,15 +1,20 @@
-# Qovery Deploy Skill
+# Qovery Skills
 
 [![Agent Skills](https://img.shields.io/badge/Agent_Skills-compatible-7C3AED)](https://agentskills.io)
 [![Install](https://img.shields.io/badge/Install-curl_skill.qovery.com-2563EB)](https://skill.qovery.com/install.sh)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![GitHub](https://img.shields.io/github/stars/Qovery/qovery-skills?style=social)](https://github.com/Qovery/qovery-skills)
 
-An AI agent skill that deploys any application to Kubernetes using [Qovery](https://www.qovery.com). Compatible with **30+ AI coding tools** that support the [Agent Skills](https://agentskills.io) open standard.
+AI agent skills for deploying and troubleshooting applications on Kubernetes using [Qovery](https://www.qovery.com). Compatible with **30+ AI coding tools** that support the [Agent Skills](https://agentskills.io) open standard.
+
+| Skill | What it does |
+|---|---|
+| **qovery-deploy** | Deploy any application to Kubernetes — analyzes codebases, creates Dockerfiles, provisions databases, deploys via CLI+API or Terraform |
+| **qovery-troubleshoot** | Diagnose and fix deployment failures, crashes, connectivity issues, performance problems, and cost inefficiencies — with MCP Server integration and runbook generation |
 
 ## Quick Install
 
-**One command — installs globally for all your projects:**
+**One command — installs both skills globally for all your projects:**
 
 ```bash
 curl -fsSL https://skill.qovery.com/install.sh | bash
@@ -27,9 +32,9 @@ curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --project
 curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --uninstall
 ```
 
-That's it. The installer automatically places the skill in all the right directories so it's discovered by any compatible tool.
+That's it. The installer automatically places both skills in all the right directories so they're discovered by any compatible tool.
 
-**Update to the latest version** — just run the install command again. It overwrites the previous version:
+**Update to the latest version** — just run the install command again. It overwrites the previous versions:
 
 ```bash
 curl -fsSL https://skill.qovery.com/install.sh | bash
@@ -60,7 +65,9 @@ And any other tool that discovers skills from `.claude/skills/` or `.agents/skil
 
 ## What it does
 
-When you tell your AI agent _"deploy my application with Qovery"_, the skill:
+### qovery-deploy
+
+When you tell your AI agent _"deploy my application with Qovery"_:
 
 1. **Analyzes your codebase** — detects language, framework, ports, database needs, environment variables
 2. **Creates a Dockerfile** if one is missing — production-ready templates for 12+ frameworks
@@ -70,23 +77,48 @@ When you tell your AI agent _"deploy my application with Qovery"_, the skill:
 6. **Provisions databases** — container mode for dev/test, managed mode (e.g. AWS RDS) for production, or Terraform services for advanced setups like RDS Aurora
 7. **Sets up environment variables**, secrets, service interconnection, health checks, deployment stages
 8. **Handles Helm charts, Terraform modules, lifecycle jobs, and cron jobs**
-9. **Watches deployments and auto-fixes failures** — diagnoses build errors, port mismatches, health check failures, missing env vars, and OOM issues. Fixes Qovery configuration automatically; asks for permission before modifying user code
+9. **Watches deployments and auto-fixes failures** — diagnoses build errors, port mismatches, health check failures, missing env vars, and OOM issues
+
+### qovery-troubleshoot
+
+When you tell your AI agent _"my Qovery deployment is failing, can you help?"_:
+
+1. **Integrates with the Qovery MCP Server** for fast, structured diagnostics (falls back to CLI/API if MCP is not configured)
+2. **Runs an 8-layer systematic diagnosis** — deployment status, build logs, runtime logs, health checks, environment variables, network/connectivity, resources/performance, cluster infrastructure
+3. **Matches 20+ error patterns** — OOM kills, crash loops, connection refused, missing env vars, port mismatches, DNS failures, auth errors, database issues, and more
+4. **Includes 10 pre-built playbooks** — App Won't Start, App Is Slow, Database Connection Fails, Deployment Stuck, Custom Domain Not Working, Terraform/Helm Errors, High Costs, OOM/Resource Exhaustion, Build Failing
+5. **Auto-fixes Qovery configuration** (ports, health checks, memory, CPU, env vars, deployment stages) without permission; asks before modifying user code
+6. **Generates runbooks** in `.qovery/runbooks/` to document what happened and how it was fixed — builds institutional knowledge over time
+7. **Provides prevention recommendations** tailored to the specific issue that was fixed
 
 ## Usage
 
 Just ask your AI agent:
 
 ```
-Can you deploy my application with Qovery?
+Deploy my application with Qovery
 ```
 
-The skill guides the agent through the entire process — from analyzing your project to a running deployment. It will ask you questions along the way (Qovery account, database needs, dev vs production, etc.).
+```
+My Qovery deployment is failing, can you help?
+```
 
-Other prompts that trigger the skill:
+The deploy skill guides the agent through the entire deployment process. The troubleshoot skill systematically diagnoses and fixes issues.
 
+**Prompts that trigger qovery-deploy:**
+- _"Deploy my application with Qovery"_
 - _"Set up Qovery for my project"_
 - _"Deploy this to Kubernetes with Qovery"_
 - _"Create a Qovery Terraform configuration for my app"_
+
+**Prompts that trigger qovery-troubleshoot:**
+- _"My deployment is failing"_
+- _"My app is crashing on Qovery"_
+- _"Why is my application not working?"_
+- _"My database connection is failing"_
+- _"My app is slow / out of memory"_
+- _"My Qovery costs are too high"_
+- _"My cluster is not responding"_
 
 ## Prerequisites
 
@@ -117,7 +149,9 @@ The skill includes production-ready Dockerfile templates for:
 
 If your framework is not listed, the agent will create a custom Dockerfile based on your project structure.
 
-## What the Skill Covers
+## What the Skills Cover
+
+### qovery-deploy
 
 | Phase | Description |
 |-------|-------------|
@@ -133,6 +167,18 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 | **9. Deployment Watch** | Active deployment monitoring, log fetching, success verification |
 | **10. Auto-Fix** | Error classification, automatic Qovery config fixes, user-code changes only with permission |
 
+### qovery-troubleshoot
+
+| Phase | Description |
+|-------|-------------|
+| **1. Context Gathering** | Authenticate, list services, identify the failing service, understand the problem |
+| **2. 8-Layer Diagnosis** | Systematic diagnostic workflow: deployment status, build logs, runtime logs, health checks, env vars, network, resources, cluster |
+| **3. Playbooks** | 10 pre-built diagnostic sequences for common issues (crashes, slow apps, DB connection, stuck deployments, custom domains, Terraform/Helm errors, high costs, OOM, build failures) |
+| **4. Fix & Redeploy** | Apply fixes (auto-fix for Qovery config, ask for user code), redeploy, and verify |
+| **5. Verification** | Confirm the fix worked — check status, logs, health, and endpoints |
+| **6. Runbook Generation** | Create `.qovery/runbooks/` documentation for the issue and resolution |
+| **7. Prevention** | Tailored recommendations to prevent recurrence |
+
 ## Deployment Methods
 
 The skill supports two deployment paths — the user chooses which one:
@@ -145,22 +191,22 @@ Creates a `qovery.tf` file that defines your entire infrastructure as code. Repr
 
 ## Manual Installation
 
-If you prefer not to use the install script, copy the skill folder manually:
+If you prefer not to use the install script, copy the skill folders manually:
 
 ```bash
 git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
 # Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery-deploy ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery-deploy ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery-deploy ~/.agents/skills/
+mkdir -p ~/.claude/skills && cp -r qovery-deploy qovery-troubleshoot ~/.claude/skills/
+mkdir -p ~/.config/opencode/skills && cp -r qovery-deploy qovery-troubleshoot ~/.config/opencode/skills/
+mkdir -p ~/.agents/skills && cp -r qovery-deploy qovery-troubleshoot ~/.agents/skills/
 
 # Or project-local install
-mkdir -p .claude/skills && cp -r qovery-deploy .claude/skills/
+mkdir -p .claude/skills && cp -r qovery-deploy qovery-troubleshoot .claude/skills/
 ```
 
-Verify the skill is discovered by checking if your tool lists `qovery-deploy` as an available skill.
+Verify the skills are discovered by checking if your tool lists `qovery-deploy` and `qovery-troubleshoot` as available skills.
 
 ## Links
 
