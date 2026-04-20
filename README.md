@@ -10,7 +10,8 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | Skill | What it does |
 |---|---|
 | **qovery-deploy** | Deploy any application to Kubernetes — analyzes codebases, creates Dockerfiles, provisions databases, deploys via CLI+API or Terraform |
-| **qovery-troubleshoot** | Diagnose and fix deployment failures, crashes, connectivity issues, performance problems, and cost inefficiencies — with MCP Server integration and runbook generation |
+| **qovery-troubleshoot** | Diagnose and fix deployment failures, crashes, connectivity issues, performance problems — with MCP Server integration and runbook generation |
+| **qovery-optimize** | Optimize costs and right-size resources — analyzes historical consumption, understands business context (seasonal, growth), estimates cloud costs, generates detailed reports with CSV export |
 
 ## Quick Install
 
@@ -91,6 +92,19 @@ When you tell your AI agent _"my Qovery deployment is failing, can you help?"_:
 6. **Generates runbooks** in `.qovery/runbooks/` to document what happened and how it was fixed — builds institutional knowledge over time
 7. **Provides prevention recommendations** tailored to the specific issue that was fixed
 
+### qovery-optimize
+
+When you tell your AI agent _"optimize my Qovery costs"_:
+
+1. **Gathers business context first** — asks about application type, traffic patterns (seasonal spikes, business-hours, steady), growth expectations, and reliability requirements before touching any metrics
+2. **Analyzes historical resource consumption** — compares allocated CPU/memory vs actual peak usage over 7-day and 30-day windows, with safety buffers adjusted by environment type
+3. **Analyzes 7 optimization dimensions** — service right-sizing, autoscaling, database mode, environment scheduling, cluster optimization (spot instances, instance types), build optimization, external resource costs
+4. **Estimates external cloud resource costs** — calculates costs for RDS, ElastiCache, NAT Gateways, load balancers, and other infrastructure from configuration parameters and public cloud pricing, with clear methodology disclaimers
+5. **Generates detailed cost reports** — markdown report with executive summary, per-cluster/environment/service breakdown, external resource estimates, and sorted recommendations with expected savings and risks. Also generates CSV for spreadsheet analysis
+6. **Applies changes via the right tool** — uses Qovery API for immediate changes or generates Terraform diffs if the user manages infrastructure as code. Asks the user which tool they prefer
+7. **Accounts for seasonal patterns** — never right-sizes below seasonal peaks, recommends pre-scaling before known peaks, suggests post-peak review
+8. **Offers Kubecost deployment** for ongoing real-time cost visibility, and suggests sharing the report with Qovery support for professional review
+
 ## Usage
 
 Just ask your AI agent:
@@ -117,8 +131,15 @@ The deploy skill guides the agent through the entire deployment process. The tro
 - _"Why is my application not working?"_
 - _"My database connection is failing"_
 - _"My app is slow / out of memory"_
-- _"My Qovery costs are too high"_
 - _"My cluster is not responding"_
+
+**Prompts that trigger qovery-optimize:**
+- _"Optimize my Qovery costs"_
+- _"My cloud bill is too high"_
+- _"Right-size my applications"_
+- _"Are my services over-provisioned?"_
+- _"How much is my infrastructure costing me?"_
+- _"Generate a cost report"_
 
 ## Prerequisites
 
@@ -179,6 +200,17 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 | **6. Runbook Generation** | Create `.qovery/runbooks/` documentation for the issue and resolution |
 | **7. Prevention** | Tailored recommendations to prevent recurrence |
 
+### qovery-optimize
+
+| Phase | Description |
+|-------|-------------|
+| **1. Context & Business** | Authenticate, inventory all resources, understand business context (app type, traffic patterns, seasonal peaks, growth, reliability needs, IaC tool) |
+| **2. Analysis Engine** | 7 optimization dimensions: service right-sizing, autoscaling, database mode, environment scheduling, cluster optimization, build optimization, external resource cost estimation |
+| **3. Cost Report** | Detailed markdown report with executive summary, per-cluster/environment/service breakdown, external resource estimates with pricing methodology disclaimer, sorted recommendations. CSV export for spreadsheets |
+| **4. Apply Changes** | User-approved changes via Qovery API (immediate) or Terraform diffs (IaC). Includes deployment rule setup for scheduling |
+| **5. Ongoing Monitoring** | Kubecost deployment offer, cloud provider billing dashboard links, Qovery support review offer, report saved to `.qovery/reports/` with follow-up schedule |
+| **6. Seasonal** | Specific guidance per business type: e-commerce pre-scaling, SaaS right-sizing, startup growth buffers, B2B scheduling, ML/AI GPU optimization |
+
 ## Deployment Methods
 
 The skill supports two deployment paths — the user chooses which one:
@@ -198,15 +230,15 @@ git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
 # Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery-deploy qovery-troubleshoot ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery-deploy qovery-troubleshoot ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery-deploy qovery-troubleshoot ~/.agents/skills/
+mkdir -p ~/.claude/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize ~/.claude/skills/
+mkdir -p ~/.config/opencode/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize ~/.config/opencode/skills/
+mkdir -p ~/.agents/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize ~/.agents/skills/
 
 # Or project-local install
-mkdir -p .claude/skills && cp -r qovery-deploy qovery-troubleshoot .claude/skills/
+mkdir -p .claude/skills && cp -r qovery-deploy qovery-troubleshoot qovery-optimize .claude/skills/
 ```
 
-Verify the skills are discovered by checking if your tool lists `qovery-deploy` and `qovery-troubleshoot` as available skills.
+Verify the skills are discovered by checking if your tool lists `qovery-deploy`, `qovery-troubleshoot`, and `qovery-optimize` as available skills.
 
 ## Links
 
