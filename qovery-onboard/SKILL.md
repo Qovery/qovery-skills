@@ -29,9 +29,50 @@ Use this skill when the user says anything like:
 
 ---
 
+## Qovery Console URL Detection
+
+When the user provides a Qovery Console URL (from `console.qovery.com` or `new-console.qovery.com`), extract the resource IDs directly from the URL path. For the onboarding skill, this tells you the user already has a Qovery account and at least an organization — you can skip account creation questions entirely.
+
+**URL format:**
+```
+https://{console.qovery.com|new-console.qovery.com}/organization/{orgId}/project/{projectId}/environment/{envId}/service/{serviceId}[/{page}]
+```
+
+**Extraction rules:**
+- `orgId` — UUID after `/organization/`
+- `projectId` — UUID after `/project/`
+- `envId` — UUID after `/environment/`
+- `serviceId` — UUID after `/service/`
+
+Not every URL contains all segments. Use whatever IDs are present to understand what the user has already set up:
+- URL with only `orgId` -> they have an account and org, skip account creation, check what's already configured
+- URL with `orgId` + `projectId` -> they have a project, check if they need environments/clusters
+- URL with full path -> they have a running service, onboarding may focus on optimization, team setup, or extending their configuration
+
+**After extracting IDs, resolve current state via the API:**
+```bash
+# Get organization name and plan
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/organization" | jq '.results[] | select(.id == "{orgId}") | {id, name, plan}'
+
+# Get clusters (check if any exist)
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/organization/{orgId}/cluster" | jq '.results[] | {id, name, cloud_provider, region, status}'
+
+# Get projects
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/organization/{orgId}/project" | jq '.results[] | {id, name}'
+```
+
+**Use the extracted IDs directly** to understand the user's current setup and skip onboarding steps they've already completed.
+
+---
+
 ## PHASE 1: Understand the User
 
 Before doing anything, UNDERSTAND who the user is. Ask questions conversationally — NOT as a wall of text. Group related questions together. Adapt follow-up questions based on their answers. Skip questions that are already answered by context.
+
+**Shortcut:** If the user provided a Qovery Console URL, they already have an account. Extract the organization ID (and any other IDs) from the URL using the URL Detection rules above. Use these to query what's already set up (clusters, projects, environments) and skip questions about resources that already exist. Focus the onboarding conversation on what's NOT yet configured.
 
 ### Group 1: Who Are You?
 
