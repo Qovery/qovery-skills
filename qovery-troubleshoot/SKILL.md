@@ -32,6 +32,57 @@ Use this skill when the user says anything like:
 
 ---
 
+## Qovery Console URL Detection
+
+When the user provides a Qovery Console URL (from `console.qovery.com` or `new-console.qovery.com`), extract the resource IDs directly from the URL path. This is especially valuable for troubleshooting — it immediately tells you which organization, project, environment, and service the user needs help with.
+
+**URL format:**
+```
+https://{console.qovery.com|new-console.qovery.com}/organization/{orgId}/project/{projectId}/environment/{envId}/service/{serviceId}[/{page}]
+```
+
+**Extraction rules:**
+- `orgId` — UUID after `/organization/`
+- `projectId` — UUID after `/project/`
+- `envId` — UUID after `/environment/`
+- `serviceId` — UUID after `/service/`
+- `page` — optional suffix that hints at the problem area:
+  - `service-logs` -> user is looking at runtime logs, likely a crash or error
+  - `deployment-logs` -> user is looking at build/deploy logs, likely a deployment failure
+  - `general` / `settings` -> user may be checking configuration
+  - `variables` -> user may suspect an environment variable issue
+
+Not every URL contains all segments. Use whatever IDs are present:
+- URL with only `orgId` -> organization is known, still ask about environment/service
+- URL with `orgId` + `projectId` + `envId` -> environment is known, may still need service selection
+- URL with all four IDs -> fully resolved, skip directly to fetching service status and logs
+
+**After extracting IDs, resolve names and current status via the API:**
+```bash
+# Get organization name
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/organization" | jq '.results[] | select(.id == "{orgId}") | {id, name}'
+
+# Get environment name + all service names/statuses in one call
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/environment/{envId}/statuses" | jq '{
+    environment: .environment.state,
+    applications: [.applications[] | {id, name: .name, state}],
+    containers: [.containers[] | {id, name: .name, state}],
+    databases: [.databases[] | {id, name: .name, state}],
+    jobs: [.jobs[] | {id, name: .name, state}],
+    helms: [.helms[] | {id, name: .name, state}]
+  }'
+
+# Get cluster ID from the environment
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/environment/{envId}" | jq '{cluster_id: .cluster_id}'
+```
+
+**Use the extracted IDs directly** in all subsequent diagnostic API calls — skip the "which service has the problem?" question if the service ID is already in the URL. The page suffix also provides a hint about what to investigate first (e.g., if the user was on `service-logs`, fetch logs immediately).
+
+---
+
 ## MCP Server Integration
 
 This skill is designed to work with the **Qovery MCP Server** as the primary diagnostic interface. The MCP Server provides faster, more structured responses than raw CLI/API calls and is optimized for troubleshooting.
@@ -111,9 +162,11 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 
 ### 1.3 Identify the Problem
 
+**Shortcut:** If the user provided a Qovery Console URL with a service ID, use the extracted IDs to skip directly to fetching the service status and logs. The URL page suffix (`service-logs`, `deployment-logs`, etc.) hints at the problem area — use it to focus your initial investigation. You can skip question 1 below entirely if the service ID is already known from the URL.
+
 Ask the user or detect from service statuses:
 
-1. **Which service has the problem?** (name or detect from error states)
+1. **Which service has the problem?** (name or detect from error states, or extracted from Console URL)
 2. **What are you experiencing?** Categorize into:
    - **Won't deploy** — build error, deployment error, stuck
    - **Crashes** — starts but dies (CrashLoopBackOff, OOM, segfault)

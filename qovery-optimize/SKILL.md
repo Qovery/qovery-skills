@@ -37,11 +37,58 @@ Use this skill when the user says anything like:
 
 ---
 
+## Qovery Console URL Detection
+
+When the user provides a Qovery Console URL (from `console.qovery.com` or `new-console.qovery.com`), extract the resource IDs directly from the URL path. This immediately scopes the optimization analysis — you know which organization, project, environment, or service the user wants to optimize.
+
+**URL format:**
+```
+https://{console.qovery.com|new-console.qovery.com}/organization/{orgId}/project/{projectId}/environment/{envId}/service/{serviceId}[/{page}]
+```
+
+**Extraction rules:**
+- `orgId` — UUID after `/organization/`
+- `projectId` — UUID after `/project/`
+- `envId` — UUID after `/environment/`
+- `serviceId` — UUID after `/service/`
+
+Not every URL contains all segments. Use whatever IDs are present to scope the analysis:
+- URL with only `orgId` -> optimize across the entire organization (all clusters, all environments)
+- URL with `orgId` + `projectId` -> optimize all environments in that project
+- URL with `envId` -> optimize that specific environment
+- URL with `serviceId` -> focus on right-sizing that specific service
+
+**After extracting IDs, use them directly for inventory and cost analysis:**
+```bash
+# Get organization name
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/organization" | jq '.results[] | select(.id == "{orgId}") | {id, name}'
+
+# Get all clusters in the organization
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/organization/{orgId}/cluster" | jq '.results[] | {id, name, cloud_provider, region, status}'
+
+# Get environment services and their resource allocations
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/environment/{envId}/statuses" | jq '{
+    applications: [.applications[] | {id, name: .name, state}],
+    containers: [.containers[] | {id, name: .name, state}],
+    databases: [.databases[] | {id, name: .name, state}],
+    jobs: [.jobs[] | {id, name: .name, state}]
+  }'
+```
+
+**Use the extracted IDs directly** in all subsequent API calls — skip asking the user to identify which organization, environment, or service to optimize.
+
+---
+
 ## PHASE 1: Context Gathering & Business Understanding
 
 Before optimizing, you MUST understand the business context. Blind optimization without context leads to outages.
 
 ### 1.1 Authenticate & Inventory
+
+**Shortcut:** If the user provided a Qovery Console URL, extract the organization ID and any other IDs from it using the URL Detection rules above. Use the extracted IDs to scope the inventory and cost analysis — e.g., if a specific environment ID is provided, focus the optimization on that environment's services rather than scanning the entire organization.
 
 Use the same authentication flow as the other Qovery skills:
 1. Check if `QOVERY_CLI_ACCESS_TOKEN` or `QOVERY_API_TOKEN` is set

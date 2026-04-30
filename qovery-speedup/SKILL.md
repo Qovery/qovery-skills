@@ -29,9 +29,53 @@ Use this skill when the user says anything like:
 
 ---
 
+## Qovery Console URL Detection
+
+When the user provides a Qovery Console URL (from `console.qovery.com` or `new-console.qovery.com`), extract the resource IDs directly from the URL path. This immediately identifies which organization, project, environment, and service the user wants to speed up — no need to ask.
+
+**URL format:**
+```
+https://{console.qovery.com|new-console.qovery.com}/organization/{orgId}/project/{projectId}/environment/{envId}/service/{serviceId}[/{page}]
+```
+
+**Extraction rules:**
+- `orgId` — UUID after `/organization/`
+- `projectId` — UUID after `/project/`
+- `envId` — UUID after `/environment/`
+- `serviceId` — UUID after `/service/`
+- `page` — optional suffix (`deployment-logs` is especially relevant — the user is likely looking at a slow deployment)
+
+Not every URL contains all segments. Use whatever IDs are present:
+- URL with `envId` -> use it directly in the V2 deployment history API call
+- URL with `serviceId` -> focus the speed analysis on that specific service
+- URL with `deployment-logs` page -> the user is likely watching a slow deployment right now
+
+**After extracting IDs, use them directly in the deployment history API:**
+```bash
+# Get deployment history for the environment (V2 — includes per-stage, per-service durations)
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/environment/{envId}/deploymentHistory?version=v2" | jq '.results[0:5]'
+
+# Get environment name + all services
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/environment/{envId}/statuses" | jq '{
+    environment: .environment.state,
+    applications: [.applications[] | {id, name: .name, state}],
+    containers: [.containers[] | {id, name: .name, state}],
+    jobs: [.jobs[] | {id, name: .name, state}],
+    helms: [.helms[] | {id, name: .name, state}]
+  }'
+```
+
+**Use the extracted IDs directly** in all subsequent API calls — skip asking the user to identify which environment or service is slow.
+
+---
+
 ## PHASE 1: Measure — Deployment Timeline Analysis
 
 Before optimizing anything, MEASURE where time is actually being spent. Do NOT guess — use data.
+
+**Shortcut:** If the user provided a Qovery Console URL, extract the environment ID and/or service ID from it using the URL Detection rules above. Use the environment ID directly in the V2 deployment history API call below, and use the service ID to focus the timeline analysis on that specific service. Skip asking "which environment/service is slow?"
 
 ### 1.1 Gather Structured Deployment History (V2 API)
 
