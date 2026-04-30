@@ -139,7 +139,13 @@ Once you know which service to diagnose:
 **Via CLI:**
 ```bash
 qovery application env list          # Environment variables
-qovery log --application "name"      # Recent logs
+
+# Recent logs — use the flag matching the service type:
+qovery log --application "name"      # Application logs
+qovery log --container "name"        # Container logs
+qovery log --database "name"         # Database logs
+qovery log --job "name"              # Job (cronjob/lifecycle) logs
+qovery log --service "name"          # Generic — works for any service type
 ```
 
 **Via API:**
@@ -155,6 +161,19 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 # Environment variables
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
   "https://api.qovery.com/application/{appId}/environmentVariable" | jq
+
+# Service logs (last 1000 lines) — use the endpoint matching the service type:
+# Application logs
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/application/{applicationId}/log" | jq '.results[-50:] | .[] | .message'
+# Container logs
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/container/{containerId}/log" | jq '.results[-50:] | .[] | .message'
+# NOTE: Job, Helm, and Database log API endpoints do NOT exist — use `qovery log` CLI instead.
+
+# Environment deployment logs (v2 — includes error details, stages, and hints):
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/environment/{environmentId}/logs" | jq '[.[] | {type, timestamp, message: .message.safe_message, error: .error.user_log_message, stage: .details.stage.step}]'
 ```
 
 ---
@@ -179,6 +198,10 @@ Work through these layers IN ORDER, from most common to least common. Stop at th
 qovery status
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
   "https://api.qovery.com/application/{appId}/deploymentHistory" | jq '.results[0]'
+
+# Environment deployment logs v2 — rich details with error messages, stages, and hints:
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/environment/{environmentId}/logs" | jq '[.[] | select(.error != null) | {timestamp, error_tag: .error.tag, message: .error.user_log_message, hint: .error.hint_message, stage: .details.stage.step}]'
 ```
 
 **What to look for:**
@@ -210,7 +233,22 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 
 **Via CLI:**
 ```bash
+# Use the flag matching the service type (--application, --container, --job, or --service):
 qovery log --application "name" --since 30m
+qovery log --container "name" --since 30m
+qovery log --job "name" --since 30m
+qovery log --service "name" --since 30m     # Generic — works for any service type
+```
+
+**Via API:**
+```bash
+# Application build logs
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/application/{applicationId}/log" | jq '.results[] | .message'
+# Container build logs
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/container/{containerId}/log" | jq '.results[] | .message'
+# NOTE: For jobs/helms, use `qovery log` CLI — no API log endpoint exists for these service types.
 ```
 
 **Error patterns and fixes:**
@@ -241,23 +279,47 @@ qovery log --application "name" --since 30m
 
 **Via CLI:**
 ```bash
-# Get recent logs
-qovery log --application "name" --since 1h
+# Get recent logs — use the flag matching the service type:
+qovery log --application "name" --since 1h    # Application
+qovery log --container "name" --since 1h      # Container
+qovery log --database "name" --since 1h       # Database
+qovery log --job "name" --since 1h            # Job (cronjob/lifecycle)
+qovery log --service "name" --since 1h        # Generic — works for any service type
 
-# Filter for errors
-qovery log --application "name" --since 1h --filter "ERROR"
-qovery log --application "name" --since 1h --filter "error"
-qovery log --application "name" --since 1h --filter "FATAL"
-qovery log --application "name" --since 1h --filter "panic"
-qovery log --application "name" --since 1h --filter "Exit"
-qovery log --application "name" --since 1h --filter "OOM"
-qovery log --application "name" --since 1h --filter "SIGKILL"
+# Stream logs in real-time (useful during active debugging):
+qovery log --service "name" --follow
+
+# Filter for errors (combine with any service flag above):
+qovery log --service "name" --since 1h --filter "ERROR"
+qovery log --service "name" --since 1h --filter "FATAL"
+qovery log --service "name" --since 1h --filter "panic"
+qovery log --service "name" --since 1h --filter "Exit"
+qovery log --service "name" --since 1h --filter "OOM"
+qovery log --service "name" --since 1h --filter "SIGKILL"
+
+# Get last N lines:
+qovery log --service "name" --tail 100
+
+# Time-range query:
+qovery log --service "name" --from "2024-01-01T00:00:00Z" --to "2024-01-01T23:59:59Z"
 ```
 
 **Via API:**
 ```bash
+# Application logs (last 1000 lines)
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  "https://api.qovery.com/application/{appId}/log" | jq '.results[-50:] | .[] | .message'
+  "https://api.qovery.com/application/{applicationId}/log" | jq '.results[-50:] | .[] | {created_at, message, pod_name}'
+
+# Container logs (last 1000 lines)
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/container/{containerId}/log" | jq '.results[-50:] | .[] | {created_at, message, pod_name}'
+
+# NOTE: Job, Helm, and Database log API endpoints do NOT exist.
+# Use `qovery log --job`, `qovery log --database`, or MCP queries for these service types.
+
+# Environment deployment logs v2 (useful for deployment-related runtime errors):
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/environment/{environmentId}/logs" | jq '[.[] | select(.error != null) | {timestamp, error: .error.user_log_message, hint: .error.hint_message, stage: .details.stage.step}]'
 ```
 
 **Error patterns and fixes:**
@@ -861,7 +923,9 @@ After the fix is applied and the service is redeployed:
 
 2. **Check logs for healthy operation:**
    ```bash
-   qovery log --application "name" --tail 20
+   # Use the flag matching the service type, or --service for any type:
+   qovery log --service "name" --tail 20
+   qovery log --service "name" --follow      # Stream in real-time to watch for errors
    ```
 
 3. **Test the endpoint:**
@@ -1062,9 +1126,16 @@ qovery service list
 qovery status
 qovery status --watch
 
-# Logs
-qovery log --application "name" --since 1h
-qovery log --application "name" --filter "ERROR"
+# Logs (use the flag matching the service type, or --service for any type)
+qovery log --application "name" --since 1h       # Application logs
+qovery log --container "name" --since 1h         # Container logs
+qovery log --database "name" --since 1h          # Database logs
+qovery log --job "name" --since 1h               # Job (cronjob/lifecycle) logs
+qovery log --service "name" --since 1h           # Generic — any service type
+qovery log --service "name" --follow              # Stream real-time logs
+qovery log --service "name" --filter "ERROR"      # Filter by keyword
+qovery log --service "name" --tail 100            # Last N lines
+qovery log --service "name" --from "2024-01-01T00:00:00Z" --to "2024-01-01T23:59:59Z"  # Time range
 
 # Environment variables
 qovery application env list
@@ -1085,14 +1156,24 @@ qovery cluster list
 # Base URL: https://api.qovery.com
 # Auth: Authorization: Token $QOVERY_API_TOKEN
 
+# Status & Config
 GET /environment/{envId}/statuses              # All service statuses
 GET /application/{appId}                        # Service config
 GET /application/{appId}/deploymentHistory      # Deployment history
-GET /application/{appId}/log                    # Application logs
 GET /application/{appId}/environmentVariable    # Environment variables
 GET /application/{appId}/customDomain           # Custom domains
 GET /organization/{orgId}/cluster               # Cluster list and status
 
+# Service Logs (last 1000 lines)
+GET /application/{applicationId}/log            # Application logs
+GET /container/{containerId}/log                # Container logs
+# NOTE: No API log endpoints exist for jobs, helms, or databases — use `qovery log` CLI.
+
+# Environment Deployment Logs
+GET /environment/{environmentId}/log            # Deployment logs v1
+GET /environment/{environmentId}/logs           # Deployment logs v2 (richer — includes error details, stages, hints)
+
+# Actions
 PUT /application/{appId}                        # Update service config (fix)
 POST /application/{appId}/restart               # Restart service
 POST /environment/{envId}/deploy                # Redeploy environment
