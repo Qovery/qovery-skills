@@ -29,32 +29,72 @@ Before doing anything, you MUST gather information by asking the user these ques
 
 ### Group 1: Qovery Account & Infrastructure
 
+#### Step 1: Authenticate
+
+Before asking any questions, try to detect an existing token automatically:
+1. Check if `QOVERY_CLI_ACCESS_TOKEN` or `QOVERY_API_TOKEN` is set in the environment
+2. If not, check if the CLI is authenticated: look for `~/.qovery/context.json` with a valid `access_token`
+3. If the CLI is authenticated, you can generate a token via `qovery token --name "deploy-skill"` (see Phase 2)
+4. As a fallback, the CLI's JWT token from `~/.qovery/context.json` can be used directly with `Authorization: Bearer <jwt>` instead of `Authorization: Token <api-token>`
+- Only ask the user to manually create a token at Qovery Console > Organization Settings > API Tokens if none of the above options work
+- Tokens should be stored securely (never commit to git)
+
+#### Step 2: Resolve Organization
+
+After authenticating, **proactively list all organizations** the user has access to:
+
+```bash
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  https://api.qovery.com/organization | jq '.results[] | {id, name}'
+```
+
+- **If 0 organizations**: The user does not have a Qovery account or has not been invited to any organization. Direct them to sign up at https://console.qovery.com — they need an organization before anything else.
+- **If 1 organization**: Confirm with the user and move on:
+  > "I found your organization: **{name}**. I'll use this one."
+- **If multiple organizations**: Present the full list and ask the user to choose. Do NOT silently pick the first one:
+  > "I found multiple Qovery organizations on your account:
+  > 1. **Acme Corp** (id: abc-123)
+  > 2. **Personal Projects** (id: def-456)
+  > 3. **Staging Org** (id: ghi-789)
+  >
+  > Which organization should I deploy to?"
+
+Store the selected organization ID — it will be used for all subsequent API calls.
+
+#### Step 3: Resolve Cluster
+
+After selecting the organization, **proactively list all clusters** in that organization:
+
+```bash
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/organization/{orgId}/cluster" | jq '.results[] | {id, name, cloud_provider, region, status}'
+```
+
+- **If 0 clusters**: The user MUST create a cluster before deploying. Go to **Phase 2B: Cluster Setup** after completing Phase 2 prerequisites. Cluster creation takes 15-30 minutes.
+- **If 1 cluster**: Confirm the cluster details with the user:
+  > "I found one cluster: **{name}** ({cloud_provider}, {region}, status: {status}). I'll deploy to this cluster."
+  - If the cluster status is NOT `DEPLOYED` or `READY`, warn the user: "This cluster is currently in **{status}** state and cannot accept deployments. Please wait for it to be ready or choose a different cluster."
+- **If multiple clusters**: Present the full list with key details and ask the user to choose. Do NOT silently pick one:
+  > "I found multiple clusters in your organization:
+  >
+  > | # | Name | Provider | Region | Status |
+  > |---|------|----------|--------|--------|
+  > | 1 | production | AWS | us-east-1 | DEPLOYED |
+  > | 2 | staging | AWS | eu-west-1 | DEPLOYED |
+  > | 3 | dev | GCP | us-central1 | DEPLOYED |
+  >
+  > Which cluster should I deploy to?"
+  - Only show clusters with `DEPLOYED` or `READY` status as valid options. If a cluster is in another state, list it but mark it as unavailable (e.g., "~~dev~~ (status: DEPLOYING — not ready)").
+
+IMPORTANT: Do NOT skip the cluster check. Without a running cluster, no services can be deployed. Store the selected cluster ID — it will be used when creating environments.
+
+#### Step 4: Resolve Project & Environment
+
 Ask the user:
 
-1. **Do you have a Qovery account?**
-   - If NO: direct them to sign up at https://console.qovery.com
-   - They need an organization before anything else
-
-2. **Do you have an API token for Qovery API calls?**
-   - Before asking the user, try to detect an existing token automatically:
-     1. Check if `QOVERY_CLI_ACCESS_TOKEN` or `QOVERY_API_TOKEN` is set in the environment
-     2. If not, check if the CLI is authenticated: look for `~/.qovery/context.json` with a valid `access_token`
-     3. If the CLI is authenticated, you can generate a token via `qovery token --name "deploy-skill"` (see Phase 2)
-     4. As a fallback, the CLI's JWT token from `~/.qovery/context.json` can be used directly with `Authorization: Bearer <jwt>` instead of `Authorization: Token <api-token>`
-   - Only ask the user to manually create a token at Qovery Console > Organization Settings > API Tokens if none of the above options work
-   - Tokens should be stored securely (never commit to git)
-
-3. **Do you have a Kubernetes cluster set up in Qovery?**
-   - Check with: `qovery cluster list` or `curl -s -H "Authorization: Token $QOVERY_API_TOKEN" https://api.qovery.com/organization/{orgId}/cluster | jq '.results[] | {id, name, cloud_provider, region, status}'`
-   - If NO (new account or no clusters) -> the user MUST create a cluster before deploying. Go to **Phase 2B: Cluster Setup** after completing Phase 2 prerequisites. Cluster creation takes 15-30 minutes.
-   - If YES -> ask for the cluster name and skip Phase 2B entirely
-   - IMPORTANT: Do NOT skip this check. Without a running cluster, no services can be deployed.
-
 4. **Do you already have a Qovery project and environment, or should we create them?**
-   - If they have existing ones, ask for the names (you will look them up)
-   - If not, you will create them
-
-5. **What cluster should we deploy to?** (ask for the cluster name — only if they have existing clusters)
+   - If they have existing ones, ask for the names (you will look them up via the API using the resolved organization ID)
+   - If not, you will create them in the selected organization, targeting the selected cluster
 
 ### Group 2: Project Analysis
 
@@ -867,6 +907,94 @@ IMPORTANT: Replace `MyApp.dll` with the actual assembly name from your `.csproj`
 
 ---
 
+## PHASE 3B: Deployment Plan Summary
+
+Before executing any operations (Phase 4 or Phase 5), you MUST present a complete summary of the deployment plan to the user and get explicit confirmation. This applies to BOTH the CLI+API path and the Terraform path.
+
+### 3B.1 Generate the Summary
+
+Based on all information gathered in Phase 1 (user answers, resolved organization, resolved cluster) and Phase 3 (codebase analysis, Dockerfile creation), compile a deployment plan. Present it in a clear, structured format:
+
+> **Deployment Plan**
+>
+> **Target Infrastructure:**
+> - Organization: **{org_name}** (`{org_id}`)
+> - Cluster: **{cluster_name}** ({cloud_provider}, {region})
+> - Project: **{project_name}** *(new — will be created / existing)*
+> - Environment: **{env_name}** (mode: {PRODUCTION/STAGING/DEVELOPMENT}) *(new — will be created / existing)*
+> - Deployment method: **{CLI + API / Terraform}**
+>
+> **Services to deploy:**
+>
+> | Service | Type | Source | Port | Public | CPU | Memory |
+> |---------|------|--------|------|--------|-----|--------|
+> | backend | Application | git: main, path: /backend | 8080 | Yes | 500m | 512MB |
+> | frontend | Application | git: main, path: /frontend | 3000 | Yes | 500m | 512MB |
+> | worker | Container | registry: my-org/worker:v1.0 | — | No | 250m | 256MB |
+>
+> **Databases to provision:**
+>
+> | Name | Type | Version | Mode | Storage | Instance |
+> |------|------|---------|------|---------|----------|
+> | postgres | PostgreSQL | 16 | Container | 10GB | — |
+> | redis | Redis | 7 | Container | 5GB | — |
+>
+> **Deployment stages (execution order):**
+> 1. **Infrastructure**: postgres, redis
+> 2. **Backend**: backend, worker
+> 3. **Frontend**: frontend
+>
+> **Environment variables to set:**
+> - `PORT` = `8080`
+> - `NODE_ENV` = `production`
+> - `DATABASE_URL` = alias -> `QOVERY_DATABASE_..._CONNECTION_URI_INTERNAL`
+> - `JWT_SECRET` = *(secret — value provided by user)*
+> - *(N other variables from .env file)*
+>
+> **Files to create/modify:**
+> - `backend/Dockerfile` *(new — Node.js Express template)*
+> - `backend/.dockerignore` *(new)*
+> - `frontend/Dockerfile` *(new — Next.js template)*
+> - `next.config.mjs` *(modified — added `output: 'standalone'`)*
+>
+> **Warnings:**
+> - No `/health` endpoint detected in backend — will use TCP health check probe instead of HTTP
+> - Database `postgres` is in **Container** mode — suitable for dev/test but not recommended for production workloads
+> - Frontend has no `.dockerignore` — `node_modules` will be excluded via the generated file
+
+Adapt this template to the actual services detected. Omit sections that don't apply (e.g., no "Databases" section if no databases are needed, no "Files to create" if all Dockerfiles exist).
+
+For the **Terraform path**, also include:
+> **Terraform files to generate:**
+> - `qovery.tf` — main infrastructure definition
+> - `variables.tf` — input variables
+> - `terraform.tfvars` — variable values *(will contain org/cluster/project IDs)*
+
+### 3B.2 Get Confirmation
+
+After presenting the summary, ask the user for explicit confirmation:
+
+> "Does this deployment plan look correct? I'll proceed with creating these resources once you confirm. Let me know if you want to change anything (e.g., different cluster, more memory, managed database instead of container, etc.)."
+
+**CRITICAL: Do NOT proceed to Phase 4 or Phase 5 until the user explicitly confirms.** This is the most important checkpoint in the deployment workflow — the next phases create real cloud resources, deploy services, and may incur costs.
+
+### 3B.3 Handle Changes
+
+If the user wants to modify the plan:
+1. Adjust the relevant settings based on their feedback
+2. Re-present the **full updated summary** (not just the changed parts — the user should always see the complete picture)
+3. Get confirmation again before proceeding
+
+Common change requests:
+- Switch cluster (e.g., "use staging instead of production")
+- Change database mode (e.g., "use managed for production")
+- Adjust resources (e.g., "give the backend 1GB memory")
+- Change port or public accessibility
+- Add/remove services
+- Switch deployment method (CLI+API vs Terraform)
+
+---
+
 ## PHASE 4: Deploy via CLI + API (Quick Path)
 
 Use this path when the user chose "CLI + API" or wants the fastest way to deploy.
@@ -882,19 +1010,26 @@ IMPORTANT — Authentication for API calls: All `curl` examples below use `Autho
 
 ### 4.1 Verify Organization, Project, and Cluster
 
+Use the organization and cluster resolved during Phase 1 (Group 1, Steps 2-3). Before creating any resources, verify they are still in the expected state:
+
 ```bash
-# List organizations (get the org ID)
+# Verify the selected organization exists and is accessible
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  https://api.qovery.com/organization | jq '.results[] | {id, name}'
+  https://api.qovery.com/organization | jq '.results[] | select(.id == "{selectedOrgId}") | {id, name}'
 
-# List clusters
+# Verify the selected cluster is healthy and ready for deployments
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  "https://api.qovery.com/organization/{orgId}/cluster" | jq '.results[] | {id, name}'
+  "https://api.qovery.com/organization/{orgId}/cluster" | jq '.results[] | select(.id == "{selectedClusterId}") | {id, name, status, cloud_provider, region}'
 
-# List projects
+# List existing projects in the selected organization
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
   "https://api.qovery.com/organization/{orgId}/project" | jq '.results[] | {id, name}'
 ```
+
+**Pre-flight checks before proceeding:**
+- The selected cluster status MUST be `DEPLOYED` or `READY`. If it is in any other state (`DEPLOYING`, `UPGRADING`, `ERROR`, etc.), do NOT proceed. Warn the user and either wait for the cluster or ask them to select a different one.
+- If the user has not yet selected an organization or cluster (e.g., they jumped directly to Phase 4), resolve them now using the logic from Phase 1, Group 1, Steps 2-3.
+- Confirm the selections match what was approved in the Phase 3B deployment plan summary.
 
 ### 4.2 Create Project (if needed)
 
