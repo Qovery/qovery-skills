@@ -20,6 +20,7 @@ Use this skill when the user says anything like:
 - "I want to deploy this to Kubernetes"
 - "Help me deploy to the cloud with Qovery"
 - "Can you create a Qovery configuration for my app?"
+- `/qovery-deploy` (slash command)
 
 ---
 

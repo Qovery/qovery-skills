@@ -26,6 +26,7 @@ Use this skill when the user says anything like:
 - "What's the best way to set up Qovery for my use case?"
 - "I'm migrating from Heroku/Vercel/Render to Qovery"
 - "How do I set up Qovery for my team?"
+- `/qovery-onboard` (slash command)
 
 ---
 

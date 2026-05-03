@@ -26,6 +26,7 @@ Use this skill when the user says anything like:
 - "How can I deploy faster?"
 - "My image pull is slow"
 - "Can you analyze my deployment pipeline?"
+- `/qovery-speedup` (slash command)
 
 ---
 

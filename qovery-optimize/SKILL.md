@@ -34,6 +34,7 @@ Use this skill when the user says anything like:
 - "How much is my infrastructure costing me?"
 - "Generate a cost report"
 - "I want to reduce my AWS/GCP/Azure bill"
+- `/qovery-optimize` (slash command)
 
 ---
 

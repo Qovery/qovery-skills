@@ -200,6 +200,27 @@ The onboard skill acts as your personal cloud architect. The deploy skill handle
 - _"Preview this branch on Qovery"_
 - `/qovery-preview` (slash command)
 
+## Slash Commands
+
+Each skill includes a slash command for quick invocation. Type `/` followed by the command name in your AI tool's chat:
+
+| Command | What it does | Example |
+|---------|-------------|---------|
+| `/qovery-deploy` | Deploy the current project to Kubernetes | `/qovery-deploy` or `/qovery-deploy my-app` |
+| `/qovery-troubleshoot` | Diagnose and fix a failing service | `/qovery-troubleshoot` or `/qovery-troubleshoot backend` |
+| `/qovery-onboard` | Start guided Qovery onboarding | `/qovery-onboard` or `/qovery-onboard migrating from Heroku` |
+| `/qovery-optimize` | Analyze costs and right-size resources | `/qovery-optimize` or `/qovery-optimize production` |
+| `/qovery-speedup` | Analyze and fix deployment bottlenecks | `/qovery-speedup` or `/qovery-speedup my-service` |
+| `/qovery-preview` | Create a preview environment for a PR | `/qovery-preview` or `/qovery-preview PR-123` |
+
+Commands are installed automatically by the install script. They accept optional arguments (service name, environment name, Console URL) and auto-detect context from your git workspace.
+
+**Manual command installation** (if not using the install script):
+```bash
+mkdir -p ~/.config/opencode/commands
+cp qovery-*/commands/*.md ~/.config/opencode/commands/
+```
+
 ## Prerequisites
 
 Before deploying, you need:

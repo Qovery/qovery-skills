@@ -29,6 +29,7 @@ Use this skill when the user says anything like:
 - "My Qovery costs are too high"
 - "My cluster is not responding"
 - "What's broken?"
+- `/qovery-troubleshoot` (slash command)
 
 ---
 
