@@ -14,6 +14,7 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | **qovery-troubleshoot** | Diagnose and fix deployment failures, crashes, connectivity issues, performance problems — with MCP Server integration and runbook generation |
 | **qovery-optimize** | Optimize costs and right-size resources — analyzes historical consumption, understands business context (seasonal, growth), estimates cloud costs, generates detailed reports with CSV export |
 | **qovery-speedup** | Speed up deployments — measures pipeline timeline, identifies bottlenecks (build, startup, health check, scheduling), classifies user vs Qovery responsibility, proposes Dockerfile and config fixes |
+| **qovery-preview** | Create preview environments from PRs — detects/creates blueprint environments, clones for each PR, switches branches, configures auto-shutdown (stop/delete/recycle), provides cleanup. Includes `/qovery-preview` slash command |
 
 ## Quick Install
 
@@ -191,6 +192,14 @@ The onboard skill acts as your personal cloud architect. The deploy skill handle
 - _"My Docker build is slow"_
 - _"My app takes too long to start"_
 
+**Prompts that trigger qovery-preview:**
+- _"Create a preview environment for the current branch"_
+- _"Create a PR environment for PR-123"_
+- _"Set up preview environments for my project"_
+- _"I want to test my PR in isolation"_
+- _"Preview this branch on Qovery"_
+- `/qovery-preview` (slash command)
+
 ## Prerequisites
 
 Before deploying, you need:
@@ -283,6 +292,18 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 | **5. Qovery Support** | For infrastructure bottlenecks: generate diagnostic report with timeline, Grafana snapshot, and applied optimizations — offer to share with support |
 | **6. Targets & Monitoring** | Deployment time targets by framework, benchmark report, maintenance checklist, re-analysis triggers |
 
+### qovery-preview
+
+| Phase | Description |
+|-------|-------------|
+| **1. Context** | Authenticate, detect PR/branch (git, GitHub CLI, user input), resolve org/cluster, check for existing blueprint environment |
+| **2. Blueprint** | Find deployed source environment, clone to create blueprint, configure base branches + `auto_preview`, validate (deploy, health check), stop to save resources |
+| **3. Clone** | Clone blueprint as preview environment with `PREVIEW` mode, switch git branches on services matching the PR's repository |
+| **4. Auto-Shutdown** | Ask lifecycle strategy (auto-stop, auto-delete, recycle, manual, PR-merge), create cron job with raw Dockerfile (`curlimages/curl`) + Qovery API token, or generate CI/CD workflow |
+| **5. Summary** | Present full deployment plan (org, cluster, blueprint, services, branch changes, auto-shutdown config, warnings), get explicit user confirmation |
+| **6. Deploy** | Deploy preview environment, active watch loop, fetch logs on failure, verify health, present preview URLs and console link |
+| **7. Cleanup** | Delete preview environment, clean up shutdown tokens, blueprint maintenance guidance, bulk cleanup for sprint resets |
+
 ## Deployment Methods
 
 The skill supports two deployment paths — the user chooses which one:
@@ -302,15 +323,18 @@ git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
 # Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup ~/.agents/skills/
+mkdir -p ~/.claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview ~/.claude/skills/
+mkdir -p ~/.config/opencode/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview ~/.config/opencode/skills/
+mkdir -p ~/.agents/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview ~/.agents/skills/
+
+# Install the /qovery-preview slash command (OpenCode)
+mkdir -p ~/.config/opencode/commands && cp qovery-preview/commands/qovery-preview.md ~/.config/opencode/commands/
 
 # Or project-local install
-mkdir -p .claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup .claude/skills/
+mkdir -p .claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview .claude/skills/
 ```
 
-Verify the skills are discovered by checking if your tool lists all five Qovery skills.
+Verify the skills are discovered by checking if your tool lists all six Qovery skills.
 
 ## Links
 

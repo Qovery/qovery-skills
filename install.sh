@@ -3,13 +3,13 @@ set -euo pipefail
 
 # ============================================================
 # Qovery Skills — Installer
-# Installs qovery-deploy and qovery-troubleshoot skills.
+# Installs all Qovery skills (deploy, troubleshoot, onboard, optimize, speedup, preview).
 # Compatible with Claude Code, OpenCode, Cursor, VS Code
 # Copilot, Gemini CLI, Roo Code, and 30+ more agent tools.
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup")
+SKILLS=("qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview")
 REPO_RAW_URL="https://skill.qovery.com"
 
 # Colors (if terminal supports them)
@@ -28,7 +28,7 @@ usage() {
   cat <<EOF
 ${BOLD}Qovery Skills — Installer${NC}
 
-Installs both qovery-deploy and qovery-troubleshoot skills.
+Installs all Qovery skills.
 
 Usage:
   install.sh [OPTIONS]
@@ -164,7 +164,30 @@ for skill in "${SKILLS[@]}"; do
   echo ""
 done
 
+# Install slash commands (from skills that have a commands/ directory)
+cmd_installed=0
+for skill in "${SKILLS[@]}"; do
+  CMD_DIR="$skill/commands"
+  if [ -d "$CMD_DIR" ]; then
+    for cmd_file in "$CMD_DIR"/*.md; do
+      [ -f "$cmd_file" ] || continue
+      cmd_name=$(basename "$cmd_file" .md)
+      while IFS= read -r base; do
+        # commands/ lives alongside skills/ in the parent directory
+        cmd_target="$(dirname "$base")/commands"
+        mkdir -p "$cmd_target"
+        cp "$cmd_file" "$cmd_target/$cmd_name.md"
+        echo -e "  ${GREEN}Installed${NC} command /$cmd_name -> $cmd_target/$cmd_name.md"
+        cmd_installed=$((cmd_installed + 1))
+      done < <(get_base_dirs "$MODE")
+    done
+  fi
+done
+
 echo -e "${GREEN}${BOLD}Successfully installed ${#SKILLS[@]} skills to $installed locations.${NC}"
+if [ "$cmd_installed" -gt 0 ]; then
+  echo -e "${GREEN}${BOLD}Installed $cmd_installed slash command(s).${NC}"
+fi
 echo ""
 
 if [ "$MODE" = "global" ]; then
@@ -180,6 +203,7 @@ echo -e "  ${YELLOW}qovery-deploy${NC}        — Deploy any app to Kubernetes w
 echo -e "  ${YELLOW}qovery-troubleshoot${NC}  — Diagnose and fix deployment issues"
 echo -e "  ${YELLOW}qovery-optimize${NC}      — Optimize costs and right-size resources"
 echo -e "  ${YELLOW}qovery-speedup${NC}       — Speed up deployments and builds"
+echo -e "  ${YELLOW}qovery-preview${NC}       — Create preview environments from PRs"
 echo ""
 echo -e "${BOLD}Compatible with:${NC}"
 echo "  Claude Code, OpenCode, Cursor, VS Code Copilot, Gemini CLI,"
@@ -192,5 +216,6 @@ echo -e "  ${YELLOW}\"deploy my application with Qovery\"${NC}"
 echo -e "  ${YELLOW}\"my Qovery deployment is failing, can you help?\"${NC}"
 echo -e "  ${YELLOW}\"optimize my Qovery costs\"${NC}"
 echo -e "  ${YELLOW}\"my deployments are slow, can you speed them up?\"${NC}"
+echo -e "  ${YELLOW}\"create a preview environment for PR-123\"${NC}"
 echo ""
 echo -e "Documentation: ${BLUE}https://github.com/Qovery/qovery-skills${NC}"
