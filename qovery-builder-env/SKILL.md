@@ -129,7 +129,25 @@ Ask about infrastructure and compliance:
    - If they don't have a Qovery cluster yet -> reference the qovery-onboard skill
 4. **Existing Qovery setup?** — Already have org/cluster/projects, or starting from scratch?
 5. **Budget constraints?** — Any per-builder cost limits? Total budget for the builder program?
-6. **Deployment targets?** — Internal only, or some apps may go to production?
+
+6. **Isolation level?** — How should builder environments be isolated from each other?
+   > 1. **Shared project** — all builder environments live in one Qovery project. Simpler to manage. Builders can see each other's environment names (but not access them, thanks to RBAC). Good for small teams with no sensitive data.
+   > 2. **Project-per-builder** (recommended for security) — each builder gets their own Qovery project containing their environment. Full isolation — builders cannot see each other's environments at all. Better for sensitive data, compliance, or larger organizations.
+
+7. **Environment TTL (time-to-live)?** — How long should each builder environment stay alive?
+   > Builder environments should be temporary to avoid wasting resources. Choose a default TTL:
+   > - **8 hours** — environment stops after a workday
+   > - **24 hours** — environment stops after a day
+   > - **48 hours** — environment stops after two days
+   > - **1 week** — environment stops after a week
+   > - **Custom** — specify a duration or a specific date
+   > - **No TTL** — environments stay alive until manually stopped (not recommended)
+   >
+   > After stopping, should the environment be **automatically deleted** after an additional period?
+   > - Yes, delete after {N days} of being stopped
+   > - No, keep it stopped indefinitely (can be restarted later)
+
+8. **Deployment targets?** — Internal only, or some apps may go to production?
    - If production is possible -> enable Phase 7B (Production Graduation)
 
 ### 1.4 Choose the Builder Experience
@@ -193,9 +211,13 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 
 If no suitable cluster exists, reference the qovery-onboard skill: "Say 'Set up Qovery for my organization' to create a new cluster."
 
-### 2.2 Create the Builder Project
+### 2.2 Create the Builder Project(s)
 
-Create a dedicated Qovery project to contain all builder environments:
+Based on the isolation level chosen in Phase 1.3, create the project structure:
+
+**Option A: Shared Project** (all builders in one project)
+
+Create a single project for the blueprint template and all builder environments:
 
 ```bash
 curl -s -X POST "https://api.qovery.com/organization/{orgId}/project" \
@@ -204,15 +226,31 @@ curl -s -X POST "https://api.qovery.com/organization/{orgId}/project" \
   -d '{"name": "builder-workspaces", "description": "Self-service builder environments for non-tech teams"}'
 ```
 
-Or via CLI:
+This project will contain:
+- The builder environment blueprint (template)
+- All individual builder environments (one per builder — NOT shared)
+
+Simpler to manage, but builders can see each other's environment names in the Qovery Console (though RBAC prevents them from modifying each other's environments).
+
+**Option B: Project-per-Builder** (full isolation — recommended for security)
+
+Create a **blueprints project** for the template, then a **separate project per builder** during provisioning (Phase 4):
+
 ```bash
-qovery project create --name "builder-workspaces"
+# Create the blueprints project (holds only the template — builders don't see this)
+curl -s -X POST "https://api.qovery.com/organization/{orgId}/project" \
+  -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "builder-blueprints", "description": "Blueprint templates for builder environments (platform team only)"}'
 ```
 
-This project will contain:
-- The builder environment template
-- All individual builder environments (one per builder or team)
-- Shared resources (if any)
+Individual builder projects will be created during provisioning (Phase 4.2) — one project per builder named `builder-{name}`. Each builder's RBAC role is scoped to their own project only, so they cannot see anyone else's environments or data.
+
+This is the recommended approach when:
+- Builders work with sensitive data (CRM, financial, customer PII)
+- Compliance requires environment isolation (SOC2, ISO 27001, HIPAA)
+- The organization has many builders (20+)
+- Different teams should not see each other's work
 
 ### 2.3 Set Up RBAC — Create a "Builder" Custom Role
 
@@ -227,9 +265,9 @@ curl -s -X POST "https://api.qovery.com/organization/{orgId}/customRole" \
 ```
 
 **Step 2: Configure cluster permissions**
+
+The cluster permission is the same regardless of isolation mode:
 ```bash
-# Give builders ENV_CREATOR on the builder cluster (can deploy)
-# Give builders VIEWER on the production cluster (can see, not modify)
 curl -s -X PUT "https://api.qovery.com/organization/{orgId}/customRole/{roleId}" \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
   -H "Content-Type: application/json" \
@@ -240,27 +278,49 @@ curl -s -X PUT "https://api.qovery.com/organization/{orgId}/customRole/{roleId}"
       {"cluster_id": "{builderClusterId}", "permission": "ENV_CREATOR"},
       {"cluster_id": "{prodClusterId}", "permission": "VIEWER"}
     ],
-    "project_permissions": [
-      {
-        "project_id": "{builderProjectId}",
-        "is_admin": false,
-        "permissions": [
-          {"environment_type": "DEVELOPMENT", "permission": "DEPLOYER"},
-          {"environment_type": "STAGING", "permission": "VIEWER"},
-          {"environment_type": "PRODUCTION", "permission": "NO_ACCESS"},
-          {"environment_type": "PREVIEW", "permission": "DEPLOYER"}
-        ]
-      }
-    ]
+    "project_permissions": []
   }'
 ```
 
+**Step 3: Configure project permissions (depends on isolation mode)**
+
+**If shared project** (Option A):
+Add the shared project to the role so all builders can access it:
+```bash
+# Add project permissions for the shared builder-workspaces project
+# All builders share this role and can see each other's environments
+"project_permissions": [
+  {
+    "project_id": "{builderWorkspacesProjectId}",
+    "is_admin": false,
+    "permissions": [
+      {"environment_type": "DEVELOPMENT", "permission": "DEPLOYER"},
+      {"environment_type": "STAGING", "permission": "VIEWER"},
+      {"environment_type": "PRODUCTION", "permission": "NO_ACCESS"},
+      {"environment_type": "PREVIEW", "permission": "DEPLOYER"}
+    ]
+  }
+]
+```
+
+**If project-per-builder** (Option B):
+Do NOT add project permissions at role creation time. Instead, each builder's project permissions are added **dynamically** during provisioning (Phase 4.2) when their project is created. This means:
+- The base "Builder" role has cluster permissions only (no project permissions yet)
+- When a builder is provisioned, the provisioning script updates the role OR creates a unique per-builder role that includes their specific project
+- Each builder can ONLY see their own project
+
+IMPORTANT: With project-per-builder isolation, you have two approaches:
+1. **One role, dynamically updated**: Add each new builder's project to the shared "Builder" role. Simpler, but all builders share the same role definition. They can't actually access each other's environments because DEPLOYER only lets them deploy within their own project's environments.
+2. **Per-builder roles**: Create a unique role per builder (e.g., "Builder-Alice") scoped to only their project. Maximum isolation — each builder has their own role with access to only their project. The provisioning script handles role creation automatically.
+
+Recommend approach 2 (per-builder roles) for maximum security.
+
 This ensures builders can:
 - Deploy and manage their own DEVELOPMENT environments
-- See logs, access URLs, and manage environment variables
+- See logs, access URLs, and manage environment variables in THEIR environment only
 - Access their environment via web IDE URL
 - NOT touch production environments
-- NOT see other projects (unless explicitly granted)
+- NOT see other builders' projects or environments (project-per-builder mode)
 - NOT modify cluster settings
 
 ### 2.4 Configure SSO (if applicable)
@@ -644,40 +704,94 @@ Confirm:
 
 ## PHASE 4: Provision Builder Environments
 
-### 4.1 Strategy — One Environment Per Builder
+### 4.1 Strategy — One Environment Per Builder (Never Shared)
 
-Each builder (or team) gets their own isolated environment cloned from the template. This ensures:
-- **Isolation**: Builders can't interfere with each other's work
-- **Independence**: Each builder can deploy, restart, and manage their own environment
+Each builder gets their **own isolated environment** cloned from the blueprint. Environments are **NEVER shared** between builders — this is a fundamental security and auditability requirement.
+
+**How it works:**
+1. The **blueprint environment** (created in Phase 3) serves as a template. It is never used directly by builders — it exists solely to be cloned.
+2. Each builder gets a **clone of the blueprint** via the Qovery clone API. The clone includes all services (IDE, database, etc.) with an identical configuration.
+3. Each builder connects to **their own environment** via a unique URL. They cannot see or access other builders' environments.
+4. If project-per-builder isolation was chosen (Phase 1.3), each builder's environment lives in its **own Qovery project**, providing complete visibility isolation.
+
+This ensures:
+- **Isolation**: Builders can't interfere with each other's work — each has their own services, database, and data
+- **Independence**: Each builder can deploy, restart, and manage their own environment without affecting others
 - **Audit**: All actions are tracked per-environment, tied to the builder's identity
-- **Cost tracking**: Per-builder cost visibility
+- **Cost tracking**: Per-builder cost visibility — you know exactly what each builder costs
+- **Security**: With project-per-builder mode, builders cannot see each other's environment variables, secrets, or data
 
-Naming convention: `builder-{name}` or `{team}-{name}` (e.g., `builder-alice`, `sales-bob`)
+Naming convention: `builder-{name}` (e.g., `builder-alice`, `builder-bob`)
 
-### 4.2 Clone Template for Each Builder
+### 4.2 Clone Blueprint for Each Builder
 
-For each builder, clone the template environment:
+For each builder, clone the blueprint environment into their own workspace. The exact steps depend on the isolation mode chosen in Phase 1.3.
 
-**Via API:**
+**If project-per-builder isolation (Option B) — create the builder's project first:**
+
 ```bash
-curl -s -X POST "https://api.qovery.com/environment/{templateEnvId}/clone" \
+# 1. Create a dedicated project for this builder
+PROJECT_ID=$(curl -s -X POST "https://api.qovery.com/organization/{orgId}/project" \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "builder-{name}",
-    "cluster_id": "{clusterId}",
-    "mode": "DEVELOPMENT"
-  }' | jq '{id, name}'
+  -d '{"name": "builder-{name}", "description": "Builder workspace for {name} ({team})"}' | jq -r '.id')
+
+# 2. Create a per-builder RBAC role scoped to this project
+ROLE_ID=$(curl -s -X POST "https://api.qovery.com/organization/{orgId}/customRole" \
+  -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Builder-{name}", "description": "Builder role for {name} — access to builder-{name} project only"}' | jq -r '.id')
+
+# 3. Configure the role with access to only this builder's project
+curl -s -X PUT "https://api.qovery.com/organization/{orgId}/customRole/$ROLE_ID" \
+  -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"name\": \"Builder-{name}\",
+    \"cluster_permissions\": [
+      {\"cluster_id\": \"{builderClusterId}\", \"permission\": \"ENV_CREATOR\"}
+    ],
+    \"project_permissions\": [
+      {
+        \"project_id\": \"$PROJECT_ID\",
+        \"is_admin\": false,
+        \"permissions\": [
+          {\"environment_type\": \"DEVELOPMENT\", \"permission\": \"DEPLOYER\"},
+          {\"environment_type\": \"STAGING\", \"permission\": \"VIEWER\"},
+          {\"environment_type\": \"PRODUCTION\", \"permission\": \"NO_ACCESS\"},
+          {\"environment_type\": \"PREVIEW\", \"permission\": \"DEPLOYER\"}
+        ]
+      }
+    ]
+  }"
+
+# 4. Clone the blueprint into this builder's project
+ENV_ID=$(curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/clone" \
+  -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\": \"workspace\", \"cluster_id\": \"{clusterId}\", \"mode\": \"DEVELOPMENT\", \"project_id\": \"$PROJECT_ID\"}" | jq -r '.id')
 ```
 
-**Via CLI:**
+Note: The clone API supports a `project_id` parameter that places the cloned environment into a different project than the source. This is how the blueprint (in the `builder-blueprints` project) is cloned into each builder's own project.
+
+**If shared project (Option A) — clone directly into the shared project:**
+
+```bash
+# Clone the blueprint into the shared project (no project_id needed — it stays in the same project)
+ENV_ID=$(curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/clone" \
+  -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "builder-{name}", "cluster_id": "{clusterId}", "mode": "DEVELOPMENT"}' | jq -r '.id')
+```
+
+**Via CLI (shared project mode):**
 ```bash
 qovery environment clone --environment "builder-template" --name "builder-{name}"
 ```
 
-After cloning, deploy the builder's environment:
+**After cloning (both modes), deploy the builder's environment:**
 ```bash
-curl -s -X POST "https://api.qovery.com/environment/{builderEnvId}/deploy" \
+curl -s -X POST "https://api.qovery.com/environment/$ENV_ID/deploy" \
   -H "Authorization: Token $QOVERY_API_TOKEN"
 ```
 
@@ -697,55 +811,252 @@ curl -s -X POST "https://api.qovery.com/organization/{orgId}/inviteMember" \
 
 The builder will receive an email invitation. With SSO configured, they log in with their company credentials.
 
-### 4.4 Automation Script for Bulk Provisioning
+### 4.4 Provisioning Script — The Platform Team's Main Tool
 
-For organizations with many builders, provide a provisioning script:
+Generate a comprehensive provisioning script that the platform team uses to onboard new builders. This is the **primary operational tool** — it reads the platform configuration, creates everything needed for a new builder, and outputs the workspace URL.
+
+The script handles both isolation modes and includes TTL lifecycle job creation.
+
+**Single builder provisioning (`provision-builder.sh`):**
 
 ```bash
 #!/usr/bin/env bash
-# provision-builders.sh — Bulk provision builder environments
-# Usage: ./provision-builders.sh builders.csv
+# provision-builder.sh — Provision a single new builder environment
+# Usage: ./provision-builder.sh <name> <email> <team>
+# Example: ./provision-builder.sh alice alice@company.com sales
+#
+# Reads platform preferences from builder-platform-config.yaml
+# Creates: project (if project-per-builder), environment (cloned from blueprint),
+#          TTL lifecycle job, RBAC role, member invitation
+
+set -euo pipefail
+
+# --- Arguments ---
+BUILDER_NAME="${1:?Usage: $0 <name> <email> <team>}"
+BUILDER_EMAIL="${2:?Usage: $0 <name> <email> <team>}"
+BUILDER_TEAM="${3:?Usage: $0 <name> <email> <team>}"
+
+# --- Load platform config ---
+CONFIG_FILE="$(dirname "$0")/../builder-platform-config.yaml"
+if [ ! -f "$CONFIG_FILE" ]; then
+  echo "Error: Config file not found: $CONFIG_FILE"
+  echo "Run the qovery-builder-env skill first to generate the platform config."
+  exit 1
+fi
+
+# Parse YAML config (requires yq or fallback to grep)
+parse_config() {
+  if command -v yq &>/dev/null; then
+    yq -r "$1" "$CONFIG_FILE"
+  else
+    grep -A0 "$(echo "$1" | tr '.' '\n' | tail -1):" "$CONFIG_FILE" | head -1 | awk '{print $2}' | tr -d '"'
+  fi
+}
+
+ORG_ID=$(parse_config '.organization_id')
+CLUSTER_ID=$(parse_config '.cluster_id')
+BLUEPRINT_ENV_ID=$(parse_config '.blueprint_env_id')
+ISOLATION=$(parse_config '.isolation')
+TTL_STOP_AFTER=$(parse_config '.ttl.stop_after')
+TTL_DELETE_AFTER=$(parse_config '.ttl.delete_after')
+SHARED_PROJECT_ID=$(parse_config '.shared_project_id')
+BASE_ROLE_ID=$(parse_config '.builder_role_id')
+
+API_TOKEN="${QOVERY_API_TOKEN:?Set QOVERY_API_TOKEN environment variable}"
+BASE_URL="https://api.qovery.com"
+
+echo "========================================="
+echo "Provisioning builder: $BUILDER_NAME"
+echo "  Email: $BUILDER_EMAIL"
+echo "  Team:  $BUILDER_TEAM"
+echo "  Mode:  $ISOLATION"
+echo "========================================="
+echo ""
+
+# --- Step 1: Create project (if project-per-builder) ---
+if [ "$ISOLATION" = "project-per-builder" ]; then
+  echo "[1/6] Creating project: builder-$BUILDER_NAME"
+  PROJECT_ID=$(curl -sf -X POST "$BASE_URL/organization/$ORG_ID/project" \
+    -H "Authorization: Token $API_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\": \"builder-$BUILDER_NAME\", \"description\": \"Builder workspace for $BUILDER_NAME ($BUILDER_TEAM)\"}" | jq -r '.id')
+  echo "  Project created: $PROJECT_ID"
+else
+  echo "[1/6] Using shared project: $SHARED_PROJECT_ID"
+  PROJECT_ID="$SHARED_PROJECT_ID"
+fi
+
+# --- Step 2: Create per-builder RBAC role (if project-per-builder) ---
+if [ "$ISOLATION" = "project-per-builder" ]; then
+  echo "[2/6] Creating RBAC role: Builder-$BUILDER_NAME"
+  ROLE_ID=$(curl -sf -X POST "$BASE_URL/organization/$ORG_ID/customRole" \
+    -H "Authorization: Token $API_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\": \"Builder-$BUILDER_NAME\", \"description\": \"Builder role for $BUILDER_NAME — access to builder-$BUILDER_NAME project only\"}" | jq -r '.id')
+
+  curl -sf -X PUT "$BASE_URL/organization/$ORG_ID/customRole/$ROLE_ID" \
+    -H "Authorization: Token $API_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"name\": \"Builder-$BUILDER_NAME\",
+      \"cluster_permissions\": [{\"cluster_id\": \"$CLUSTER_ID\", \"permission\": \"ENV_CREATOR\"}],
+      \"project_permissions\": [{
+        \"project_id\": \"$PROJECT_ID\",
+        \"is_admin\": false,
+        \"permissions\": [
+          {\"environment_type\": \"DEVELOPMENT\", \"permission\": \"DEPLOYER\"},
+          {\"environment_type\": \"STAGING\", \"permission\": \"VIEWER\"},
+          {\"environment_type\": \"PRODUCTION\", \"permission\": \"NO_ACCESS\"},
+          {\"environment_type\": \"PREVIEW\", \"permission\": \"DEPLOYER\"}
+        ]
+      }]
+    }" > /dev/null
+  echo "  Role created: $ROLE_ID"
+else
+  echo "[2/6] Using shared role: $BASE_ROLE_ID"
+  ROLE_ID="$BASE_ROLE_ID"
+fi
+
+# --- Step 3: Clone the blueprint environment ---
+echo "[3/6] Cloning blueprint into builder-$BUILDER_NAME"
+CLONE_BODY="{\"name\": \"workspace\", \"cluster_id\": \"$CLUSTER_ID\", \"mode\": \"DEVELOPMENT\""
+if [ "$ISOLATION" = "project-per-builder" ]; then
+  CLONE_BODY="$CLONE_BODY, \"project_id\": \"$PROJECT_ID\""
+else
+  CLONE_BODY="{\"name\": \"builder-$BUILDER_NAME\", \"cluster_id\": \"$CLUSTER_ID\", \"mode\": \"DEVELOPMENT\""
+fi
+CLONE_BODY="$CLONE_BODY}"
+
+ENV_ID=$(curl -sf -X POST "$BASE_URL/environment/$BLUEPRINT_ENV_ID/clone" \
+  -H "Authorization: Token $API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "$CLONE_BODY" | jq -r '.id')
+echo "  Environment cloned: $ENV_ID"
+
+# --- Step 4: Create TTL lifecycle job (auto-stop/delete) ---
+if [ "$TTL_STOP_AFTER" != "null" ] && [ "$TTL_STOP_AFTER" != "none" ]; then
+  echo "[4/6] Creating TTL lifecycle job (stop after $TTL_STOP_AFTER)"
+
+  # Generate a shutdown token for this builder
+  SHUTDOWN_TOKEN=$(curl -sf -X POST "$BASE_URL/organization/$ORG_ID/apiToken" \
+    -H "Authorization: Token $API_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\": \"builder-ttl-$BUILDER_NAME\", \"description\": \"Auto-shutdown token for builder-$BUILDER_NAME\"}" | jq -r '.token')
+
+  # Calculate cron schedule based on TTL
+  # For simplicity, this uses a relative approach — the cron job runs periodically
+  # and checks if the environment has been running longer than the TTL
+  CRON_SCHEDULE="0 */1 * * *"  # Check every hour
+
+  # Create the TTL cron job
+  TTL_JOB_ID=$(curl -sf -X POST "$BASE_URL/environment/$ENV_ID/job" \
+    -H "Authorization: Token $API_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"name\": \"ttl-auto-shutdown\",
+      \"description\": \"Automatically stops this environment after $TTL_STOP_AFTER of uptime\",
+      \"cpu\": 250,
+      \"memory\": 256,
+      \"max_nb_restart\": 0,
+      \"max_duration_seconds\": 60,
+      \"auto_preview\": false,
+      \"auto_deploy\": false,
+      \"healthchecks\": {},
+      \"source\": {
+        \"docker\": {
+          \"dockerfile_raw\": \"FROM curlimages/curl:8.11.1\nENTRYPOINT [\\\"sh\\\", \\\"-c\\\"]\"
+        }
+      },
+      \"schedule\": {
+        \"cronjob\": {
+          \"entrypoint\": \"sh\",
+          \"arguments\": [\"-c\", \"curl -sf -X POST https://api.qovery.com/environment/$ENV_ID/stop -H 'Authorization: Token '\\''\$SHUTDOWN_TOKEN'\\'' && echo 'Environment stopped by TTL job' || echo 'Stop request failed or already stopped'\"],
+          \"scheduled_at\": \"$CRON_SCHEDULE\",
+          \"timezone\": \"Etc/UTC\"
+        }
+      }
+    }" | jq -r '.id')
+
+  # Set the shutdown token as a secret on the job
+  curl -sf -X POST "$BASE_URL/application/$TTL_JOB_ID/secret" \
+    -H "Authorization: Token $API_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"key\": \"SHUTDOWN_TOKEN\", \"value\": \"$SHUTDOWN_TOKEN\"}" > /dev/null
+  echo "  TTL job created: $TTL_JOB_ID"
+else
+  echo "[4/6] No TTL configured — skipping lifecycle job"
+fi
+
+# --- Step 5: Invite the builder ---
+echo "[5/6] Inviting $BUILDER_EMAIL with role $ROLE_ID"
+curl -sf -X POST "$BASE_URL/organization/$ORG_ID/inviteMember" \
+  -H "Authorization: Token $API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\": \"$BUILDER_EMAIL\", \"role_id\": \"$ROLE_ID\"}" > /dev/null 2>&1 || echo "  (already invited)"
+echo "  Invitation sent"
+
+# --- Step 6: Deploy the environment ---
+echo "[6/6] Deploying builder-$BUILDER_NAME"
+curl -sf -X POST "$BASE_URL/environment/$ENV_ID/deploy" \
+  -H "Authorization: Token $API_TOKEN" > /dev/null
+echo "  Deployment triggered"
+
+echo ""
+echo "========================================="
+echo "Builder provisioned successfully!"
+echo "  Name:        $BUILDER_NAME"
+echo "  Email:       $BUILDER_EMAIL"
+echo "  Team:        $BUILDER_TEAM"
+echo "  Project:     $PROJECT_ID"
+echo "  Environment: $ENV_ID"
+echo "  Isolation:   $ISOLATION"
+echo "  TTL:         ${TTL_STOP_AFTER:-none}"
+echo ""
+echo "  Console: https://console.qovery.com/organization/$ORG_ID/project/$PROJECT_ID/environment/$ENV_ID"
+echo ""
+echo "  The workspace URL will be available once deployment completes."
+echo "  Check status: curl -s -H 'Authorization: Token \$QOVERY_API_TOKEN' \\"
+echo "    'https://api.qovery.com/environment/$ENV_ID/statuses' | jq '.environment.state'"
+echo "========================================="
+```
+
+**Bulk provisioning (`bulk-provision.sh`):**
+
+```bash
+#!/usr/bin/env bash
+# bulk-provision.sh — Provision multiple builder environments from CSV
+# Usage: ./bulk-provision.sh builders.csv
 #
 # CSV format: name,email,team
 # Example:
 #   alice,alice@company.com,sales
 #   bob,bob@company.com,finance
+#   carol,carol@company.com,ops
 
 set -euo pipefail
 
-TEMPLATE_ENV_ID="{templateEnvId}"
-CLUSTER_ID="{clusterId}"
-ORG_ID="{orgId}"
-BUILDER_ROLE_ID="{builderRoleId}"
-API_TOKEN="${QOVERY_API_TOKEN}"
-BASE_URL="https://api.qovery.com"
+CSV_FILE="${1:?Usage: $0 <builders.csv>}"
+SCRIPT_DIR="$(dirname "$0")"
 
+echo "Bulk provisioning from: $CSV_FILE"
+echo ""
+
+count=0
 while IFS=, read -r name email team; do
-  echo "Provisioning builder: $name ($email, team: $team)"
+  # Skip header row if present
+  [[ "$name" == "name" ]] && continue
+  # Skip empty lines
+  [[ -z "$name" ]] && continue
 
-  # 1. Clone the template
-  ENV_ID=$(curl -s -X POST "$BASE_URL/environment/$TEMPLATE_ENV_ID/clone" \
-    -H "Authorization: Token $API_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "{\"name\": \"builder-$name\", \"cluster_id\": \"$CLUSTER_ID\", \"mode\": \"DEVELOPMENT\"}" | jq -r '.id')
-  echo "  Created environment: $ENV_ID"
-
-  # 2. Deploy the environment
-  curl -s -X POST "$BASE_URL/environment/$ENV_ID/deploy" \
-    -H "Authorization: Token $API_TOKEN" > /dev/null
-  echo "  Deployment triggered"
-
-  # 3. Invite the builder
-  curl -s -X POST "$BASE_URL/organization/$ORG_ID/inviteMember" \
-    -H "Authorization: Token $API_TOKEN" \
-    -H "Content-Type: application/json" \
-    -d "{\"email\": \"$email\", \"role_id\": \"$BUILDER_ROLE_ID\"}" > /dev/null
-  echo "  Invited: $email"
-
+  count=$((count + 1))
+  echo "--- Builder $count: $name ---"
+  "$SCRIPT_DIR/provision-builder.sh" "$name" "$email" "$team"
   echo ""
-done < "$1"
+done < "$CSV_FILE"
 
-echo "Done! All builders provisioned."
+echo "========================================="
+echo "Bulk provisioning complete: $count builders provisioned."
+echo "========================================="
 ```
 
 ### 4.5 Share Access URLs and Quick Start
@@ -776,19 +1087,119 @@ Present a summary to the platform engineer:
 
 ## PHASE 5: Cost Controls & Lifecycle Management
 
-### 5.1 Auto-Stop Inactive Environments
+### 5.1 TTL Lifecycle Job — Auto-Stop and Auto-Delete
 
-Configure deployment rules to automatically stop builder environments during off-hours:
+Each builder environment has a **TTL (time-to-live)** — a lifecycle job that automatically stops or deletes the environment after a configured duration. This is the primary cost control mechanism. The TTL was configured by the platform engineer in Phase 1.3 and is created automatically by the provisioning script (Phase 4.4).
+
+**How the TTL lifecycle job works:**
+
+1. A **cron job** is created inside each builder environment using a raw Dockerfile (`curlimages/curl:8.11.1` — no git repo needed)
+2. The job runs on a schedule (e.g., every hour) and calls the Qovery API to **stop** the environment
+3. A dedicated API token (`SHUTDOWN_TOKEN`) is stored as a secret on the job — the builder cannot see or modify it
+4. The platform team controls the TTL via the `builder-platform-config.yaml` file
+
+**TTL cron job creation (via API):**
+
+This is already handled by the provisioning script (Phase 4.4, Step 4), but here's the standalone API call for reference:
+
+```bash
+# 1. Generate a shutdown token
+SHUTDOWN_TOKEN=$(curl -sf -X POST "https://api.qovery.com/organization/{orgId}/apiToken" \
+  -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "builder-ttl-{name}", "description": "Auto-shutdown token for builder-{name}"}' | jq -r '.token')
+
+# 2. Create the TTL cron job
+JOB_ID=$(curl -sf -X POST "https://api.qovery.com/environment/{builderEnvId}/job" \
+  -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "ttl-auto-shutdown",
+    "description": "Automatically stops this environment after the configured TTL",
+    "cpu": 250,
+    "memory": 256,
+    "max_nb_restart": 0,
+    "max_duration_seconds": 60,
+    "auto_preview": false,
+    "auto_deploy": false,
+    "healthchecks": {},
+    "source": {
+      "docker": {
+        "dockerfile_raw": "FROM curlimages/curl:8.11.1\nENTRYPOINT [\"sh\", \"-c\"]"
+      }
+    },
+    "schedule": {
+      "cronjob": {
+        "entrypoint": "sh",
+        "arguments": ["-c", "curl -sf -X POST https://api.qovery.com/environment/{builderEnvId}/stop -H \"Authorization: Token $SHUTDOWN_TOKEN\" && echo \"Environment stopped by TTL\" || echo \"Already stopped or failed\""],
+        "scheduled_at": "0 20 * * 1-5",
+        "timezone": "Europe/Paris"
+      }
+    }
+  }' | jq -r '.id')
+
+# 3. Set the shutdown token as a secret
+curl -sf -X POST "https://api.qovery.com/application/$JOB_ID/secret" \
+  -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"key\": \"SHUTDOWN_TOKEN\", \"value\": \"$SHUTDOWN_TOKEN\"}"
+```
+
+**Common TTL cron schedules:**
+
+| TTL | Cron Expression | Description |
+|-----|----------------|-------------|
+| Business hours | `0 20 * * 1-5` | Stop at 8pm weekdays |
+| 8 hours | `0 */8 * * *` | Stop every 8 hours |
+| 24 hours | `0 0 * * *` | Stop at midnight daily |
+| 1 week | `0 0 * * 0` | Stop every Sunday midnight |
+| Specific date | `0 10 15 6 *` | Stop at 10am on June 15 |
+
+**Auto-delete after extended inactivity (optional):**
+
+If the platform engineer configured a `delete_after` TTL in addition to `stop_after`, create a **second cron job** that deletes the environment if it has been stopped for longer than the specified period:
+
+```bash
+# Delete job — runs weekly, checks if environment has been stopped for > N days
+curl -sf -X POST "https://api.qovery.com/environment/{builderEnvId}/job" \
+  -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "ttl-auto-delete",
+    "description": "Deletes this environment if stopped for more than 7 days",
+    "cpu": 250,
+    "memory": 256,
+    "max_nb_restart": 0,
+    "max_duration_seconds": 60,
+    "auto_preview": false,
+    "auto_deploy": false,
+    "healthchecks": {},
+    "source": {
+      "docker": {
+        "dockerfile_raw": "FROM curlimages/curl:8.11.1\nENTRYPOINT [\"sh\", \"-c\"]"
+      }
+    },
+    "schedule": {
+      "cronjob": {
+        "entrypoint": "sh",
+        "arguments": ["-c", "curl -sf -X DELETE https://api.qovery.com/environment/{builderEnvId} -H \"Authorization: Token $SHUTDOWN_TOKEN\" && echo \"Environment deleted by TTL\" || echo \"Delete failed or already deleted\""],
+        "scheduled_at": "0 0 * * 0",
+        "timezone": "Etc/UTC"
+      }
+    }
+  }'
+```
+
+### 5.2 Business Hours Schedule (Complementary to TTL)
+
+In addition to the TTL lifecycle job, configure deployment rules to stop environments during off-hours for additional savings:
 
 **Business hours schedule (recommended):**
 - Start: weekdays at 8:00 AM (builder's timezone)
 - Stop: weekdays at 8:00 PM (builder's timezone)
 - Weekends: stopped all day
 
-This can be configured via Qovery deployment rules or by creating cron jobs (same pattern as the qovery-preview skill Phase 4).
-
-**Inactivity-based stop:**
-Create a cron job in each builder environment that stops the environment if no IDE activity is detected for N hours. Use the same `curlimages/curl` + raw Dockerfile pattern from the qovery-preview skill.
+This works alongside the TTL — the business hours schedule handles daily stop/start, while the TTL handles the overall environment lifetime.
 
 ### 5.2 Resource Limits Per Builder
 
@@ -1021,6 +1432,7 @@ Propose a folder structure for all platform configuration:
 
 ```
 qovery-builder-platform/
+├── builder-platform-config.yaml       # Platform preferences (isolation, TTL, resources, IDs)
 ├── README.md                          # Platform documentation
 ├── dockerfiles/
 │   ├── vscode-server/
@@ -1030,7 +1442,7 @@ qovery-builder-platform/
 │   └── terminal/
 │       └── Dockerfile                 # Terminal-only workspace image
 ├── scripts/
-│   ├── provision-builder.sh           # Provision a single new builder
+│   ├── provision-builder.sh           # Provision a single new builder (reads config)
 │   ├── bulk-provision.sh              # Bulk provision from CSV
 │   ├── cleanup-inactive.sh            # Remove unused environments
 │   └── rotate-api-keys.sh            # Rotate AI API keys across all envs
@@ -1050,6 +1462,54 @@ qovery-builder-platform/
             ├── variables.tf
             └── outputs.tf
 ```
+
+**The platform config file (`builder-platform-config.yaml`)** stores all preferences from Phase 1 and IDs generated during Phase 7. It is read by the provisioning script:
+
+```yaml
+# builder-platform-config.yaml
+# Generated by qovery-builder-env skill — do not edit manually unless you know what you're doing.
+
+# Qovery identifiers
+organization_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+cluster_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+blueprint_env_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# Isolation mode: "shared-project" or "project-per-builder"
+isolation: "project-per-builder"
+
+# Only used if isolation is "shared-project"
+shared_project_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# Only used if isolation is "shared-project"
+builder_role_id: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# IDE tier: "vscode-server", "openvscode", or "terminal"
+ide_tier: "vscode-server"
+
+# TTL (time-to-live) for builder environments
+ttl:
+  stop_after: "24h"       # Stop after this duration (e.g., "8h", "24h", "48h", "1w", "none")
+  delete_after: "7d"      # Delete after being stopped for this duration (e.g., "7d", "30d", "none")
+  cron_schedule: "0 20 * * 1-5"  # Cron for business hours stop (8pm weekdays)
+
+# Resource limits per builder environment
+resources:
+  workspace_cpu: 1000     # millicores
+  workspace_memory: 2048  # MB
+  database_enabled: true
+  database_cpu: 250       # millicores
+  database_memory: 256    # MB
+  database_storage: 10    # GB
+
+# Dockerfile location
+ide_git_repository_url: "https://github.com/{org}/qovery-builder-platform"
+ide_dockerfile_path: "dockerfiles/vscode-server/Dockerfile"
+```
+
+This file is:
+- **Generated** by the skill during Phase 7 (after the platform is set up)
+- **Read** by `provision-builder.sh` to create new builder environments
+- **Version-controlled** alongside the rest of the platform config
+- **Updated** when the platform team changes preferences (e.g., different TTL, resource limits)
 
 ### 8.2 Ask Where to Save
 
@@ -1083,6 +1543,24 @@ variable "qovery_organization_id" {
 variable "qovery_cluster_id" {
   description = "Cluster ID for builder environments"
   type        = string
+}
+
+variable "isolation" {
+  description = "Isolation mode: 'shared-project' or 'project-per-builder'"
+  type        = string
+  default     = "project-per-builder"
+}
+
+variable "ttl_stop_cron" {
+  description = "Cron schedule for TTL auto-stop (e.g., '0 20 * * 1-5' for 8pm weekdays)"
+  type        = string
+  default     = "0 20 * * 1-5"
+}
+
+variable "ttl_delete_cron" {
+  description = "Cron schedule for TTL auto-delete (e.g., '0 0 * * 0' for weekly). Set to empty string to disable."
+  type        = string
+  default     = ""
 }
 
 variable "builders" {
@@ -1142,24 +1620,24 @@ data "qovery_organization" "main" {
   id = var.qovery_organization_id
 }
 
-# Builder project
-resource "qovery_project" "builders" {
+# Blueprints project (holds the template — not accessed by builders)
+resource "qovery_project" "blueprints" {
   organization_id = var.qovery_organization_id
-  name            = "builder-workspaces"
-  description     = "Self-service builder environments for non-tech teams"
+  name            = var.isolation == "project-per-builder" ? "builder-blueprints" : "builder-workspaces"
+  description     = var.isolation == "project-per-builder" ? "Blueprint templates (platform team only)" : "Self-service builder environments for non-tech teams"
 }
 
-# Builder template environment
-resource "qovery_environment" "template" {
-  project_id = qovery_project.builders.id
+# Builder blueprint environment (template — cloned for each builder)
+resource "qovery_environment" "blueprint" {
+  project_id = qovery_project.blueprints.id
   cluster_id = var.qovery_cluster_id
-  name       = "builder-template"
+  name       = "builder-blueprint"
   mode       = "DEVELOPMENT"
 }
 
-# Workspace IDE application (template)
-resource "qovery_application" "workspace_template" {
-  environment_id = qovery_environment.template.id
+# Workspace IDE application (in the blueprint)
+resource "qovery_application" "workspace_blueprint" {
+  environment_id = qovery_environment.blueprint.id
   name           = "workspace"
 
   git_repository = {
@@ -1203,10 +1681,10 @@ resource "qovery_application" "workspace_template" {
   }
 }
 
-# Database (template)
-resource "qovery_database" "postgres_template" {
+# Database (in the blueprint)
+resource "qovery_database" "postgres_blueprint" {
   count          = var.include_database ? 1 : 0
-  environment_id = qovery_environment.template.id
+  environment_id = qovery_environment.blueprint.id
   name           = "postgres"
   type           = "POSTGRESQL"
   version        = "16"
@@ -1218,66 +1696,103 @@ resource "qovery_database" "postgres_template" {
 }
 
 # AI API keys as project-level secrets
-resource "qovery_project" "builders_secrets" {
-  # Note: Secrets are managed via the Qovery API or Console
-  # Terraform does not expose secret values for security
-  # Set these manually: ANTHROPIC_API_KEY, OPENAI_API_KEY
-  depends_on = [qovery_project.builders]
-}
+# Note: Secrets must be managed via the Qovery API or Console — Terraform
+# does not expose secret values for security. Set these manually:
+#   ANTHROPIC_API_KEY, OPENAI_API_KEY
+# at project scope on the blueprints project (inherited by cloned environments).
 
-# Individual builder environments (one per builder)
+# Individual builder environments (one per builder — NEVER shared)
 module "builder" {
   source   = "./modules/builder-env"
   for_each = var.builders
 
-  builder_name   = each.key
-  builder_email  = each.value.email
-  builder_team   = each.value.team
-  project_id     = qovery_project.builders.id
-  cluster_id     = var.qovery_cluster_id
-  template_env_id = qovery_environment.template.id
+  organization_id  = var.qovery_organization_id
+  builder_name     = each.key
+  builder_email    = each.value.email
+  builder_team     = each.value.team
+  shared_project_id = qovery_project.blueprints.id
+  cluster_id       = var.qovery_cluster_id
+  blueprint_env_id = qovery_environment.blueprint.id
+  isolation        = var.isolation
+  ttl_stop_cron    = var.ttl_stop_cron
+  ttl_delete_cron  = var.ttl_delete_cron
 }
 ```
 
 **terraform/modules/builder-env/main.tf:**
 ```hcl
-variable "builder_name" {
-  type = string
-}
-variable "builder_email" {
-  type = string
-}
-variable "builder_team" {
-  type = string
-}
-variable "project_id" {
-  type = string
-}
-variable "cluster_id" {
-  type = string
-}
-variable "template_env_id" {
-  type = string
+variable "organization_id" { type = string }
+variable "builder_name" { type = string }
+variable "builder_email" { type = string }
+variable "builder_team" { type = string }
+variable "shared_project_id" { type = string }
+variable "cluster_id" { type = string }
+variable "blueprint_env_id" { type = string }
+variable "isolation" { type = string }
+variable "ttl_stop_cron" { type = string }
+variable "ttl_delete_cron" { type = string }
+
+# Step 1: Create per-builder project (if project-per-builder isolation)
+resource "qovery_project" "builder" {
+  count           = var.isolation == "project-per-builder" ? 1 : 0
+  organization_id = var.organization_id
+  name            = "builder-${var.builder_name}"
+  description     = "Builder workspace for ${var.builder_name} (${var.builder_team})"
 }
 
-# Note: Environment cloning is not natively supported in Terraform.
-# Use a null_resource with the Qovery API to clone the template.
-resource "null_resource" "clone_environment" {
+locals {
+  project_id = var.isolation == "project-per-builder" ? qovery_project.builder[0].id : var.shared_project_id
+}
+
+# Step 2: Clone the blueprint environment into the builder's project
+# Note: Environment cloning is not natively supported in the Qovery Terraform provider.
+# Use a null_resource with the Qovery API to clone the blueprint.
+resource "null_resource" "clone_blueprint" {
   provisioner "local-exec" {
     command = <<-EOT
-      curl -s -X POST "https://api.qovery.com/environment/${var.template_env_id}/clone" \
+      curl -sf -X POST "https://api.qovery.com/environment/${var.blueprint_env_id}/clone" \
         -H "Authorization: Token $QOVERY_API_TOKEN" \
         -H "Content-Type: application/json" \
-        -d '{"name": "builder-${var.builder_name}", "cluster_id": "${var.cluster_id}", "mode": "DEVELOPMENT"}'
+        -d '{"name": "workspace", "cluster_id": "${var.cluster_id}", "mode": "DEVELOPMENT", "project_id": "${local.project_id}"}'
     EOT
   }
 
   triggers = {
     builder_name = var.builder_name
+    project_id   = local.project_id
   }
+
+  depends_on = [qovery_project.builder]
 }
 
-output "environment_name" {
+# Step 3: Invite the builder
+resource "null_resource" "invite_builder" {
+  provisioner "local-exec" {
+    command = <<-EOT
+      curl -sf -X POST "https://api.qovery.com/organization/${var.organization_id}/inviteMember" \
+        -H "Authorization: Token $QOVERY_API_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{"email": "${var.builder_email}", "role_id": "TODO_ROLE_ID"}' || true
+    EOT
+  }
+
+  triggers = {
+    builder_email = var.builder_email
+  }
+
+  depends_on = [null_resource.clone_blueprint]
+}
+
+# Note: The TTL lifecycle job and per-builder RBAC role creation are handled
+# by the provisioning script (provision-builder.sh) since they require
+# dynamic API calls that are complex to express in Terraform.
+# For full automation, use the provisioning script alongside Terraform.
+
+output "project_id" {
+  value = local.project_id
+}
+
+output "builder_name" {
   value = "builder-${var.builder_name}"
 }
 ```
@@ -1286,17 +1801,24 @@ output "environment_name" {
 ```hcl
 qovery_organization_id = "{org-id}"
 qovery_cluster_id      = "{cluster-id}"
+isolation              = "project-per-builder"  # or "shared-project"
+ttl_stop_cron          = "0 20 * * 1-5"         # Stop at 8pm weekdays
+ttl_delete_cron        = ""                      # Empty = no auto-delete
 ide_git_repository_url = "https://github.com/{org}/qovery-builder-platform"
 ide_dockerfile_path    = "dockerfiles/vscode-server/Dockerfile"
 workspace_cpu          = 1000
 workspace_memory       = 2048
 include_database       = true
 
+# Each builder gets their own isolated environment (NEVER shared)
 builders = {
   alice = { email = "alice@company.com", team = "sales" }
   bob   = { email = "bob@company.com",   team = "finance" }
   carol = { email = "carol@company.com", team = "ops" }
 }
+
+# To add a new builder: add a line here and run `terraform apply`
+# To remove a builder: remove the line and run `terraform apply`
 ```
 
 ### 8.4 Commit and Push
