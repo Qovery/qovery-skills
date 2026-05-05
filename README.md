@@ -15,6 +15,7 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | **qovery-optimize** | Optimize costs and right-size resources — analyzes historical consumption, understands business context (seasonal, growth), estimates cloud costs, generates detailed reports with CSV export |
 | **qovery-speedup** | Speed up deployments — measures pipeline timeline, identifies bottlenecks (build, startup, health check, scheduling), classifies user vs Qovery responsibility, proposes Dockerfile and config fixes |
 | **qovery-preview** | Create preview environments from PRs — detects/creates blueprint environments, clones for each PR, switches branches, configures auto-shutdown (stop/delete/recycle), provides cleanup. Includes `/qovery-preview` slash command |
+| **qovery-builder-env** | Set up self-service builder environments for non-tech teams (sales, finance, ops) — creates controlled workspaces with AI coding tools (VS Code + Copilot, Claude Code, OpenCode), Qovery deployment built-in, RBAC, cost controls, SSO, and optional Terraform IaC |
 
 ## Quick Install
 
@@ -200,6 +201,14 @@ The onboard skill acts as your personal cloud architect. The deploy skill handle
 - _"Preview this branch on Qovery"_
 - `/qovery-preview` (slash command)
 
+**Prompts that trigger qovery-builder-env:**
+- _"Set up builder environments for non-tech teams"_
+- _"Create remote dev environments for our sales team"_
+- _"I want to give non-tech employees the ability to build and deploy apps"_
+- _"Set up a self-service platform for internal tool builders"_
+- _"How do I enable our All Builders initiative with Qovery?"_
+- `/qovery-builder-env` (slash command)
+
 ## Slash Commands
 
 Each skill includes a slash command for quick invocation. Type `/` followed by the command name in your AI tool's chat:
@@ -212,6 +221,7 @@ Each skill includes a slash command for quick invocation. Type `/` followed by t
 | `/qovery-optimize` | Analyze costs and right-size resources | `/qovery-optimize` or `/qovery-optimize production` |
 | `/qovery-speedup` | Analyze and fix deployment bottlenecks | `/qovery-speedup` or `/qovery-speedup my-service` |
 | `/qovery-preview` | Create a preview environment for a PR | `/qovery-preview` or `/qovery-preview PR-123` |
+| `/qovery-builder-env` | Set up builder environments for non-tech teams | `/qovery-builder-env` or `/qovery-builder-env sales 5` |
 
 Commands are installed automatically by the install script. They accept optional arguments (service name, environment name, Console URL) and auto-detect context from your git workspace.
 
@@ -325,6 +335,20 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 | **6. Deploy** | Deploy preview environment, active watch loop, fetch logs on failure, verify health, present preview URLs and console link |
 | **7. Cleanup** | Delete preview environment, clean up shutdown tokens, blueprint maintenance guidance, bulk cleanup for sprint resets |
 
+### qovery-builder-env
+
+| Phase | Description |
+|-------|-------------|
+| **1. Understand** | Authenticate, understand builders (who, how many, tech level, data needs), platform requirements (SSO, compliance, cloud), choose builder experience tier (visual/VS Code/terminal) |
+| **2. Foundation** | Resolve org/cluster (recommend dedicated builder cluster), create builder project, set up RBAC with custom "Builder" role, configure SSO |
+| **3. Template** | Design environment blueprint, build AI coding tool container (3 Dockerfiles: VS Code Server, OpenVSCode, terminal), configure AI API keys as platform secrets, create and validate template |
+| **4. Provision** | Clone template per builder, invite builders with Builder role, automation script for bulk provisioning, share access URLs |
+| **5. Cost Controls** | Auto-stop schedules (business hours), resource limits per builder, cost monitoring and alerts, cleanup policy for inactive environments |
+| **6. Summary** | Present full platform plan (infra, RBAC, template, builders, costs, security), get explicit confirmation |
+| **7. Execute** | Create project, role, secrets, template, clone per builder, deploy, invite, verify. Optional 7B: production graduation workflow |
+| **8. IaC** | Generate config folder structure, save to git repo, optional Terraform manifests (Qovery provider), commit and push |
+| **9. Onboarding** | Generate builder quick-start guide (non-technical) and platform team runbook (operations, adding/removing builders, key rotation, troubleshooting) |
+
 ## Deployment Methods
 
 The skill supports two deployment paths — the user chooses which one:
@@ -344,18 +368,18 @@ git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
 # Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview ~/.agents/skills/
+mkdir -p ~/.claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env ~/.claude/skills/
+mkdir -p ~/.config/opencode/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env ~/.config/opencode/skills/
+mkdir -p ~/.agents/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env ~/.agents/skills/
 
 # Install the /qovery-preview slash command (OpenCode)
 mkdir -p ~/.config/opencode/commands && cp qovery-preview/commands/qovery-preview.md ~/.config/opencode/commands/
 
 # Or project-local install
-mkdir -p .claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview .claude/skills/
+mkdir -p .claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env .claude/skills/
 ```
 
-Verify the skills are discovered by checking if your tool lists all six Qovery skills.
+Verify the skills are discovered by checking if your tool lists all seven Qovery skills.
 
 ## Links
 

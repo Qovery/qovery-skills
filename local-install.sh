@@ -8,7 +8,7 @@ set -euo pipefail
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview")
+SKILLS=("qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-builder-env")
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Colors (if terminal supports them)
@@ -238,6 +238,7 @@ echo -e "  ${YELLOW}qovery-troubleshoot${NC}  — Diagnose and fix deployment is
 echo -e "  ${YELLOW}qovery-optimize${NC}      — Optimize costs and right-size resources"
 echo -e "  ${YELLOW}qovery-speedup${NC}       — Speed up deployments and builds"
 echo -e "  ${YELLOW}qovery-preview${NC}       — Create preview environments from PRs"
+echo -e "  ${YELLOW}qovery-builder-env${NC}   — Self-service builder environments for non-tech teams"
 echo ""
 echo -e "${BOLD}Slash commands:${NC}"
 echo -e "  ${YELLOW}/qovery-deploy${NC}  ${YELLOW}/qovery-troubleshoot${NC}  ${YELLOW}/qovery-onboard${NC}"
