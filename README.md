@@ -16,6 +16,7 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | **qovery-speedup** | Speed up deployments — measures pipeline timeline, identifies bottlenecks (build, startup, health check, scheduling), classifies user vs Qovery responsibility, proposes Dockerfile and config fixes |
 | **qovery-preview** | Create preview environments from PRs — detects/creates blueprint environments, clones for each PR, switches branches, configures auto-shutdown (stop/delete/recycle), provides cleanup. Includes `/qovery-preview` slash command |
 | **qovery-builder-env** | Set up self-service builder environments for non-tech teams (sales, finance, ops) — creates controlled workspaces with AI coding tools (VS Code + Copilot, Claude Code, OpenCode), Qovery deployment built-in, RBAC, cost controls, SSO, and optional Terraform IaC |
+| **qovery-builder-portal** | Generate and deploy a self-service web portal for builders — SSO login, one-click environment creation from templates, dashboard with status/URLs/TTL, start/stop/extend/delete controls. Built with Vite + React + TanStack Router + Tailwind + Express. Deployed on Qovery |
 
 ## Quick Install
 
@@ -209,6 +210,13 @@ The onboard skill acts as your personal cloud architect. The deploy skill handle
 - _"How do I enable our All Builders initiative with Qovery?"_
 - `/qovery-builder-env` (slash command)
 
+**Prompts that trigger qovery-builder-portal:**
+- _"Set up a builder portal"_
+- _"Create a self-service web portal for builders"_
+- _"I want non-tech users to spin up their own environments"_
+- _"Deploy the builder self-service interface"_
+- `/qovery-builder-portal` (slash command)
+
 ## Slash Commands
 
 Each skill includes a slash command for quick invocation. Type `/` followed by the command name in your AI tool's chat:
@@ -222,6 +230,7 @@ Each skill includes a slash command for quick invocation. Type `/` followed by t
 | `/qovery-speedup` | Analyze and fix deployment bottlenecks | `/qovery-speedup` or `/qovery-speedup my-service` |
 | `/qovery-preview` | Create a preview environment for a PR | `/qovery-preview` or `/qovery-preview PR-123` |
 | `/qovery-builder-env` | Set up builder environments for non-tech teams | `/qovery-builder-env` or `/qovery-builder-env sales 5` |
+| `/qovery-builder-portal` | Deploy a self-service web portal for builders | `/qovery-builder-portal` or `/qovery-builder-portal google` |
 
 Commands are installed automatically by the install script. They accept optional arguments (service name, environment name, Console URL) and auto-detect context from your git workspace.
 
@@ -349,6 +358,17 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 | **8. IaC** | Generate config folder structure, save to git repo, optional Terraform manifests (Qovery provider), commit and push |
 | **9. Onboarding** | Generate builder quick-start guide (non-technical) and platform team runbook (operations, adding/removing builders, key rotation, troubleshooting) |
 
+### qovery-builder-portal
+
+| Phase | Description |
+|-------|-------------|
+| **1. Requirements** | Authenticate, check for builder-platform-config.yaml (prerequisite), configure portal (SSO provider, branding, max environments, templates, TTL extension, delete permissions) |
+| **2. Generate App** | Generate complete Vite + React + TanStack Router + Tailwind frontend and Express + TypeScript backend. Inline critical code (Qovery API client, provisioner, SSO auth, environment CRUD). Agent generates UI components with branding |
+| **3. Configure** | Set environment variables (11 vars, 4 secrets), SSO setup guide (Google/Okta/Azure AD/OIDC), multi-template configuration |
+| **4. Summary** | Present portal deployment plan, get explicit confirmation |
+| **5. Deploy** | Save generated code to git, create Qovery project + application, set env vars + secrets, configure custom domain, deploy, verify SSO + environment creation flow |
+| **6. Operations** | Generate operations guide: add templates, change branding, rotate credentials, monitoring, troubleshooting |
+
 ## Deployment Methods
 
 The skill supports two deployment paths — the user chooses which one:
@@ -368,18 +388,18 @@ git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
 # Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env ~/.agents/skills/
+mkdir -p ~/.claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.claude/skills/
+mkdir -p ~/.config/opencode/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.config/opencode/skills/
+mkdir -p ~/.agents/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.agents/skills/
 
 # Install the /qovery-preview slash command (OpenCode)
 mkdir -p ~/.config/opencode/commands && cp qovery-preview/commands/qovery-preview.md ~/.config/opencode/commands/
 
 # Or project-local install
-mkdir -p .claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env .claude/skills/
+mkdir -p .claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal .claude/skills/
 ```
 
-Verify the skills are discovered by checking if your tool lists all seven Qovery skills.
+Verify the skills are discovered by checking if your tool lists all eight Qovery skills.
 
 ## Links
 

@@ -9,7 +9,7 @@ set -euo pipefail
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-builder-env")
+SKILLS=("qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-builder-env" "qovery-builder-portal")
 REPO_RAW_URL="https://skill.qovery.com"
 
 # Colors (if terminal supports them)
@@ -205,6 +205,7 @@ echo -e "  ${YELLOW}qovery-optimize${NC}      — Optimize costs and right-size 
 echo -e "  ${YELLOW}qovery-speedup${NC}       — Speed up deployments and builds"
 echo -e "  ${YELLOW}qovery-preview${NC}       — Create preview environments from PRs"
 echo -e "  ${YELLOW}qovery-builder-env${NC}   — Self-service builder environments for non-tech teams"
+echo -e "  ${YELLOW}qovery-builder-portal${NC} — Web portal for builders to manage environments"
 echo ""
 echo -e "${BOLD}Compatible with:${NC}"
 echo "  Claude Code, OpenCode, Cursor, VS Code Copilot, Gemini CLI,"
