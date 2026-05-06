@@ -1,0 +1,40 @@
+[
+  {
+    "skills": ["qovery-preview"],
+    "query": "Create a preview environment for the current branch",
+    "files": [],
+    "expected_behavior": [
+      "Detects current branch via `git branch --show-current` and PR metadata via `gh` if available",
+      "Searches for an existing blueprint environment by listing /project/{projectId}/environment",
+      "If no blueprint exists, walks Phase 2 (clone staging, configure auto_preview, deploy, validate, stop)",
+      "Clones the blueprint into `preview-{branch-or-pr}` via POST /environment/{envId}/clone",
+      "Switches each application's branch via PUT /application/{appId}",
+      "Configures auto-shutdown (Phase 4) — stop / delete / recycle as appropriate",
+      "Returns the public URLs once deployed"
+    ]
+  },
+  {
+    "skills": ["qovery-preview"],
+    "query": "Set up automatic cleanup so previews older than 5 days get deleted",
+    "files": [],
+    "expected_behavior": [
+      "Reads reference/phase4-auto-shutdown.md and reference/phase7-cleanup.md",
+      "Creates a scoped API token via POST /organization/{orgId}/apiToken with sensible permissions",
+      "Generates a cron job that walks `/project/.../environment` and deletes preview-* environments older than 5 days",
+      "Stores the API token as a job secret",
+      "Schedules the job to run daily during off-hours"
+    ]
+  },
+  {
+    "skills": ["qovery-preview"],
+    "query": "Only preview the frontend service for this PR — leave the backend pointing at staging",
+    "files": [],
+    "expected_behavior": [
+      "Recognizes a single-service preview scope per reference/phase3-preview-from-blueprint.md",
+      "Clones the blueprint with a filter so only the frontend is reset to the PR branch",
+      "Leaves backend and database services pointing at the blueprint defaults",
+      "Configures the frontend's BACKEND_API_URL env var (interpolation or alias) to point at the staging backend",
+      "Confirms the plan via the Phase 5 summary before deploying"
+    ]
+  }
+]

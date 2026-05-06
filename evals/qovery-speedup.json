@@ -1,0 +1,38 @@
+[
+  {
+    "skills": ["qovery-speedup"],
+    "query": "My deployment is taking 18 minutes — make it faster",
+    "files": [],
+    "expected_behavior": [
+      "Calls /environment/{envId}/deploymentHistoryV2?pageSize=5 and tabulates per-stage duration",
+      "Identifies the dominant phase (build / startup / health-check / scheduling / image pull)",
+      "Classifies the bottleneck per reference/phase2-classify.md (user-controllable vs Qovery infrastructure)",
+      "If user-controllable: loads reference/phase3-diagnose.md and proposes Dockerfile / health-check / stage-parallelism fixes",
+      "If infra-side: loads reference/diagnostic-report-template.md and prepares a Qovery-support escalation report"
+    ]
+  },
+  {
+    "skills": ["qovery-speedup"],
+    "query": "My Docker build is slow — npm ci runs every time even when no deps change",
+    "files": [],
+    "expected_behavior": [
+      "Reads reference/phase3-diagnose.md (Docker build optimization)",
+      "Identifies that the Dockerfile copies the whole project before npm ci, invalidating the layer cache",
+      "Proposes the canonical pattern: COPY package*.json / RUN npm ci / COPY .",
+      "Suggests adding a .dockerignore to exclude node_modules and dist from the build context",
+      "Estimates the improvement (typically 30-60% on subsequent builds)"
+    ]
+  },
+  {
+    "skills": ["qovery-speedup"],
+    "query": "Health check times out on every deploy — initial_delay_seconds=30 isn't enough for my Java app",
+    "files": [],
+    "expected_behavior": [
+      "Confirms the failure pattern via the V2 deployment logs",
+      "Reads reference/phase3-diagnose.md (health-check section)",
+      "Recommends increasing initial_delay_seconds (and possibly using a startup probe instead of a liveness probe for slow JVM apps)",
+      "Applies the change via PUT /application/{appId} and triggers a redeploy",
+      "Re-measures via deploymentHistoryV2 to confirm the deployment now succeeds within the new window"
+    ]
+  }
+]
