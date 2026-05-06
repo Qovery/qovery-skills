@@ -20,7 +20,7 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 
 ## Quick Install
 
-**One command — installs both skills globally for all your projects:**
+**One command — installs all eight skills globally for all your projects:**
 
 ```bash
 curl -fsSL https://skill.qovery.com/install.sh | bash
@@ -38,7 +38,7 @@ curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --project
 curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --uninstall
 ```
 
-That's it. The installer automatically places both skills in all the right directories so they're discovered by any compatible tool.
+That's it. The installer automatically places all eight skills (with their `reference/`, `templates/`, and `examples/` sub-directories) in all the right locations so they're discovered by any compatible tool.
 
 **Update to the latest version** — just run the install command again. It overwrites the previous versions:
 
@@ -48,7 +48,7 @@ curl -fsSL https://skill.qovery.com/install.sh | bash
 
 ## Compatible Tools
 
-This skill follows the [Agent Skills](https://agentskills.io) open standard and works with:
+These skills follow the [Agent Skills](https://agentskills.io) open standard and work with:
 
 | Tool | Status |
 |------|--------|
@@ -392,8 +392,9 @@ mkdir -p ~/.claude/skills && cp -r qovery-onboard qovery-deploy qovery-troublesh
 mkdir -p ~/.config/opencode/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.config/opencode/skills/
 mkdir -p ~/.agents/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.agents/skills/
 
-# Install the /qovery-preview slash command (OpenCode)
-mkdir -p ~/.config/opencode/commands && cp qovery-preview/commands/qovery-preview.md ~/.config/opencode/commands/
+# Install all slash commands (Claude Code, OpenCode, etc.)
+mkdir -p ~/.claude/commands && cp qovery-*/commands/*.md ~/.claude/commands/
+mkdir -p ~/.config/opencode/commands && cp qovery-*/commands/*.md ~/.config/opencode/commands/
 
 # Or project-local install
 mkdir -p .claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal .claude/skills/
