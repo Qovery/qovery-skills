@@ -1,0 +1,38 @@
+[
+  {
+    "skills": ["qovery-troubleshoot"],
+    "query": "My deployment is failing — here is the URL: https://console.qovery.com/organization/x/project/y/environment/z/service/s/deployment-logs",
+    "files": [],
+    "expected_behavior": [
+      "Extracts orgId, projectId, envId, serviceId from the URL",
+      "Recognizes the `deployment-logs` page suffix as a hint and fetches /environment/{envId}/logs (V2 deployment logs)",
+      "Walks the 8-layer diagnosis from reference/phase2-8-layer-diagnosis.md until the failing layer is identified",
+      "Loads the matching playbook from reference/phase3-playbooks.md (e.g. health-check, OOM, port mismatch)",
+      "Proposes a fix and asks for confirmation before applying it via PUT /application/{appId}"
+    ]
+  },
+  {
+    "skills": ["qovery-troubleshoot"],
+    "query": "My app is in CrashLoopBackOff — out of memory I think",
+    "files": [],
+    "expected_behavior": [
+      "Pulls recent logs via `qovery log --service` and confirms the OOMKilled signal",
+      "Reads reference/phase3-playbooks.md (OOM section)",
+      "Checks the current memory allocation via GET /application/{appId} and compares with observed peak usage",
+      "Recommends a memory increase with a justified target (not arbitrary), or recommends finding a memory leak if usage is grossly disproportionate",
+      "Generates a runbook entry via reference/phase6-runbook.md once the issue is fixed"
+    ]
+  },
+  {
+    "skills": ["qovery-troubleshoot"],
+    "query": "Connection refused when my backend tries to reach the Postgres database",
+    "files": [],
+    "expected_behavior": [
+      "Verifies the database is in DEPLOYED state via /environment/{envId}/statuses",
+      "Checks that the backend uses the alias / interpolated DATABASE_URL pointing at QOVERY_DATABASE_..._CONNECTION_URI_INTERNAL, not an external hostname",
+      "Looks for missing or unaliased env vars on the backend",
+      "If accessibility is wrong, recommends switching the database to PRIVATE (intra-cluster only)",
+      "Optionally runs `qovery port-forward` against the database to validate it is reachable from the cluster"
+    ]
+  }
+]

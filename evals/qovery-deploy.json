@@ -1,0 +1,39 @@
+[
+  {
+    "skills": ["qovery-deploy"],
+    "query": "Deploy this Node.js Express app to Qovery",
+    "files": [],
+    "expected_behavior": [
+      "Reads SKILL.md and the relevant phase files (phase1, phase2, phase3)",
+      "Runs Phase 1 discovery: confirms the user's organization and cluster via /organization and /cluster API calls",
+      "Detects Node.js + Express from package.json",
+      "Asks for the listening port and whether the service should be public",
+      "If no Dockerfile is present, copies the Node.js Express template from reference/phase3-dockerfiles.md and adapts the CMD to match package.json",
+      "Presents the Phase 3B deployment plan summary and waits for explicit user confirmation before creating any resources"
+    ]
+  },
+  {
+    "skills": ["qovery-deploy"],
+    "query": "I want to deploy with Terraform — here is my Console URL: https://console.qovery.com/organization/abc-123/project/def-456",
+    "files": [],
+    "expected_behavior": [
+      "Extracts orgId=abc-123 and projectId=def-456 from the URL via reference/console-url-detection.md",
+      "Skips the org/project discovery questions",
+      "Loads reference/phase5-terraform.md when entering the Terraform path",
+      "Generates qovery.tf, variables.tf, and terraform.tfvars at the project root",
+      "Pins the qovery/qovery provider to ~> 0.54.0"
+    ]
+  },
+  {
+    "skills": ["qovery-deploy"],
+    "query": "My Qovery account is brand new and I have no cluster yet — deploy my Python FastAPI app on AWS",
+    "files": [],
+    "expected_behavior": [
+      "Detects 0 clusters via the API and routes through Phase 2B (cluster setup)",
+      "Reads reference/phase2b-cluster-setup.md and walks the user through AWS STS Assume Role + CloudFormation quick-create",
+      "Tells the user the cluster takes 15-30 minutes and offers to continue with Dockerfile prep in parallel",
+      "Generates a Python FastAPI Dockerfile with uvicorn from the Phase 3 templates",
+      "Does not deploy any service before the cluster status is DEPLOYED or READY"
+    ]
+  }
+]

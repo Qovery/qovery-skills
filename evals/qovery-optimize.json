@@ -1,0 +1,39 @@
+[
+  {
+    "skills": ["qovery-optimize"],
+    "query": "My AWS bill is $4k/month and I think I'm over-provisioned — optimize my Qovery costs",
+    "files": [],
+    "expected_behavior": [
+      "Loads reference/phase1-context-gathering.md and gathers the user's business context (seasonal patterns, growth stage, reliability needs)",
+      "Calls /organization/{orgId}/currentCost and /cluster/{clusterId}/currentCost to baseline current spend",
+      "Pulls 7-day CPU and memory metrics per service via the metrics API",
+      "Walks the 7 dimensions in reference/phase2-optimization-dimensions.md and produces concrete recommendations with $-savings estimates",
+      "References reference/pricing/aws.md for instance-type costs (does not invent prices)",
+      "Generates the Phase 3 cost report (Markdown + CSV) and confirms each change before applying"
+    ]
+  },
+  {
+    "skills": ["qovery-optimize"],
+    "query": "Can I save money by stopping my dev environments at night?",
+    "files": [],
+    "expected_behavior": [
+      "Reads reference/phase2-optimization-dimensions.md (Dimension 4: lifecycle scheduling)",
+      "Proposes a deployment rule with a stop schedule (e.g. weekdays 8pm) and a start schedule (e.g. weekdays 8am)",
+      "Estimates savings as approximately (16h non-business + 48h weekend) / 168h = ~62% of the dev environment cost",
+      "Warns the user that scheduled stops can cause cold-start delay if the user starts work before the start window",
+      "Asks for confirmation before applying"
+    ]
+  },
+  {
+    "skills": ["qovery-optimize"],
+    "query": "Convert all my dev databases from managed RDS to container mode",
+    "files": [],
+    "expected_behavior": [
+      "Reads reference/phase2-optimization-dimensions.md (Dimension 3: database mode)",
+      "Lists each affected database with current mode, instance type, and estimated monthly cost using reference/pricing/aws.md",
+      "Warns that container mode loses managed backups, multi-AZ, and automated patching",
+      "Recommends keeping production on MANAGED",
+      "Applies the change per database after individual confirmation, not as a single batch action"
+    ]
+  }
+]

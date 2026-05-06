@@ -1,0 +1,2 @@
+- GET / → return req.user (UserProfile from session)
+- Return 401 if not authenticated

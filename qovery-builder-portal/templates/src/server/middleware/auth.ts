@@ -1,0 +1,3 @@
+- Export a middleware function that checks req.isAuthenticated()
+- If not authenticated: return 401 JSON error
+- If authenticated: call next()

@@ -1,0 +1,37 @@
+[
+  {
+    "skills": ["qovery-onboard"],
+    "query": "I'm new to Qovery, help me get started — I'm a solo founder, no cloud experience",
+    "files": [],
+    "expected_behavior": [
+      "Loads reference/phase1-understand-user.md and asks the user about role, experience, industry, and constraints in conversational groups",
+      "Recommends a managed cluster on AWS (or Scaleway if EU compliance is mentioned) — does NOT push BYOK on a beginner",
+      "Recommends a 3-environment structure (development / staging / production) per reference/phase2-recommend-setup.md",
+      "Bakes in security defaults (private DB, internal networking, secrets encryption) WITHOUT presenting them as options",
+      "Walks the user through cloud credential setup via reference/phase3-execute-setup.md and uses CloudFormation quick-create for AWS"
+    ]
+  },
+  {
+    "skills": ["qovery-onboard"],
+    "query": "I have an existing EKS cluster — can I use Qovery on it?",
+    "files": [],
+    "expected_behavior": [
+      "Confirms the existing cluster matches Qovery's minimum requirements (version, node count, ingress, etc.)",
+      "Loads reference/phase4-byok.md and walks through `qovery cluster install`",
+      "Does NOT offer to create a managed cluster (the user already has one)",
+      "Verifies the cluster is registered in Qovery before proceeding to project/environment setup"
+    ]
+  },
+  {
+    "skills": ["qovery-onboard"],
+    "query": "I'm migrating from Heroku — I have 12 apps and a bunch of config vars",
+    "files": [],
+    "expected_behavior": [
+      "Loads reference/phase5-migration-guides.md and walks the Heroku-specific path",
+      "Maps Heroku concepts to Qovery (dyno -> service, addon -> database, config var -> env var)",
+      "Uses `qovery env parse --heroku-json` to import config vars in bulk rather than one by one",
+      "Recommends a phased migration (one app at a time, staging first) instead of a big bang",
+      "Hands off to qovery-deploy once the platform is set up"
+    ]
+  }
+]
