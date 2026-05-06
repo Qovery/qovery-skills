@@ -10,7 +10,7 @@ set -euo pipefail
 # ============================================================
 
 SKILLS=("qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-builder-env" "qovery-builder-portal")
-REPO_RAW_URL="https://skill.qovery.com"
+TARBALL_URL="https://codeload.github.com/Qovery/qovery-skills/tar.gz/refs/heads/main"
 
 # Colors (if terminal supports them)
 if [ -t 1 ]; then
@@ -101,7 +101,7 @@ if [ "$MODE" = "uninstall" ]; then
   for base in "${BASE_PATHS[@]}"; do
     for skill in "${SKILLS[@]}"; do
       target="$base/$skill"
-      if [ -f "$target/SKILL.md" ]; then
+      if [ -e "$target/SKILL.md" ] || [ -L "$target" ]; then
         rm -rf "$target"
         echo -e "  ${RED}Removed${NC} $target"
         found=1
@@ -128,36 +128,60 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Determine source root: either the cloned repo we're running from,
+# or a freshly downloaded tarball.
+SOURCE_ROOT=""
+if [ -f "qovery-deploy/SKILL.md" ]; then
+  SOURCE_ROOT="$(pwd)"
+  echo -e "  Source: local repo (${BLUE}$SOURCE_ROOT${NC})"
+else
+  TEMP_DIR=$(mktemp -d)
+  echo -e "  Downloading qovery-skills tarball from GitHub..."
+  if ! curl -fsSL "$TARBALL_URL" | tar -xz -C "$TEMP_DIR"; then
+    echo -e "  ${RED}Error:${NC} Failed to download or extract tarball from $TARBALL_URL"
+    echo "  Make sure the repo is public: https://github.com/Qovery/qovery-skills"
+    exit 1
+  fi
+  # The extracted directory is named "qovery-skills-<branch>" — pick the first one
+  SOURCE_ROOT="$(find "$TEMP_DIR" -maxdepth 1 -type d -name 'qovery-skills-*' | head -n 1)"
+  if [ -z "$SOURCE_ROOT" ] || [ ! -f "$SOURCE_ROOT/qovery-deploy/SKILL.md" ]; then
+    echo -e "  ${RED}Error:${NC} Tarball did not contain expected layout"
+    exit 1
+  fi
+  echo -e "  ${GREEN}Downloaded${NC} ($(du -sh "$SOURCE_ROOT" | cut -f1))"
+fi
+echo ""
+
 installed=0
 
 for skill in "${SKILLS[@]}"; do
-  echo -e "  ${BLUE}[$skill]${NC}"
-
-  if [ -f "$skill/SKILL.md" ]; then
-    # Running from cloned repo
-    SOURCE="$skill/SKILL.md"
-    echo -e "    Source: local file ($skill/SKILL.md)"
-  else
-    # Running via curl | bash — download from GitHub
-    if [ -z "$TEMP_DIR" ]; then
-      TEMP_DIR=$(mktemp -d)
-    fi
-    SOURCE="$TEMP_DIR/$skill.md"
-    echo -e "    Downloading from GitHub..."
-    if ! curl -fsSL "$REPO_RAW_URL/$skill/SKILL.md" -o "$SOURCE" 2>/dev/null; then
-      echo -e "    ${RED}Error:${NC} Failed to download $skill/SKILL.md"
-      echo "    Make sure the repo is public: https://github.com/Qovery/qovery-skills"
-      continue
-    fi
-    echo -e "    ${GREEN}Downloaded${NC} ($(wc -c < "$SOURCE" | tr -d ' ') bytes)"
+  src="$SOURCE_ROOT/$skill"
+  if [ ! -f "$src/SKILL.md" ]; then
+    echo -e "  ${YELLOW}[$skill]${NC} skipped (not found in source)"
+    echo ""
+    continue
   fi
 
-  # Install to all target directories
+  echo -e "  ${BLUE}[$skill]${NC}"
+
   while IFS= read -r base; do
     target="$base/$skill"
+    mkdir -p "$base"
+    # Replace any existing install (file, dir, or symlink)
+    rm -rf "$target"
+
+    # Copy the whole skill directory EXCEPT the commands/ subdir
+    # (commands/ is installed separately into ../commands/)
     mkdir -p "$target"
-    cp "$SOURCE" "$target/SKILL.md"
-    echo -e "    ${GREEN}Installed${NC} $target/SKILL.md"
+    # shellcheck disable=SC2010
+    for entry in "$src"/*; do
+      name=$(basename "$entry")
+      [ "$name" = "commands" ] && continue
+      cp -R "$entry" "$target/$name"
+    done
+
+    file_count=$(find "$target" -type f | wc -l | tr -d ' ')
+    echo -e "    ${GREEN}Installed${NC} $target ($file_count files)"
     installed=$((installed + 1))
   done < <(get_base_dirs "$MODE")
 
@@ -167,7 +191,7 @@ done
 # Install slash commands (from skills that have a commands/ directory)
 cmd_installed=0
 for skill in "${SKILLS[@]}"; do
-  CMD_DIR="$skill/commands"
+  CMD_DIR="$SOURCE_ROOT/$skill/commands"
   if [ -d "$CMD_DIR" ]; then
     for cmd_file in "$CMD_DIR"/*.md; do
       [ -f "$cmd_file" ] || continue
