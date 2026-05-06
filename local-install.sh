@@ -128,16 +128,23 @@ if [ "$MODE" = "uninstall" ]; then
     ".agents/commands"
   )
 
-  # Remove skill symlinks
+  # Remove skill installs created by local-install.sh (legacy whole-dir symlink
+  # OR new dir-of-per-entry-symlinks). Anything else is left alone with a hint.
   for base in "${BASE_PATHS[@]}"; do
     for skill in "${SKILLS[@]}"; do
       target="$base/$skill"
       if [ -L "$target" ]; then
+        # Legacy: single symlink to the whole skill dir
         rm "$target"
         echo -e "  ${RED}Removed symlink${NC} $target"
         found=1
+      elif [ -d "$target" ] && [ -L "$target/SKILL.md" ]; then
+        # New layout: dir containing per-entry symlinks
+        rm -rf "$target"
+        echo -e "  ${RED}Removed symlinked dir${NC} $target"
+        found=1
       elif [ -d "$target" ] && [ -f "$target/SKILL.md" ]; then
-        echo -e "  ${YELLOW}Skipped${NC} $target (not a symlink — use install.sh --uninstall to remove copies)"
+        echo -e "  ${YELLOW}Skipped${NC} $target (real copy — use install.sh --uninstall to remove)"
       fi
     done
   done
@@ -187,8 +194,15 @@ for skill in "${SKILLS[@]}"; do
     target="$base/$skill"
     mkdir -p "$base"
     remove_existing "$target" || true
-    ln -s "$skill_source" "$target"
-    echo -e "    ${GREEN}Linked${NC} $target -> $skill_source"
+    # Per-entry symlinks (skip commands/ — installed separately to commands/
+    # alongside skills/, otherwise it gets re-scanned as a sibling skill).
+    mkdir -p "$target"
+    for entry in "$skill_source"/*; do
+      name=$(basename "$entry")
+      [ "$name" = "commands" ] && continue
+      ln -sf "$entry" "$target/$name"
+    done
+    echo -e "    ${GREEN}Linked${NC} $target -> $skill_source (commands/ excluded)"
     installed=$((installed + 1))
   done < <(get_base_dirs "$MODE")
 
