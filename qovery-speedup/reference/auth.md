@@ -11,19 +11,26 @@ echo "${QOVERY_API_TOKEN:-${QOVERY_CLI_ACCESS_TOKEN:-}}"
 
 If set, use it directly as `Authorization: Token $QOVERY_API_TOKEN`.
 
-## 2. CLI context (already logged in)
+## 2. CLI already authenticated (`qovery auth token`)
 
 ```bash
-test -f ~/.qovery/context.json && qovery context
+qovery auth token --print 2>/dev/null
 ```
 
-If the CLI is authenticated, generate a named API token for scripts:
+If the CLI is authenticated, `qovery auth token --print` outputs a valid access
+token (automatically refreshed if expired). Use it directly:
+
+```bash
+curl -H "Authorization: Bearer $(qovery auth token --print)" https://api.qovery.com/organization
+```
+
+Or generate a named API token for longer-running scripts:
 
 ```bash
 qovery token create --name "skill-$(date +%Y%m%d-%H%M%S)" --duration 24h
 ```
 
-The command prints the token — capture it into `QOVERY_API_TOKEN`.
+The `qovery token create` command prints the token — capture it into `QOVERY_API_TOKEN`.
 
 ## 3. Interactive login
 
@@ -35,16 +42,4 @@ qovery auth                      # interactive browser login
 export QOVERY_CLI_ACCESS_TOKEN=qov_xxx
 ```
 
-After login, fall through to step 2 to obtain an API token.
-
-## 4. JWT fallback
-
-If the user cannot create an API token (limited role), extract the JWT from
-the CLI context as a last resort:
-
-```bash
-JWT=$(jq -r '.access_token' ~/.qovery/context.json)
-curl -H "Authorization: Bearer $JWT" https://api.qovery.com/organization
-```
-
-JWTs expire quickly — prefer API tokens for any non-trivial workflow.
+After login, fall through to step 2 to obtain a token.

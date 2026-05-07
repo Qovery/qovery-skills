@@ -2,13 +2,13 @@
 
 Use this path when the user chose "CLI + API" or wants the fastest way to deploy.
 
-IMPORTANT — Authentication for API calls: All `curl` examples below use `Authorization: Token $QOVERY_API_TOKEN`. If you obtained a token via `qovery token`, use it as-is. If you are using the CLI's JWT token from `~/.qovery/context.json` instead, replace `Token` with `Bearer` in all headers:
+IMPORTANT — Authentication for API calls: All `curl` examples below use `Authorization: Token $QOVERY_API_TOKEN`. If you don't have an API token, you can use the CLI's token directly via `qovery auth token --print`:
 ```bash
-# With API Token (from `qovery token` or Console):
+# With API Token (from `qovery token create` or Console):
 -H "Authorization: Token $QOVERY_API_TOKEN"
 
-# With JWT Token (from ~/.qovery/context.json):
--H "Authorization: Bearer $QOVERY_JWT_TOKEN"
+# With CLI Token (from `qovery auth token`):
+-H "Authorization: Bearer $(qovery auth token --print)"
 ```
 
 ### 4.1 Verify Organization, Project, and Cluster

@@ -66,18 +66,21 @@ Use this token in API calls with the header: `Authorization: Token $QOVERY_API_T
 
 This token is permanent (no expiration) and can be deleted later from the Qovery Console (Organization Settings > API Tokens) or via the API when no longer needed. The agent should offer to clean it up after deployment is complete (see Phase 9).
 
-**Method 2: Use the CLI's JWT token (fallback)**
+**Method 2: Use the CLI's token via `qovery auth token` (fallback)**
 
-If `qovery token` fails (e.g., insufficient permissions), the CLI stores a JWT token locally after authentication. This can be used directly:
+If `qovery token create` fails (e.g., insufficient permissions), use the CLI's own token. The `qovery auth token --print` command outputs a valid access token and automatically refreshes it if expired:
 
 ```bash
-# Extract JWT from CLI context
-export QOVERY_JWT_TOKEN=$(cat ~/.qovery/context.json | jq -r '.access_token')
+# Use the CLI token directly in API calls
+curl -H "Authorization: Bearer $(qovery auth token --print)" https://api.qovery.com/organization
+
+# Or capture it into a variable
+export QOVERY_BEARER_TOKEN=$(qovery auth token --print)
 ```
 
-Use this token with a **Bearer** header instead of Token: `Authorization: Bearer $QOVERY_JWT_TOKEN`
+Use this token with a **Bearer** header instead of Token: `Authorization: Bearer $QOVERY_BEARER_TOKEN`
 
-IMPORTANT: JWT tokens expire (check the `access_token_expiration` field in `context.json`). If the token is expired, re-authenticate with `qovery auth` to refresh it. API tokens from Method 1 do not expire.
+The CLI handles token refresh automatically — no need to check expiration manually. API tokens from Method 1 do not expire and are preferred for long-running scripts.
 
 **Method 3: User provides an existing API token (manual)**
 
@@ -95,10 +98,10 @@ Direct the user to: Qovery Console > Organization Settings > API Tokens > Genera
 
 | Token Source | Header Format |
 |---|---|
-| API Token (from `qovery token` or Console) | `Authorization: Token $QOVERY_API_TOKEN` |
-| JWT Token (from `~/.qovery/context.json`) | `Authorization: Bearer $QOVERY_JWT_TOKEN` |
+| API Token (from `qovery token create` or Console) | `Authorization: Token $QOVERY_API_TOKEN` |
+| CLI Token (from `qovery auth token --print`) | `Authorization: Bearer $(qovery auth token --print)` |
 
-All `curl` examples in this skill use `Authorization: Token $QOVERY_API_TOKEN`. If you are using a JWT token instead, replace `Token` with `Bearer` in the header.
+All `curl` examples in this skill use `Authorization: Token $QOVERY_API_TOKEN`. If you are using a CLI token instead, replace `Token` with `Bearer` in the header.
 
 ### Install Terraform (if using Terraform path)
 

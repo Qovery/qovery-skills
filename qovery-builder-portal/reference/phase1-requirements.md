@@ -4,9 +4,8 @@
 
 Use the same authentication flow as the other Qovery skills:
 1. Check if `QOVERY_CLI_ACCESS_TOKEN` or `QOVERY_API_TOKEN` is set in the environment
-2. If not, check if the CLI is authenticated: look for `~/.qovery/context.json`
-3. If the CLI is authenticated, generate a token via `qovery token --name "builder-portal"`
-4. As a fallback, use the CLI's JWT token from `~/.qovery/context.json`
+2. If not, try `qovery auth token --print` — if the CLI is authenticated, this outputs a valid token (auto-refreshed if expired). Use it directly with `Authorization: Bearer $(qovery auth token --print)` or generate a named API token via `qovery token create --name "builder-portal" --duration 24h`.
+3. If the CLI is not authenticated, run `qovery auth` for interactive login, then use step 2.
 
 ### 1.2 Check for Existing Builder-Env Setup
 

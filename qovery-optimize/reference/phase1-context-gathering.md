@@ -8,9 +8,9 @@ Before optimizing, you MUST understand the business context. Blind optimization 
 
 Use the same authentication flow as the other Qovery skills:
 1. Check if `QOVERY_CLI_ACCESS_TOKEN` or `QOVERY_API_TOKEN` is set
-2. Check if CLI is authenticated (`~/.qovery/context.json`)
-3. Generate a token via `qovery token` if needed
-4. Fall back to JWT from `~/.qovery/context.json`
+2. Try `qovery auth token --print` — if the CLI is authenticated, this outputs a valid token (auto-refreshed). Use with `Authorization: Bearer $(qovery auth token --print)`.
+3. Generate a named API token if needed: `qovery token create --name "optimize-skill" --duration 24h`
+4. If the CLI is not authenticated, run `qovery auth` for interactive login, then use step 2.
 
 Then gather a complete inventory:
 
