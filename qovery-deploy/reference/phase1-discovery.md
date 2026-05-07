@@ -6,12 +6,7 @@ Before doing anything, you MUST gather information by asking the user these ques
 
 #### Step 1: Authenticate
 
-Before asking any questions, try to detect an existing token automatically:
-1. Check if `QOVERY_CLI_ACCESS_TOKEN` or `QOVERY_API_TOKEN` is set in the environment
-2. If not, try `qovery auth token --print` — if the CLI is authenticated, this outputs a valid token (auto-refreshed if expired). Use it directly with `Authorization: Bearer $(qovery auth token --print)` or generate a named API token via `qovery token create --name "deploy-skill" --duration 24h`.
-3. If the CLI is not authenticated, run `qovery auth` for interactive login, then use step 2.
-- Only ask the user to manually create a token at Qovery Console > Organization Settings > API Tokens if none of the above options work
-- Tokens should be stored securely (never commit to git)
+Run `qovery api /organization` to confirm the CLI is authenticated. If it succeeds, use `qovery api` for every API call in this skill (no token needs to be extracted). If it fails, fall back to `$QOVERY_API_TOKEN` with `curl`, or ask the user to run `qovery auth` (or create a token themselves and export it). See the auth reference loaded with this skill for details.
 
 #### Step 2: Resolve Organization
 
