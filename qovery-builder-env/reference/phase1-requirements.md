@@ -4,11 +4,7 @@ Before setting up anything, understand who the builders are, what they need, and
 
 ### 1.1 Authenticate
 
-Use the same authentication flow as the other Qovery skills:
-1. Check if `QOVERY_CLI_ACCESS_TOKEN` or `QOVERY_API_TOKEN` is set in the environment
-2. If not, try `qovery auth token --print` — if the CLI is authenticated, this outputs a valid token (auto-refreshed if expired). Use it directly with `Authorization: Bearer $(qovery auth token --print)` or generate a named API token via `qovery token create --name "builder-env-skill" --duration 24h`.
-3. If the CLI is not authenticated, run `qovery auth` for interactive login, then use step 2.
-- Only ask the user to manually create a token at Qovery Console > Organization Settings > API Tokens if none of the above options work
+Run `qovery api /organization` to confirm the CLI is authenticated. If it succeeds, use `qovery api` for every API call in this skill (no token needs to be extracted). If it fails, fall back to the token / JWT / login tiers documented in the auth reference loaded with this skill.
 
 ### 1.2 Understand Who Will Build
 

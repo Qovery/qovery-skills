@@ -4,11 +4,7 @@ Before diagnosing anything, you MUST understand what's deployed and what the use
 
 ### 1.1 Authenticate
 
-Use the same authentication flow as the deploy skill:
-1. Check if `QOVERY_CLI_ACCESS_TOKEN` or `QOVERY_API_TOKEN` is set
-2. Try `qovery auth token --print` — if the CLI is authenticated, this outputs a valid token (auto-refreshed). Use with `Authorization: Bearer $(qovery auth token --print)`.
-3. Generate a named API token if needed: `qovery token create --name "troubleshoot-skill" --duration 24h`
-4. If the CLI is not authenticated, run `qovery auth` for interactive login, then use step 2.
+Run `qovery api /organization` to confirm the CLI is authenticated. If it succeeds, use `qovery api` for every API call in this skill (no token needs to be extracted). If it fails, fall back to the token / JWT / login tiers documented in the auth reference loaded with this skill.
 
 ### 1.2 Get Overview of All Services
 

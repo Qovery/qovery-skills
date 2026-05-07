@@ -6,11 +6,7 @@ Before optimizing, you MUST understand the business context. Blind optimization 
 
 **Shortcut:** If the user provided a Qovery Console URL, extract the organization ID and any other IDs from it using the URL Detection rules above. Use the extracted IDs to scope the inventory and cost analysis — e.g., if a specific environment ID is provided, focus the optimization on that environment's services rather than scanning the entire organization.
 
-Use the same authentication flow as the other Qovery skills:
-1. Check if `QOVERY_CLI_ACCESS_TOKEN` or `QOVERY_API_TOKEN` is set
-2. Try `qovery auth token --print` — if the CLI is authenticated, this outputs a valid token (auto-refreshed). Use with `Authorization: Bearer $(qovery auth token --print)`.
-3. Generate a named API token if needed: `qovery token create --name "optimize-skill" --duration 24h`
-4. If the CLI is not authenticated, run `qovery auth` for interactive login, then use step 2.
+Run `qovery api /organization` to confirm the CLI is authenticated. If it succeeds, use `qovery api` for every API call in this skill (no token needs to be extracted). If it fails, fall back to the token / JWT / login tiers documented in the auth reference loaded with this skill.
 
 Then gather a complete inventory:
 
