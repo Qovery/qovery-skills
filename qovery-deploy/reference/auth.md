@@ -4,63 +4,64 @@
 
 **CRITICAL: NEVER display, log, print, or capture Qovery token values.**
 
-- NEVER run `qovery auth token --print` as a standalone command — the output would expose the token in the conversation. Always use it **inline** within curl commands so the token flows through the shell but is never visible:
-  ```bash
-  # CORRECT — token is inline, never shown:
-  curl -s -H "Authorization: Bearer $(qovery auth token --print)" https://api.qovery.com/...
-
-  # WRONG — token value would appear in output:
-  qovery auth token --print
-  echo $(qovery auth token --print)
-  export TOKEN=$(qovery auth token --print)
-  ```
 - NEVER run `echo $QOVERY_API_TOKEN`, `echo $QOVERY_CLI_ACCESS_TOKEN`, or any command that prints token values to stdout
 - NEVER include actual token values in responses to the user — use `***` or `(hidden)` if you need to reference them
 - NEVER store tokens in shell variables via command substitution that the agent can read — always use them inline
 - NEVER include real token values in generated code, scripts, or config files — use env var references like `$QOVERY_API_TOKEN`
-- Prefer the `qovery` CLI directly (e.g., `qovery environment list`, `qovery log --service "name"`) over `curl` with tokens when possible — the CLI authenticates internally without exposing tokens
-- When running `qovery token create`, the command outputs the new token. Do NOT display it. Pipe it directly into a secure storage or env var file that is NOT read by the agent.
+- NEVER run `qovery token create` yourself — the command prints the new token to stdout. Ask the user to run it themselves and export the result. See "Not authenticated" below.
+- Prefer the `qovery` CLI (e.g., `qovery api`, `qovery environment list`, `qovery log --service "name"`) over `curl` with tokens — the CLI authenticates internally without exposing tokens
 
-## 1. Existing API token in environment
+Skills authenticate using one of two tiers, checked in order. Stop at the first one that works.
 
-```bash
-# Check if a token is available (without printing it):
-test -n "${QOVERY_API_TOKEN:-${QOVERY_CLI_ACCESS_TOKEN:-}}" && echo "Token found" || echo "No token"
-```
+## Tier 1 — `qovery api` (preferred)
 
-If a token is found, use it directly in curl commands as `Authorization: Token $QOVERY_API_TOKEN`. The env var is expanded by the shell at execution time — the agent never sees the actual value.
-
-## 2. CLI already authenticated (`qovery auth token`)
+If the `qovery` CLI is installed and authenticated, use it directly for every API call. No token needs to be extracted, printed, or stored:
 
 ```bash
-# Check if the CLI is authenticated (without printing the token):
-qovery auth token --json 2>/dev/null | jq -r '.type' && echo "CLI authenticated" || echo "CLI not authenticated"
+qovery api /organization                           # confirms auth + lists orgs
+qovery api /environment/{envId}/status
+qovery api /organization/{orgId}/cluster
 ```
 
-If the CLI is authenticated, use `qovery auth token --print` **inline** within curl commands:
+Detect availability without revealing any secret:
 
 ```bash
-# Token flows through the shell but is never visible to the agent:
-curl -s -H "Authorization: Bearer $(qovery auth token --print)" https://api.qovery.com/organization
+qovery api /organization >/dev/null 2>&1 && echo "qovery api OK" || echo "qovery api unavailable"
 ```
 
-Or generate a named API token for longer-running scripts. The token must be stored securely — do NOT display the output:
+If this tier works, **use it for all API calls in the skill**. Skip the rest.
+
+## Tier 2 — Token in environment
+
+If `qovery api` is unavailable but a token is already exported in the shell, use it directly with `curl`. The env var is expanded by the shell at execution time, so the agent never sees the value:
 
 ```bash
-# Create the token and store it directly in .env (not displayed):
-qovery token create --name "skill-$(date +%Y%m%d-%H%M%S)" --duration 24h > .qovery-token.tmp
-# The user should manually export it or add it to their secure env config
-echo "API token created. Add QOVERY_API_TOKEN to your environment from .qovery-token.tmp"
+[[ -n "${QOVERY_API_TOKEN:-${QOVERY_CLI_ACCESS_TOKEN:-}}" ]] && echo SET || echo "NOT SET"
 ```
-
-## 3. Interactive login
-
-If neither of the above works, prompt the user:
 
 ```bash
-qovery auth                      # interactive browser login
-# OR for headless:
-# The user sets QOVERY_CLI_ACCESS_TOKEN in their environment (not via the agent)
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" https://api.qovery.com/organization
 ```
 
-After login, fall through to step 2 to obtain a token.
+## Not authenticated — ask the user
+
+If neither tier works, do **not** generate a token from inside the agent. Instead, instruct the user to run one of these themselves so the secret never enters the agent's command stream:
+
+**Option A — interactive login (recommended).** Falls back to Tier 1:
+
+```bash
+qovery auth        # opens a browser; the agent never sees the credential
+```
+
+After login, retry Tier 1.
+
+**Option B — long-lived API token.** The user runs this in their own shell and exports the result. The agent does not run `qovery token create` and does not read the output:
+
+```bash
+# User runs this manually, NOT the agent:
+qovery token create --name "skill-$(date +%Y%m%d)" --duration 24h
+# Then the user copies the printed token into a secure store and exports it:
+export QOVERY_API_TOKEN=qov_xxx
+```
+
+After the user exports the token in the shell that runs the skill, retry Tier 2.
