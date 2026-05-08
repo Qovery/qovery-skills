@@ -9,6 +9,7 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 
 | Skill | What it does |
 |---|---|
+| **qovery** | Entry point — routes to the right skill based on intent, handles quick operations (list, status, stop, restart, logs, clone, scale, custom domains, deployment history). Use when mentioning Qovery generically |
 | **qovery-onboard** | Guided onboarding — acts as a personal cloud architect, understands your role/experience/constraints, recommends and sets up the optimal Qovery config (cloud provider, cluster, environments, RBAC, security, cost defaults), handles BYOK and platform migrations |
 | **qovery-deploy** | Deploy any application to Kubernetes — analyzes codebases, creates Dockerfiles, provisions databases, deploys via CLI+API or Terraform |
 | **qovery-troubleshoot** | Diagnose and fix deployment failures, crashes, connectivity issues, performance problems — with MCP Server integration and runbook generation |
@@ -156,6 +157,15 @@ My Qovery deployment is failing, can you help?
 
 The onboard skill acts as your personal cloud architect. The deploy skill handles application deployment. The troubleshoot skill diagnoses and fixes issues.
 
+**Prompts that trigger qovery (generic entry point):**
+- _"Help me with Qovery"_
+- _"I want to use Qovery"_
+- _"List my Qovery environments"_
+- _"Stop my Qovery service"_
+- _"Check status of my deployment"_
+- _"Show me logs"_
+- `/qovery` (slash command)
+
 **Prompts that trigger qovery-onboard:**
 - _"I'm new to Qovery, help me get started"_
 - _"Set up Qovery for my organization"_
@@ -223,6 +233,7 @@ Each skill includes a slash command for quick invocation. Type `/` followed by t
 
 | Command | What it does | Example |
 |---------|-------------|---------|
+| `/qovery` | Route to the right skill or run quick operations | `/qovery` or `/qovery status` or `/qovery stop my-env` |
 | `/qovery-deploy` | Deploy the current project to Kubernetes | `/qovery-deploy` or `/qovery-deploy my-app` |
 | `/qovery-troubleshoot` | Diagnose and fix a failing service | `/qovery-troubleshoot` or `/qovery-troubleshoot backend` |
 | `/qovery-onboard` | Start guided Qovery onboarding | `/qovery-onboard` or `/qovery-onboard migrating from Heroku` |
@@ -388,19 +399,19 @@ git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
 # Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.agents/skills/
+mkdir -p ~/.claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.claude/skills/
+mkdir -p ~/.config/opencode/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.config/opencode/skills/
+mkdir -p ~/.agents/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.agents/skills/
 
 # Install all slash commands (Claude Code, OpenCode, etc.)
 mkdir -p ~/.claude/commands && cp qovery-*/commands/*.md ~/.claude/commands/
 mkdir -p ~/.config/opencode/commands && cp qovery-*/commands/*.md ~/.config/opencode/commands/
 
 # Or project-local install
-mkdir -p .claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal .claude/skills/
+mkdir -p .claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal .claude/skills/
 ```
 
-Verify the skills are discovered by checking if your tool lists all eight Qovery skills.
+Verify the skills are discovered by checking if your tool lists all nine Qovery skills.
 
 ## Links
 

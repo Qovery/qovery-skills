@@ -9,7 +9,7 @@ set -euo pipefail
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-builder-env" "qovery-builder-portal")
+SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-builder-env" "qovery-builder-portal")
 TARBALL_URL="https://codeload.github.com/Qovery/qovery-skills/tar.gz/refs/heads/main"
 
 # Colors (if terminal supports them)
@@ -224,6 +224,7 @@ fi
 
 echo ""
 echo -e "${BOLD}Skills installed:${NC}"
+echo -e "  ${YELLOW}qovery${NC}               — Route to skills + quick operations"
 echo -e "  ${YELLOW}qovery-onboard${NC}       — Guided onboarding for new Qovery users"
 echo -e "  ${YELLOW}qovery-deploy${NC}        — Deploy any app to Kubernetes with Qovery"
 echo -e "  ${YELLOW}qovery-troubleshoot${NC}  — Diagnose and fix deployment issues"
