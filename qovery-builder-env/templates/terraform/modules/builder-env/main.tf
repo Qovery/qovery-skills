@@ -29,6 +29,7 @@ resource "null_resource" "clone_blueprint" {
     command = <<-EOT
       curl -sf -X POST "https://api.qovery.com/environment/${var.blueprint_env_id}/clone" \
         -H "Authorization: Token $QOVERY_API_TOKEN" \
+        -H "User-Agent: QoverySkill/qovery-builder-env (https://github.com/Qovery/qovery-skills)" \
         -H "Content-Type: application/json" \
         -d '{"name": "workspace", "cluster_id": "${var.cluster_id}", "mode": "DEVELOPMENT", "project_id": "${local.project_id}"}'
     EOT
@@ -48,6 +49,7 @@ resource "null_resource" "invite_builder" {
     command = <<-EOT
       curl -sf -X POST "https://api.qovery.com/organization/${var.organization_id}/inviteMember" \
         -H "Authorization: Token $QOVERY_API_TOKEN" \
+        -H "User-Agent: QoverySkill/qovery-builder-env (https://github.com/Qovery/qovery-skills)" \
         -H "Content-Type: application/json" \
         -d '{"email": "${var.builder_email}", "role_id": "TODO_ROLE_ID"}' || true
     EOT

@@ -125,7 +125,7 @@ export async function provisionEnvironment(
       name: 'ttl-auto-shutdown',
       description: `Automatically stops this environment (TTL: ${config.ttl.stopAfter})`,
       cronSchedule: config.ttl.cronSchedule,
-      command: `curl -sf -X POST https://api.qovery.com/environment/${envId}/stop -H "Authorization: Token $SHUTDOWN_TOKEN" && echo "Stopped by TTL" || echo "Already stopped"`,
+      command: `curl -sf -H "User-Agent: QoverySkill/qovery-builder-portal-ttl" -X POST https://api.qovery.com/environment/${envId}/stop -H "Authorization: Token $SHUTDOWN_TOKEN" && echo "Stopped by TTL" || echo "Already stopped"`,
     });
 
     await qovery.setJobSecret(ttlJob.id, 'SHUTDOWN_TOKEN', shutdownToken);

@@ -2,6 +2,8 @@ import type { BuilderEnvironment, ServiceUrl } from '../../shared/types';
 
 const BASE_URL = 'https://api.qovery.com';
 const API_TOKEN = process.env.QOVERY_API_TOKEN!;
+const SKILLS_VERSION = process.env.QOVERY_SKILLS_VERSION || 'unknown';
+const USER_AGENT = `QoverySkill/qovery-builder-portal (version:${SKILLS_VERSION}; https://github.com/Qovery/qovery-skills)`;
 
 async function qoveryFetch(path: string, options: RequestInit = {}): Promise<any> {
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -9,6 +11,7 @@ async function qoveryFetch(path: string, options: RequestInit = {}): Promise<any
     headers: {
       'Authorization': `Token ${API_TOKEN}`,
       'Content-Type': 'application/json',
+      'User-Agent': USER_AGENT,
       ...options.headers,
     },
   });

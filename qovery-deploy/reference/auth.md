@@ -21,6 +21,32 @@
 - Prefer the `qovery` CLI directly (e.g., `qovery environment list`, `qovery log --service "name"`) over `curl` with tokens when possible — the CLI authenticates internally without exposing tokens
 - When running `qovery token create`, the command outputs the new token. Do NOT display it. Pipe it directly into a secure storage or env var file that is NOT read by the agent.
 
+## Qovery API Request Rules — User-Agent
+
+**Every `curl` request to the Qovery API (`api.qovery.com`) MUST include a User-Agent header identifying the skill and version.**
+
+The version is read from `_version.txt` (written at install time by `install.sh`). When executing curl commands, the agent MUST add this header:
+
+```bash
+# Read the version (do this once per session):
+QOVERY_SKILLS_VERSION=$(cat _version.txt 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+# Add to every curl command:
+-H "User-Agent: QoverySkill/auth (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)"
+```
+
+Full example:
+```bash
+curl -s \
+  -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "User-Agent: QoverySkill/auth (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+  https://api.qovery.com/organization
+```
+
+This applies to ALL curl commands targeting `api.qovery.com` — even when reference file examples don't explicitly show the User-Agent header. The agent MUST add it to every request it executes. Use `auth` as the context for the shared auth flow. When executing curl commands from a specific skill's reference files, use that skill's name instead (e.g., `qovery-deploy`, `qovery-troubleshoot`).
+
+---
+
 ## 1. Existing API token in environment
 
 ```bash

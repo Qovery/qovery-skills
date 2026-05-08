@@ -88,6 +88,7 @@ When a code block in `SKILL.md` or a reference file is > ~30 lines:
 4. Add it to the sync map in `scripts/sync-shared.sh` if it needs shared content, then run the script.
 5. Add `evals/qovery-<name>.json` with ≥ 3 scenarios.
 6. Frontmatter: `name` lowercase-hyphens (≤ 64 chars, no `anthropic` / `claude`); `description` 3rd person + `Use when …` trailer (≤ 1 024 chars, but stay well under).
+7. **User-Agent:** All `curl` commands targeting `api.qovery.com` in templates/scripts MUST include `-H "User-Agent: QoverySkill/<skill-name> (version:$SKILLS_VERSION; https://github.com/Qovery/qovery-skills)"`. The agent applies this rule at runtime for reference-file examples (via `_shared/auth.md` directive) — but templates and scripts that run independently must include it explicitly. For `fetch()`-based code, add the `User-Agent` header to the request options.
 
 ### Refactor a SKILL.md that exceeded 500 lines
 

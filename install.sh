@@ -150,6 +150,18 @@ else
   fi
   echo -e "  ${GREEN}Downloaded${NC} ($(du -sh "$SOURCE_ROOT" | cut -f1))"
 fi
+
+# Determine skill version — commit SHA baked in at install time
+if [ -d "$SOURCE_ROOT/.git" ]; then
+  # Local repo — use git directly
+  SKILLS_VERSION=$(git -C "$SOURCE_ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+else
+  # Tarball install — fetch latest commit SHA from GitHub API (no jq needed)
+  SKILLS_VERSION=$(curl -sf "https://api.github.com/repos/Qovery/qovery-skills/git/ref/heads/main" \
+    | sed -n 's/.*"sha": *"\([a-f0-9]*\)".*/\1/p' | head -1 | cut -c1-7)
+  SKILLS_VERSION="${SKILLS_VERSION:-unknown}"
+fi
+echo -e "  Version: ${BLUE}${SKILLS_VERSION}${NC}"
 echo ""
 
 installed=0
@@ -181,6 +193,9 @@ for skill in "${SKILLS[@]}"; do
       [ "$name" = "commands" ] && continue
       cp -R "$entry" "$target/$name"
     done
+
+    # Write version file for User-Agent tracking
+    echo "$SKILLS_VERSION" > "$target/_version.txt"
 
     file_count=$(find "$target" -type f | wc -l | tr -d ' ')
     echo -e "    ${GREEN}Installed${NC} $target ($file_count files)"
