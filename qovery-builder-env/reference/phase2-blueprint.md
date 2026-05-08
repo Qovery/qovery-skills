@@ -105,9 +105,24 @@ curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/database" \
   }'
 ```
 
-### 2.6 Create TTL auto-stop cron job
+### 2.6 Capture the Docker Hub Registry ID
 
-Each builder environment auto-stops after 24 hours to save costs. The job uses `curlimages/curl` with a raw Dockerfile (no git repo needed).
+The TTL auto-stop job uses the `curlimages/curl:8.11.1` image from Docker Hub. Qovery requires a container registry reference for this. List the available registries and find the Docker Hub one:
+
+```bash
+curl -s -H "Authorization: Bearer $(qovery auth token --print)" \
+  "https://api.qovery.com/organization/{orgId}/containerRegistry" | jq '.results[] | {id, name, kind}'
+```
+
+Look for a registry with `kind: "DOCKER_HUB"`. Store its `id` as `DOCKER_HUB_REGISTRY_ID` — it will be needed for the TTL job and the provisioning script.
+
+If no Docker Hub registry exists, create one in the Qovery Console: Organization Settings > Container Registries > Add Docker Hub.
+
+### 2.7 Create TTL auto-stop cron job
+
+Each builder environment auto-stops after 24 hours to save costs. The job uses `curlimages/curl:8.11.1` from Docker Hub.
+
+IMPORTANT: This job is part of the blueprint and will be **inherited by every cloned environment**. When a builder environment is cloned, the provisioning script (Phase 3) updates the inherited job to target the cloned environment instead of the blueprint.
 
 First, generate a shutdown token:
 ```bash
@@ -115,13 +130,39 @@ First, generate a shutdown token:
 qovery token create --name "blueprint-ttl" --duration 8760h > /dev/null
 ```
 
-Then create the cron job — use the reference script at `templates/scripts/ttl-stop-job.sh` for the full API call. The key parameters:
-- Image: `curlimages/curl:8.11.1` via `dockerfile_raw`
+Then create the cron job. The key parameters:
+- Image: `curlimages/curl:8.11.1` via Docker Hub registry reference
 - Schedule: `0 */24 * * *` (every 24 hours)
 - Command: `curl -sf -X POST https://api.qovery.com/environment/{envId}/stop -H "Authorization: Token $SHUTDOWN_TOKEN"`
 - The `SHUTDOWN_TOKEN` is set as a secret on the job
 
-### 2.7 Deploy and validate the blueprint
+```bash
+# Create the cron job
+curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/job" \
+  -H "Authorization: Bearer $(qovery auth token --print)" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "ttl-auto-shutdown",
+    "description": "Stops environment after 24h to save costs",
+    "cpu": 250, "memory": 256,
+    "max_nb_restart": 0, "max_duration_seconds": 60,
+    "auto_preview": false, "auto_deploy": false, "healthchecks": {},
+    "source": {"image": {"image_name": "curlimages/curl", "tag": "8.11.1", "registry_id": "{DOCKER_HUB_REGISTRY_ID}"}},
+    "schedule": {"cronjob": {
+      "entrypoint": "sh",
+      "arguments": ["-c", "curl -sf -H '\''User-Agent: QoverySkill/qovery-builder-env-ttl'\'' -X POST https://api.qovery.com/environment/{blueprintEnvId}/stop -H \"Authorization: Token $SHUTDOWN_TOKEN\" || true"],
+      "scheduled_at": "0 */24 * * *", "timezone": "Etc/UTC"
+    }}
+  }'
+
+# Set the shutdown token as a secret on the job
+curl -s -X POST "https://api.qovery.com/application/{jobId}/secret" \
+  -H "Authorization: Bearer $(qovery auth token --print)" \
+  -H "Content-Type: application/json" \
+  -d '{"key": "SHUTDOWN_TOKEN", "value": "{shutdown-token-value}"}'
+```
+
+### 2.8 Deploy and validate the blueprint
 
 ```bash
 # Deploy
@@ -153,7 +194,7 @@ Open the URL and confirm VS Code loads in the browser. Check the terminal works 
 
 On failure: fetch logs with `qovery log --service "workspace" --since 10m` and diagnose.
 
-### 2.8 Stop the blueprint
+### 2.9 Stop the blueprint
 
 The blueprint is a template — it should not consume resources when idle:
 ```bash

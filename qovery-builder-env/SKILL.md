@@ -40,7 +40,7 @@ Builder Environment Setup:
 |---------|------|------|-------|
 | workspace | VS Code (code-server) + OpenCode + Claude Code + RTK + GitHub CLI + Qovery CLI + Node.js + Python + Git | 8080 | All-in-one container — `templates/Dockerfile` |
 | postgres | PostgreSQL 16 (container mode) | 5432 | 256MB RAM, 10GB storage |
-| ttl-auto-shutdown | Cron job — stops env after 24h | — | `curlimages/curl` + `dockerfile_raw` |
+| ttl-auto-shutdown | Cron job — stops env after 24h | — | `curlimages/curl:8.11.1` via Docker Hub registry |
 
 Non-tech builders open the workspace URL in a browser and get VS Code. Tech builders open the integrated terminal (Ctrl+\`) and run `opencode` or `claude` for AI-powered coding. RTK auto-compresses shell output to reduce LLM token costs by 60-90%. GitHub CLI (`gh`) is pre-installed for repo operations. Git credential helper is configured — set `$GITHUB_TOKEN` to clone private repos.
 
@@ -69,7 +69,7 @@ templates/
 │   └── ttl-delete-job.sh         # Auto-delete cron job reference
 ```
 
-The provisioning script (`templates/scripts/provision-builder.sh`) is the platform team's main tool for onboarding new builders. Fill in the IDs at the top after Phase 2 and run `./provision-builder.sh <name> <email>`.
+The provisioning script (`templates/scripts/provision-builder.sh`) is the platform team's main tool for onboarding new builders. Fill in the IDs at the top after Phase 2 (`ORG_ID`, `CLUSTER_ID`, `BLUEPRINT_ENV_ID`, `DOCKER_HUB_REGISTRY_ID`) and run `./provision-builder.sh <name> <email>`. The script is idempotent — safe to run multiple times.
 
 ## Defaults (customizable later)
 

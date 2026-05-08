@@ -31,24 +31,45 @@ ROLE_ID=$(curl -s -X POST "https://api.qovery.com/organization/{orgId}/customRol
   -H "Authorization: Bearer $(qovery auth token --print)" \
   -H "Content-Type: application/json" \
   -d '{"name": "Builder-{name}", "description": "Access to builder-{name} project only"}' | jq -r '.id')
+```
 
-# Configure: DEPLOYER on DEV, NO_ACCESS on PRODUCTION
+IMPORTANT: The Qovery API requires a permission entry for **EVERY cluster** and **EVERY project** in the organization — not just the target ones. Omitting any cluster or project causes the API to reject the request.
+
+```bash
+# Build cluster permissions: ENV_CREATOR on target cluster, VIEWER on all others
+CLUSTER_PERMS=$(curl -s -H "Authorization: Bearer $(qovery auth token --print)" \
+  "https://api.qovery.com/organization/{orgId}/cluster" | jq -c --arg target "{clusterId}" \
+  '[.results[] | {cluster_id: .id, permission: (if .id == $target then "ENV_CREATOR" else "VIEWER" end)}]')
+
+# Build project permissions: DEPLOYER on builder's project, NO_ACCESS on all others
+# All 4 environment types (DEVELOPMENT, STAGING, PRODUCTION, PREVIEW) are required
+PROJECT_PERMS=$(curl -s -H "Authorization: Bearer $(qovery auth token --print)" \
+  "https://api.qovery.com/organization/{orgId}/project" | jq -c --arg target "{builderProjectId}" \
+  '[.results[] | {
+    project_id: .id,
+    is_admin: false,
+    permissions: (if .id == $target then
+      [{environment_type:"DEVELOPMENT",permission:"DEPLOYER"},
+       {environment_type:"STAGING",permission:"VIEWER"},
+       {environment_type:"PRODUCTION",permission:"NO_ACCESS"},
+       {environment_type:"PREVIEW",permission:"DEPLOYER"}]
+    else
+      [{environment_type:"DEVELOPMENT",permission:"NO_ACCESS"},
+       {environment_type:"STAGING",permission:"NO_ACCESS"},
+       {environment_type:"PRODUCTION",permission:"NO_ACCESS"},
+       {environment_type:"PREVIEW",permission:"NO_ACCESS"}]
+    end)
+  }]')
+
+# Configure role with complete permissions for all clusters and projects
 curl -s -X PUT "https://api.qovery.com/organization/{orgId}/customRole/$ROLE_ID" \
   -H "Authorization: Bearer $(qovery auth token --print)" \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "Builder-{name}",
-    "cluster_permissions": [{"cluster_id": "{clusterId}", "permission": "ENV_CREATOR"}],
-    "project_permissions": [{
-      "project_id": "{builderProjectId}",
-      "is_admin": false,
-      "permissions": [
-        {"environment_type": "DEVELOPMENT", "permission": "DEPLOYER"},
-        {"environment_type": "STAGING", "permission": "VIEWER"},
-        {"environment_type": "PRODUCTION", "permission": "NO_ACCESS"}
-      ]
-    }]
-  }'
+  -d "{
+    \"name\":\"Builder-{name}\",
+    \"cluster_permissions\":$CLUSTER_PERMS,
+    \"project_permissions\":$PROJECT_PERMS
+  }"
 ```
 
 **Step 3: Clone the blueprint into this builder's project**
@@ -62,9 +83,35 @@ curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/clone" \
 
 The `project_id` parameter places the cloned environment into the builder's own project (not the blueprint's project).
 
-**Step 4: Create TTL cron job** (same pattern as blueprint Phase 2.6)
+**Step 4: Update the inherited TTL job**
 
-Generate a shutdown token, create the cron job, set the token as a secret on the job. Default: 24h auto-stop.
+When the blueprint is cloned, the TTL cron job is cloned too — but its curl command still points at the **blueprint's** environment ID. Update it to target the **cloned** environment instead:
+
+```bash
+# Find the inherited TTL job
+TTL_JOB_ID=$(curl -s -H "Authorization: Bearer $(qovery auth token --print)" \
+  "https://api.qovery.com/environment/{clonedEnvId}/job" | jq -r '.results[] | select(.name == "ttl-auto-shutdown") | .id')
+
+# Update it to target the cloned environment (not the blueprint)
+curl -s -X PUT "https://api.qovery.com/job/$TTL_JOB_ID" \
+  -H "Authorization: Bearer $(qovery auth token --print)" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "ttl-auto-shutdown",
+    "description": "Stops environment after 24h to save costs",
+    "cpu": 250, "memory": 256,
+    "max_nb_restart": 0, "max_duration_seconds": 60,
+    "auto_preview": false, "auto_deploy": false, "healthchecks": {},
+    "source": {"image": {"image_name": "curlimages/curl", "tag": "8.11.1", "registry_id": "{DOCKER_HUB_REGISTRY_ID}"}},
+    "schedule": {"cronjob": {
+      "entrypoint": "sh",
+      "arguments": ["-c", "curl -sf -H '\''User-Agent: QoverySkill/qovery-builder-env-ttl'\'' -X POST https://api.qovery.com/environment/{clonedEnvId}/stop -H \"Authorization: Token $SHUTDOWN_TOKEN\" || true"],
+      "scheduled_at": "0 */24 * * *", "timezone": "Etc/UTC"
+    }}
+  }'
+```
+
+The `SHUTDOWN_TOKEN` secret is inherited from the blueprint — no need to create a new one.
 
 **Step 5: Invite the builder**
 
