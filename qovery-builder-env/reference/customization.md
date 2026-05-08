@@ -76,6 +76,56 @@ After adding, redeploy the blueprint to validate, then stop it. Future builder c
 
 Note: Each cloned environment gets its own empty database. Data is not shared between builders.
 
+### Git Auto-Load (Per-Builder Project)
+
+The workspace entrypoint automatically clones a git repo on startup when `GIT_REPO_URL` is set. This is configured per-builder as Qovery environment variables.
+
+**Supported providers:**
+
+| Provider | Token Username (auto-detected from URL) |
+|---|---|
+| GitHub (`github.com`) | `x-access-token` — use a GitHub PAT or fine-grained token |
+| GitLab (`gitlab.com` or self-hosted) | `oauth2` — use a GitLab PAT or project token |
+| Bitbucket (`bitbucket.org`) | `x-token-auth` — use a Bitbucket app password |
+| Other | `x-access-token` (default fallback) |
+
+**Behavior:**
+- First start: clones the repo, installs dependencies (npm/pip if detected)
+- Container restart: pulls latest changes from the configured branch
+- If `GIT_REPO_URL` is not set: starts with an empty project directory
+
+**Example env vars for a builder:**
+```
+GIT_REPO_URL=https://github.com/myorg/sales-dashboard.git
+GIT_TOKEN=ghp_xxxxxxxxxxxx        (secret)
+GIT_BRANCH=main
+GIT_USER_NAME=Alice Smith
+GIT_USER_EMAIL=alice@company.com
+```
+
+### Live Preview
+
+The workspace includes two mechanisms for previewing web apps:
+
+**1. Live Preview extension (`ms-vscode.live-server`)**
+- Works for static HTML/CSS/JS files
+- Right-click a `.html` file → "Show Preview" → opens inline in VS Code
+- Auto-refreshes on file save
+- Runs on port 3100 (configurable via VS Code settings)
+
+**2. Auto port forwarding for dev servers**
+- When Claude Code or the builder runs `npm run dev` (or any dev server), VS Code detects the port automatically
+- A notification appears: "Your application running on port 5173 is available"
+- Click "Open in Browser" → opens in VS Code's Simple Browser panel
+- Access externally via code-server's built-in proxy: `https://{workspace-url}/proxy/{port}/`
+- Configured via `remote.autoForwardPorts: true` in VS Code settings
+
+**Non-tech builder flow:**
+1. Talk to Claude Code: "Show me a preview of the app"
+2. Claude Code runs the dev server
+3. VS Code detects the port → builder clicks to preview
+4. Preview opens in a panel next to the code
+
 ### Pre-load Custom Skills
 
 The workspace container comes with all Qovery skills pre-installed. To add your own company-specific skills (custom deployment workflows, internal tool generators, etc.), extend the Dockerfile:

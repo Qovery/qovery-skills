@@ -40,9 +40,9 @@ curl -s -X POST "https://api.qovery.com/project/{projectId}/environment" \
 
 ### 2.4 Add the workspace service
 
-The workspace uses `templates/Dockerfile` — the combined all-in-one container with VS Code, OpenCode, Claude Code, Qovery CLI, Node.js, Python, and Git.
+The workspace uses `templates/Dockerfile` + `templates/entrypoint.sh` — the combined all-in-one container with VS Code, Claude Code, OpenCode, RTK, Qovery CLI, Node.js, Python, Git, and Live Preview. The entrypoint auto-clones a git repo on startup if `GIT_REPO_URL` is set (with `GIT_TOKEN` for authentication — auto-detects GitHub/GitLab/Bitbucket).
 
-The Dockerfile needs to be in a git repository for Qovery to build it. Ask the user:
+Both the Dockerfile and entrypoint.sh need to be in a git repository for Qovery to build. Ask the user:
 > "Which git repository should I push the workspace Dockerfile to? (Or provide a path if it's already in a repo)"
 
 Options:

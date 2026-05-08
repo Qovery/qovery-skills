@@ -1,10 +1,13 @@
 # Builder Workspace — All-in-One
-# VS Code (code-server) + OpenCode + Claude Code + RTK + GitHub CLI + Qovery CLI
-# + Node.js + Python + Git
+# VS Code (code-server) + Claude Code + OpenCode + RTK + GitHub CLI + Qovery CLI
+# + Node.js + Python + Git + Live Preview
 #
-# Non-tech builders use the VS Code UI (with Claude Code extension in the sidebar).
-# Tech builders open the integrated terminal and run `opencode` or `claude`.
+# Non-tech builders: open the workspace URL → VS Code loads with Claude Code
+# in the sidebar → describe what to build → preview results inline.
+# Tech builders: open the terminal → run `opencode` or `claude`.
 # RTK auto-compresses shell output to reduce LLM token consumption by 60-90%.
+#
+# Set GIT_REPO_URL + GIT_TOKEN to auto-clone a project on startup.
 FROM codercom/code-server:4.99.4
 
 USER root
@@ -41,23 +44,23 @@ RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 RUN npm install -g opencode-ai
 
 # RTK — reduces LLM token consumption by 60-90% on shell commands
-# Pre-built binary from GitHub releases (single binary, zero dependencies)
 RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh \
     && ln -sf /root/.local/bin/rtk /usr/local/bin/rtk
 
 # Configure code-server to use Microsoft VS Code Marketplace
-# (required for Claude Code extension, GitHub Copilot, and other MS Marketplace extensions)
+# (required for Claude Code extension, GitHub Copilot, Live Preview, etc.)
 # To revert to Open VSX, remove this ENV line.
 ENV EXTENSIONS_GALLERY='{"serviceUrl":"https://marketplace.visualstudio.com/_apis/public/gallery","itemUrl":"https://marketplace.visualstudio.com/items","cacheUrl":"https://vscode.blob.core.windows.net/gallery/index","controlUrl":"","recommendationsUrl":""}'
 
 # VS Code extensions (from Microsoft Marketplace)
 RUN code-server --install-extension anthropic.claude-code 2>/dev/null || true \
     && code-server --install-extension github.copilot 2>/dev/null || true \
+    && code-server --install-extension ms-vscode.live-server 2>/dev/null || true \
     && code-server --install-extension ms-python.python 2>/dev/null || true \
     && code-server --install-extension bradlc.vscode-tailwindcss 2>/dev/null || true \
     && code-server --install-extension esbenp.prettier-vscode 2>/dev/null || true
 
-# Disable code-server's custom Getting Started page (Coder promotion)
+# Disable code-server's custom Getting Started page
 ENV CS_DISABLE_GETTING_STARTED_OVERRIDE=1
 
 # Configure code-server (no auth — Qovery handles access control)
@@ -65,8 +68,7 @@ RUN mkdir -p /home/coder/.config/code-server \
     && printf 'bind-addr: 0.0.0.0:8080\nauth: none\ncert: false\napp-name: Builder Workspace\n' \
        > /home/coder/.config/code-server/config.yaml
 
-# Pre-configure VS Code settings for a clean, dark builder experience
-# No Welcome tab, no tips, no walkthroughs, no telemetry, dark theme
+# Pre-configure VS Code settings for a clean, dark, non-tech-friendly experience
 RUN mkdir -p /home/coder/.local/share/code-server/User \
     && cat > /home/coder/.local/share/code-server/User/settings.json << 'SETTINGS'
 {
@@ -80,7 +82,11 @@ RUN mkdir -p /home/coder/.local/share/code-server/User \
   "terminal.integrated.defaultProfile.linux": "bash",
   "terminal.integrated.fontSize": 14,
   "extensions.autoUpdate": false,
-  "telemetry.telemetryLevel": "off"
+  "telemetry.telemetryLevel": "off",
+  "livePreview.portNumber": 3100,
+  "livePreview.openPreviewTarget": "internalBrowser",
+  "remote.autoForwardPorts": true,
+  "remote.autoForwardPortsSource": "process"
 }
 SETTINGS
 
@@ -88,30 +94,26 @@ SETTINGS
 USER coder
 
 # Qovery Skills — installed as coder so OpenCode and Claude Code can discover them
-# Skills are placed in ~/.config/opencode/skills/ and ~/.claude/skills/
 RUN curl -fsSL https://skill.qovery.com/install.sh | bash
 
-# Pre-load custom skills: platform teams can COPY additional skills into these dirs.
-# Example: COPY my-company-skills/ /home/coder/.config/opencode/skills/
-# Skills placed here are automatically discovered by OpenCode and Claude Code.
+# Pre-load custom skills: platform teams can COPY additional skills here.
 RUN mkdir -p /home/coder/.config/opencode/skills \
     /home/coder/.config/opencode/commands \
     /home/coder/.claude/skills
-
-# Git credential helper (uses $GITHUB_TOKEN env var for private repos)
-RUN git config --global credential.helper \
-      '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
 
 # Initialize RTK hooks for Claude Code and OpenCode (auto-rewrite shell commands)
 RUN rtk init -g 2>/dev/null || true \
     && rtk init -g --opencode 2>/dev/null || true
 
+# ── Entrypoint: clone git repo (if configured), install deps, start code-server
 USER root
-RUN chown -R coder:coder /home/coder
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh \
+    && chown -R coder:coder /home/coder
 
 USER coder
 WORKDIR /home/coder/project
 
 EXPOSE 8080
 
-ENTRYPOINT ["code-server", "--host", "0.0.0.0", "--port", "8080"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

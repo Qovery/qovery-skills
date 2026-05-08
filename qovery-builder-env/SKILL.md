@@ -63,6 +63,7 @@ A visual builder service (Lovable-like) can be added to the blueprint later — 
 ```
 templates/
 ├── Dockerfile                    # Combined workspace (all-in-one)
+├── entrypoint.sh                 # Startup: git clone, dep install, start code-server
 ├── scripts/
 │   ├── provision-builder.sh      # Per-builder provisioning (clone + TTL + invite)
 │   ├── smoke-test-workspace.sh   # Validate workspace after provisioning
@@ -83,6 +84,21 @@ The provisioning script (`templates/scripts/provision-builder.sh`) is the platfo
 | Isolation | Project-per-builder | See [customization.md](reference/customization.md) |
 | AI tools | OpenCode + Claude Code | Add API keys as project secrets |
 | Visual builder | Not included (add later) | See [customization.md](reference/customization.md) |
+| Preview | Live Preview extension + auto port forwarding | Built-in |
+
+### Per-builder environment variables (optional)
+
+Set these on each builder's Qovery environment to auto-load a project on startup:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GIT_REPO_URL` | No | — | HTTPS URL of the repo to clone (e.g., `https://github.com/org/project.git`) |
+| `GIT_TOKEN` | No | — | Git personal access token (secret). Auto-detects provider (GitHub/GitLab/Bitbucket) |
+| `GIT_BRANCH` | No | `main` | Branch to checkout |
+| `GIT_USER_NAME` | No | — | Git author name for commits |
+| `GIT_USER_EMAIL` | No | — | Git author email for commits |
+
+If `GIT_REPO_URL` is not set, the workspace starts with an empty project directory. On container restart, the entrypoint pulls the latest changes instead of re-cloning.
 
 ## Quick reference
 
