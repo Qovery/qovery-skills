@@ -76,6 +76,38 @@ After adding, redeploy the blueprint to validate, then stop it. Future builder c
 
 Note: Each cloned environment gets its own empty database. Data is not shared between builders.
 
+### Pre-load Custom Skills
+
+The workspace container comes with all Qovery skills pre-installed. To add your own company-specific skills (custom deployment workflows, internal tool generators, etc.), extend the Dockerfile:
+
+```dockerfile
+# Add your custom skills to the workspace
+COPY my-company-skills/ /home/coder/.config/opencode/skills/
+```
+
+Or add custom slash commands:
+```dockerfile
+COPY my-commands/ /home/coder/.config/opencode/commands/
+```
+
+Skills placed in `/home/coder/.config/opencode/skills/` are automatically discovered by OpenCode and Claude Code. Each skill must be a directory containing a `SKILL.md` file with the proper frontmatter.
+
+To add skills at runtime (without rebuilding the image), mount a volume:
+```
+# Set as a Qovery environment variable or in the service configuration
+# Mount path: /home/coder/.config/opencode/skills/my-custom-skill
+```
+
+### Add or Remove VS Code Extensions
+
+The workspace uses the Microsoft VS Code Marketplace (configured via `EXTENSIONS_GALLERY` env var in the Dockerfile). To add more extensions, add lines to the Dockerfile:
+
+```dockerfile
+RUN code-server --install-extension <publisher>.<extension-name>
+```
+
+To revert to Open VSX (the default code-server registry), remove the `EXTENSIONS_GALLERY` environment variable from the Dockerfile.
+
 ### Add a Visual Builder Service
 
 To add a Lovable-like visual builder to the blueprint, add a new service:

@@ -2,9 +2,9 @@
 # VS Code (code-server) + OpenCode + Claude Code + RTK + GitHub CLI + Qovery CLI
 # + Node.js + Python + Git
 #
-# Non-tech builders use the VS Code UI; tech builders open the integrated
-# terminal and run `opencode` or `claude`. RTK auto-compresses shell output
-# to reduce LLM token consumption by 60-90%.
+# Non-tech builders use the VS Code UI (with Claude Code extension in the sidebar).
+# Tech builders open the integrated terminal and run `opencode` or `claude`.
+# RTK auto-compresses shell output to reduce LLM token consumption by 60-90%.
 FROM codercom/code-server:4.99.4
 
 USER root
@@ -33,14 +33,11 @@ RUN cd /tmp \
 # Qovery CLI
 RUN curl -s https://get.qovery.com | bash
 
-# Qovery Skills (deploy, troubleshoot, optimize, etc.)
-RUN curl -fsSL https://skill.qovery.com/install.sh | bash
-
-# Claude Code (pinned version)
+# Claude Code (pinned version — also available as VS Code extension below)
 ARG CLAUDE_CODE_VERSION=2.1.129
 RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
 
-# OpenCode (AI coding agent)
+# OpenCode (AI coding agent — VS Code extension auto-installs on first `opencode` run in terminal)
 RUN npm install -g opencode-ai
 
 # RTK — reduces LLM token consumption by 60-90% on shell commands
@@ -48,8 +45,14 @@ RUN npm install -g opencode-ai
 RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh \
     && ln -sf /root/.local/bin/rtk /usr/local/bin/rtk
 
-# VS Code extensions
-RUN code-server --install-extension github.copilot 2>/dev/null || true \
+# Configure code-server to use Microsoft VS Code Marketplace
+# (required for Claude Code extension, GitHub Copilot, and other MS Marketplace extensions)
+# To revert to Open VSX, remove this ENV line.
+ENV EXTENSIONS_GALLERY='{"serviceUrl":"https://marketplace.visualstudio.com/_apis/public/gallery","itemUrl":"https://marketplace.visualstudio.com/items","cacheUrl":"https://vscode.blob.core.windows.net/gallery/index","controlUrl":"","recommendationsUrl":""}'
+
+# VS Code extensions (from Microsoft Marketplace)
+RUN code-server --install-extension anthropic.claude-code 2>/dev/null || true \
+    && code-server --install-extension github.copilot 2>/dev/null || true \
     && code-server --install-extension ms-python.python 2>/dev/null || true \
     && code-server --install-extension bradlc.vscode-tailwindcss 2>/dev/null || true \
     && code-server --install-extension esbenp.prettier-vscode 2>/dev/null || true
@@ -59,8 +62,21 @@ RUN mkdir -p /home/coder/.config/code-server \
     && printf 'bind-addr: 0.0.0.0:8080\nauth: none\ncert: false\n' \
        > /home/coder/.config/code-server/config.yaml
 
-# Git credential helper (uses $GITHUB_TOKEN env var for private repos)
+# ── Switch to coder user for all user-space installations ──────────────
 USER coder
+
+# Qovery Skills — installed as coder so OpenCode and Claude Code can discover them
+# Skills are placed in ~/.config/opencode/skills/ and ~/.claude/skills/
+RUN curl -fsSL https://skill.qovery.com/install.sh | bash
+
+# Pre-load custom skills: platform teams can COPY additional skills into these dirs.
+# Example: COPY my-company-skills/ /home/coder/.config/opencode/skills/
+# Skills placed here are automatically discovered by OpenCode and Claude Code.
+RUN mkdir -p /home/coder/.config/opencode/skills \
+    /home/coder/.config/opencode/commands \
+    /home/coder/.claude/skills
+
+# Git credential helper (uses $GITHUB_TOKEN env var for private repos)
 RUN git config --global credential.helper \
       '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
 
