@@ -1,6 +1,9 @@
+UA="QoverySkill/qovery-builder-env-ttl (https://github.com/Qovery/qovery-skills)"
+
 # Delete job — runs weekly, checks if environment has been stopped for > N days
 curl -sf -X POST "https://api.qovery.com/environment/{builderEnvId}/job" \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "User-Agent: $UA" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "ttl-auto-delete",
@@ -20,7 +23,7 @@ curl -sf -X POST "https://api.qovery.com/environment/{builderEnvId}/job" \
     "schedule": {
       "cronjob": {
         "entrypoint": "sh",
-        "arguments": ["-c", "curl -sf -X DELETE https://api.qovery.com/environment/{builderEnvId} -H \"Authorization: Token $SHUTDOWN_TOKEN\" && echo \"Environment deleted by TTL\" || echo \"Delete failed or already deleted\""],
+        "arguments": ["-c", "curl -sf -H 'User-Agent: QoverySkill/qovery-builder-env-ttl' -X DELETE https://api.qovery.com/environment/{builderEnvId} -H \"Authorization: Token $SHUTDOWN_TOKEN\" && echo \"Environment deleted by TTL\" || echo \"Delete failed or already deleted\""],
         "scheduled_at": "0 0 * * 0",
         "timezone": "Etc/UTC"
       }

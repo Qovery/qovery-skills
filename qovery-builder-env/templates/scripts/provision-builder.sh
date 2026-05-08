@@ -42,6 +42,8 @@ BASE_ROLE_ID=$(parse_config '.builder_role_id')
 
 API_TOKEN="${QOVERY_API_TOKEN:?Set QOVERY_API_TOKEN environment variable}"
 BASE_URL="https://api.qovery.com"
+SKILLS_VERSION=$(cat "$(dirname "$0")/../../_version.txt" 2>/dev/null || echo "unknown")
+UA="QoverySkill/qovery-builder-env (version:$SKILLS_VERSION; https://github.com/Qovery/qovery-skills)"
 
 echo "========================================="
 echo "Provisioning builder: $BUILDER_NAME"
@@ -56,6 +58,7 @@ if [ "$ISOLATION" = "project-per-builder" ]; then
   echo "[1/6] Creating project: builder-$BUILDER_NAME"
   PROJECT_ID=$(curl -sf -X POST "$BASE_URL/organization/$ORG_ID/project" \
     -H "Authorization: Token $API_TOKEN" \
+    -H "User-Agent: $UA" \
     -H "Content-Type: application/json" \
     -d "{\"name\": \"builder-$BUILDER_NAME\", \"description\": \"Builder workspace for $BUILDER_NAME ($BUILDER_TEAM)\"}" | jq -r '.id')
   echo "  Project created: $PROJECT_ID"
@@ -69,11 +72,13 @@ if [ "$ISOLATION" = "project-per-builder" ]; then
   echo "[2/6] Creating RBAC role: Builder-$BUILDER_NAME"
   ROLE_ID=$(curl -sf -X POST "$BASE_URL/organization/$ORG_ID/customRole" \
     -H "Authorization: Token $API_TOKEN" \
+    -H "User-Agent: $UA" \
     -H "Content-Type: application/json" \
     -d "{\"name\": \"Builder-$BUILDER_NAME\", \"description\": \"Builder role for $BUILDER_NAME — access to builder-$BUILDER_NAME project only\"}" | jq -r '.id')
 
   curl -sf -X PUT "$BASE_URL/organization/$ORG_ID/customRole/$ROLE_ID" \
     -H "Authorization: Token $API_TOKEN" \
+    -H "User-Agent: $UA" \
     -H "Content-Type: application/json" \
     -d "{
       \"name\": \"Builder-$BUILDER_NAME\",
@@ -107,6 +112,7 @@ CLONE_BODY="$CLONE_BODY}"
 
 ENV_ID=$(curl -sf -X POST "$BASE_URL/environment/$BLUEPRINT_ENV_ID/clone" \
   -H "Authorization: Token $API_TOKEN" \
+  -H "User-Agent: $UA" \
   -H "Content-Type: application/json" \
   -d "$CLONE_BODY" | jq -r '.id')
 echo "  Environment cloned: $ENV_ID"
@@ -118,6 +124,7 @@ if [ "$TTL_STOP_AFTER" != "null" ] && [ "$TTL_STOP_AFTER" != "none" ]; then
   # Generate a shutdown token for this builder
   SHUTDOWN_TOKEN=$(curl -sf -X POST "$BASE_URL/organization/$ORG_ID/apiToken" \
     -H "Authorization: Token $API_TOKEN" \
+    -H "User-Agent: $UA" \
     -H "Content-Type: application/json" \
     -d "{\"name\": \"builder-ttl-$BUILDER_NAME\", \"description\": \"Auto-shutdown token for builder-$BUILDER_NAME\"}" | jq -r '.token')
 
@@ -129,6 +136,7 @@ if [ "$TTL_STOP_AFTER" != "null" ] && [ "$TTL_STOP_AFTER" != "none" ]; then
   # Create the TTL cron job
   TTL_JOB_ID=$(curl -sf -X POST "$BASE_URL/environment/$ENV_ID/job" \
     -H "Authorization: Token $API_TOKEN" \
+    -H "User-Agent: $UA" \
     -H "Content-Type: application/json" \
     -d "{
       \"name\": \"ttl-auto-shutdown\",
@@ -148,7 +156,7 @@ if [ "$TTL_STOP_AFTER" != "null" ] && [ "$TTL_STOP_AFTER" != "none" ]; then
       \"schedule\": {
         \"cronjob\": {
           \"entrypoint\": \"sh\",
-          \"arguments\": [\"-c\", \"curl -sf -X POST https://api.qovery.com/environment/$ENV_ID/stop -H 'Authorization: Token '\\''\$SHUTDOWN_TOKEN'\\'' && echo 'Environment stopped by TTL job' || echo 'Stop request failed or already stopped'\"],
+          \"arguments\": [\"-c\", \"curl -sf -H 'User-Agent: QoverySkill/qovery-builder-env-ttl' -X POST https://api.qovery.com/environment/$ENV_ID/stop -H 'Authorization: Token '\\''\$SHUTDOWN_TOKEN'\\'' && echo 'Environment stopped by TTL job' || echo 'Stop request failed or already stopped'\"],
           \"scheduled_at\": \"$CRON_SCHEDULE\",
           \"timezone\": \"Etc/UTC\"
         }
@@ -158,6 +166,7 @@ if [ "$TTL_STOP_AFTER" != "null" ] && [ "$TTL_STOP_AFTER" != "none" ]; then
   # Set the shutdown token as a secret on the job
   curl -sf -X POST "$BASE_URL/application/$TTL_JOB_ID/secret" \
     -H "Authorization: Token $API_TOKEN" \
+    -H "User-Agent: $UA" \
     -H "Content-Type: application/json" \
     -d "{\"key\": \"SHUTDOWN_TOKEN\", \"value\": \"$SHUTDOWN_TOKEN\"}" > /dev/null
   echo "  TTL job created: $TTL_JOB_ID"
@@ -169,6 +178,7 @@ fi
 echo "[5/6] Inviting $BUILDER_EMAIL with role $ROLE_ID"
 curl -sf -X POST "$BASE_URL/organization/$ORG_ID/inviteMember" \
   -H "Authorization: Token $API_TOKEN" \
+  -H "User-Agent: $UA" \
   -H "Content-Type: application/json" \
   -d "{\"email\": \"$BUILDER_EMAIL\", \"role_id\": \"$ROLE_ID\"}" > /dev/null 2>&1 || echo "  (already invited)"
 echo "  Invitation sent"
@@ -176,7 +186,8 @@ echo "  Invitation sent"
 # --- Step 6: Deploy the environment ---
 echo "[6/6] Deploying builder-$BUILDER_NAME"
 curl -sf -X POST "$BASE_URL/environment/$ENV_ID/deploy" \
-  -H "Authorization: Token $API_TOKEN" > /dev/null
+  -H "Authorization: Token $API_TOKEN" \
+  -H "User-Agent: $UA" > /dev/null
 echo "  Deployment triggered"
 
 echo ""

@@ -27,7 +27,9 @@ COPY package.json .
 # Copy the platform config if present (can also be mounted or set via env)
 COPY builder-platform-config.yaml* ./
 
+ARG QOVERY_SKILLS_VERSION=unknown
 ENV NODE_ENV=production
+ENV QOVERY_SKILLS_VERSION=$QOVERY_SKILLS_VERSION
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
