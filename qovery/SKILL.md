@@ -87,6 +87,8 @@ If the intent is unclear, present options:
 
 For simple day-to-day commands, handle directly without routing to a specialized skill. Authenticate first — see [reference/auth.md](reference/auth.md).
 
+> **Security:** NEVER display, log, or capture Qovery token values. Use `$(qovery auth token --print)` only **inline** within curl commands — never as a standalone command or in a variable. Add a `User-Agent` header to every request. See [reference/auth.md](reference/auth.md) for full token handling rules and User-Agent requirements.
+
 ### List Projects
 
 ```bash
