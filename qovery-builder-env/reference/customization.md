@@ -50,6 +50,32 @@ Configure SSO in the Qovery Console:
 
 Documentation: https://www.qovery.com/docs/using-qovery/configuration/organization/authentication
 
+### Add a Database to the Blueprint
+
+By default, the blueprint does not include a database — builders can provision one on demand by asking the AI tools ("I need a PostgreSQL database for my app") and Qovery will create one via the deploy skill.
+
+If most builders need a database, add one to the blueprint so it's automatically available in every cloned environment:
+
+```bash
+curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/database" \
+  -H "Authorization: Bearer $(qovery auth token --print)" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "postgres",
+    "type": "POSTGRESQL",
+    "version": "16",
+    "mode": "CONTAINER",
+    "accessibility": "PRIVATE",
+    "cpu": 250,
+    "memory": 256,
+    "storage": 10
+  }'
+```
+
+After adding, redeploy the blueprint to validate, then stop it. Future builder clones will include the database automatically. Connection strings are auto-injected as environment variables by Qovery (`QOVERY_DATABASE_*`).
+
+Note: Each cloned environment gets its own empty database. Data is not shared between builders.
+
 ### Add a Visual Builder Service
 
 To add a Lovable-like visual builder to the blueprint, add a new service:

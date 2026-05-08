@@ -1,6 +1,6 @@
 ## Phase 2: Create Blueprint
 
-The blueprint is a fully configured environment that will be cloned for each builder. It contains the workspace service (all-in-one container), a PostgreSQL database, and a TTL auto-stop cron job.
+The blueprint is a fully configured environment that will be cloned for each builder. It contains the workspace service (all-in-one container) and a TTL auto-stop cron job. A database is not included by default — builders can provision one on demand via the AI tools, or the platform team can add one to the blueprint (see [customization.md](customization.md)).
 
 ### 2.1 Create the project
 
@@ -87,25 +87,7 @@ curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/application
   }'
 ```
 
-### 2.5 Add PostgreSQL database
-
-```bash
-curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/database" \
-  -H "Authorization: Bearer $(qovery auth token --print)" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "postgres",
-    "type": "POSTGRESQL",
-    "version": "16",
-    "mode": "CONTAINER",
-    "accessibility": "PRIVATE",
-    "cpu": 250,
-    "memory": 256,
-    "storage": 10
-  }'
-```
-
-### 2.6 Capture the Docker Hub Registry ID
+### 2.5 Capture the Docker Hub Registry ID
 
 The TTL auto-stop job uses the `curlimages/curl:8.11.1` image from Docker Hub. Qovery requires a container registry reference for this. List the available registries and find the Docker Hub one:
 
@@ -118,7 +100,7 @@ Look for a registry with `kind: "DOCKER_HUB"`. Store its `id` as `DOCKER_HUB_REG
 
 If no Docker Hub registry exists, create one in the Qovery Console: Organization Settings > Container Registries > Add Docker Hub.
 
-### 2.7 Create TTL auto-stop cron job
+### 2.6 Create TTL auto-stop cron job
 
 Each builder environment auto-stops after 24 hours to save costs. The job uses `curlimages/curl:8.11.1` from Docker Hub.
 
@@ -162,7 +144,7 @@ curl -s -X POST "https://api.qovery.com/application/{jobId}/secret" \
   -d '{"key": "SHUTDOWN_TOKEN", "value": "{shutdown-token-value}"}'
 ```
 
-### 2.8 Deploy and validate the blueprint
+### 2.7 Deploy and validate the blueprint
 
 ```bash
 # Deploy
@@ -177,7 +159,6 @@ curl -s -H "Authorization: Bearer $(qovery auth token --print)" \
     environment: .environment.state,
     services: [
       (.applications[] | {name: .name, state, type: "app"}),
-      (.databases[] | {name: .name, state, type: "db"}),
       (.jobs[] | {name: .name, state, type: "job"})
     ]
   }'
@@ -194,7 +175,7 @@ Open the URL and confirm VS Code loads in the browser. Check the terminal works 
 
 On failure: fetch logs with `qovery log --service "workspace" --since 10m` and diagnose.
 
-### 2.9 Stop the blueprint
+### 2.8 Stop the blueprint
 
 The blueprint is a template — it should not consume resources when idle:
 ```bash

@@ -10,7 +10,7 @@ metadata:
 
 # Qovery Builder Environment Skill
 
-Ships an opinionated, production-ready builder workspace that works out of the box. One combined container with VS Code (code-server), OpenCode, Claude Code, RTK (60-90% token savings), GitHub CLI, Qovery CLI, Node.js, Python, and PostgreSQL. Non-tech builders use the VS Code UI; tech builders open the integrated terminal and run `opencode` or `claude`.
+Ships an opinionated, production-ready builder workspace that works out of the box. One combined container with VS Code (code-server), OpenCode, Claude Code, RTK (60-90% token savings), GitHub CLI, Qovery CLI, Node.js, Python, and Git. Non-tech builders use the VS Code UI; tech builders open the integrated terminal and run `opencode` or `claude`.
 
 Setup takes under 5 minutes: authenticate, pick org/cluster, optionally provide an Anthropic API key, and the skill creates a blueprint environment that gets cloned for each builder. Each builder gets their own isolated project and environment — never shared.
 
@@ -39,10 +39,11 @@ Builder Environment Setup:
 | Service | What | Port | Notes |
 |---------|------|------|-------|
 | workspace | VS Code (code-server) + OpenCode + Claude Code + RTK + GitHub CLI + Qovery CLI + Node.js + Python + Git | 8080 | All-in-one container — `templates/Dockerfile` |
-| postgres | PostgreSQL 16 (container mode) | 5432 | 256MB RAM, 10GB storage |
 | ttl-auto-shutdown | Cron job — stops env after 24h | — | `curlimages/curl:8.11.1` via Docker Hub registry |
 
 Non-tech builders open the workspace URL in a browser and get VS Code. Tech builders open the integrated terminal (Ctrl+\`) and run `opencode` or `claude` for AI-powered coding. RTK auto-compresses shell output to reduce LLM token costs by 60-90%. GitHub CLI (`gh`) is pre-installed for repo operations. Git credential helper is configured — set `$GITHUB_TOKEN` to clone private repos.
+
+Need a database? Builders can ask the AI tools ("I need a PostgreSQL database") and Qovery will provision one on demand. See [customization guide](reference/customization.md) to add a database to the blueprint if most builders need one.
 
 A visual builder service (Lovable-like) can be added to the blueprint later — see [customization guide](reference/customization.md).
 
@@ -77,7 +78,7 @@ The provisioning script (`templates/scripts/provision-builder.sh`) is the platfo
 |---------|---------|-----------|
 | Workspace CPU | 1000m (1 core) | Qovery Console or API |
 | Workspace memory | 2048MB (2GB) | Qovery Console or API |
-| Database | PostgreSQL 16, container, 256MB, 10GB | Qovery Console |
+| Database | Not included (add on demand or via blueprint) | See [customization.md](reference/customization.md) |
 | TTL (auto-stop) | 24 hours | Edit cron job schedule |
 | Isolation | Project-per-builder | See [customization.md](reference/customization.md) |
 | AI tools | OpenCode + Claude Code | Add API keys as project secrets |
@@ -114,7 +115,6 @@ POST   /environment/{envId}/stop                      Stop
 DELETE /environment/{envId}                           Delete
 GET    /environment/{envId}/statuses                  Service statuses
 POST   /environment/{envId}/application               Create workspace service
-POST   /environment/{envId}/database                  Create database
 POST   /environment/{envId}/job                       Create TTL job
 POST   /organization/{orgId}/customRole               Create RBAC role
 POST   /organization/{orgId}/inviteMember             Invite builder
