@@ -1,6 +1,6 @@
 ---
 name: qovery-builder-env
-description: Sets up self-service builder environments for non-tech teams. Creates controlled remote dev environments with AI coding tools (OpenCode, Claude Code, VS Code + Copilot, Lovable-like) pre-installed, Qovery deployment built-in, and platform-team guardrails (RBAC, cost controls, audit trails, SSO). Use when a platform engineer needs to enable sales, finance, marketing, or operations teams to build and deploy internal tools safely on Kubernetes via Qovery.
+description: Set up self-service builder environments for non-tech and tech teams. Ships an opinionated workspace blueprint (VS Code + OpenCode + Claude Code + PostgreSQL) that works out of the box. One Dockerfile, 2 questions, under 5 minutes to first builder environment. Customizable after setup. Use when a platform engineer wants to give teams the ability to build and deploy apps on Qovery.
 license: MIT
 compatibility: opencode
 metadata:
@@ -10,7 +10,9 @@ metadata:
 
 # Qovery Builder Environment Skill
 
-This skill sets up self-service builder platforms on Kubernetes via Qovery for non-tech teams (sales, finance, operations, marketing). It collects platform requirements, builds environment templates with AI coding tools, configures RBAC and cost controls, provisions individual builder workspaces, and can generate Terraform manifests for the whole setup.
+Ships an opinionated, production-ready builder workspace that works out of the box. One combined container with VS Code (code-server), OpenCode, Claude Code, Qovery CLI, Node.js, Python, and PostgreSQL. Non-tech builders use the VS Code UI; tech builders open the integrated terminal and run `opencode` or `claude`.
+
+Setup takes under 5 minutes: authenticate, pick org/cluster, optionally provide an Anthropic API key, and the skill creates a blueprint environment that gets cloned for each builder. Each builder gets their own isolated project and environment — never shared.
 
 ## When to Use This Skill
 
@@ -19,139 +21,119 @@ Trigger phrases:
 - "Create remote dev environments for our sales/finance team"
 - "Give non-tech employees the ability to build and deploy apps"
 - "Set up a self-service platform for internal tool builders"
-- "How do I enable our All Builders initiative with Qovery?"
 - "Create a controlled environment where business teams can vibe-code"
-- "Set up Lovable / Cursor / Claude Code environments managed by Qovery"
+- "Set up remote dev environments managed by Qovery"
 - `/qovery-builder-env` (slash command)
-
-After running this skill, the platform engineer can optionally run `qovery-builder-portal` to generate a self-service web UI on top.
 
 ## Workflow checklist
 
 ```
-Builder Platform Progress:
-- [ ] Phase 1 — Understand the builder use case (audience, AI tools, RBAC scope)
-- [ ] Phase 2 — Set up platform foundation (project, RBAC role, SSO)
-- [ ] Phase 3 — Create the builder environment template (IDE container + DB + sample app)
-- [ ] Phase 4 — Provision per-builder environments (clone blueprint, invite users)
-- [ ] Phase 5 — Apply cost controls (TTL stop/delete jobs, resource limits, alerts)
-- [ ] Phase 6 — Deployment plan summary + USER CONFIRMATION
-- [ ] Phase 7 — Execute and verify
-- [ ] Phase 7B — Optional: production graduation review process
-- [ ] Phase 8 — Save platform config to git (shell scripts or Terraform)
-- [ ] Phase 9 — Generate builder onboarding + platform team runbook
+Builder Environment Setup:
+- [ ] Phase 1 — Setup: auth, org/cluster, API key (1-2 questions)
+- [ ] Phase 2 — Blueprint: create project + workspace + database + TTL job, deploy, validate, stop
+- [ ] Phase 3 — Provision: clone per builder, invite, share URLs, provide provisioning script
 ```
+
+## What's in the blueprint
+
+| Service | What | Port | Notes |
+|---------|------|------|-------|
+| workspace | VS Code (code-server) + OpenCode + Claude Code + Qovery CLI + Node.js + Python + Git | 8080 | All-in-one container — `templates/Dockerfile` |
+| postgres | PostgreSQL 16 (container mode) | 5432 | 256MB RAM, 10GB storage |
+| ttl-auto-shutdown | Cron job — stops env after 24h | — | `curlimages/curl` + `dockerfile_raw` |
+
+Non-tech builders open the workspace URL in a browser and get VS Code. Tech builders open the integrated terminal (Ctrl+\`) and run `opencode` or `claude` for AI-powered coding.
+
+A visual builder service (Lovable-like) can be added to the blueprint later — see [customization guide](reference/customization.md).
 
 ## Reference materials (load on demand)
 
 | Phase | File | Purpose |
 |---|---|---|
-| Console URL | [reference/console-url-detection.md](reference/console-url-detection.md) | Extract IDs from a Qovery Console URL |
-| Auth | [reference/auth.md](reference/auth.md) | API token flow |
-| Phase 1 | [reference/phase1-requirements.md](reference/phase1-requirements.md) | Audience, tools, RBAC, branding questions |
-| Phase 2 | [reference/phase2-foundation.md](reference/phase2-foundation.md) | Project, custom RBAC role, SSO config |
-| Phase 3 | [reference/phase3-template.md](reference/phase3-template.md) | Blueprint env, IDE container Dockerfile, AI keys, sample app |
-| Phase 4 | [reference/phase4-provision.md](reference/phase4-provision.md) | Per-builder cloning, invites, provisioning script |
-| Phase 5 | [reference/phase5-lifecycle.md](reference/phase5-lifecycle.md) | TTL stop/delete jobs, business hours schedule, resource limits, alerts |
-| Phase 6 | [reference/phase6-deployment-plan.md](reference/phase6-deployment-plan.md) | Plan summary template + confirmation gate |
-| Phase 7 | [reference/phase7-execute.md](reference/phase7-execute.md) | Final execution order |
-| Phase 7B | [reference/phase7b-production.md](reference/phase7b-production.md) | Promotion review for builder apps that go to prod |
-| Phase 8 | [reference/phase8-iac.md](reference/phase8-iac.md) | Config folder layout + Terraform option |
-| Phase 9 | [reference/phase9-onboarding.md](reference/phase9-onboarding.md) | Builder quick-start guide + platform-team runbook |
+| Auth | [reference/auth.md](reference/auth.md) | Token handling + security rules |
+| Console URL | [reference/console-url-detection.md](reference/console-url-detection.md) | Extract IDs from Console URLs |
+| Phase 1 | [reference/phase1-setup.md](reference/phase1-setup.md) | Auth, org/cluster, API key (1-2 questions) |
+| Phase 2 | [reference/phase2-blueprint.md](reference/phase2-blueprint.md) | Create project, workspace, database, TTL job, deploy, validate, stop |
+| Phase 3 | [reference/phase3-provision.md](reference/phase3-provision.md) | Clone per builder, RBAC role, invite, deploy, share URLs |
+| Customize | [reference/customization.md](reference/customization.md) | TTL, resources, isolation, SSO, visual builder, Terraform, production graduation |
 
 ## Code templates (copy and adapt)
 
 ```
 templates/
-├── dockerfiles/
-│   ├── code-server.Dockerfile             # Option A: VS Code Server + Copilot
-│   ├── openvscode-server.Dockerfile       # Option B: OpenVSCode Server (lighter)
-│   └── terminal-only.Dockerfile           # Option C: terminal + ttyd + AI agents
+├── Dockerfile                    # Combined workspace (all-in-one)
 ├── scripts/
-│   ├── provision-builder.sh               # main per-builder provisioning script
-│   ├── smoke-test-workspace.sh            # validate a workspace after provisioning
-│   ├── ttl-stop-job.sh                    # auto-stop expired environments
-│   └── ttl-delete-job.sh                  # auto-delete long-stopped environments
-└── terraform/
-    ├── variables.tf
-    ├── main.tf
-    ├── terraform.tfvars
-    └── modules/builder-env/main.tf        # per-builder module
+│   ├── provision-builder.sh      # Per-builder provisioning (clone + TTL + invite)
+│   ├── smoke-test-workspace.sh   # Validate workspace after provisioning
+│   ├── ttl-stop-job.sh           # Auto-stop cron job reference
+│   └── ttl-delete-job.sh         # Auto-delete cron job reference
 ```
 
-The provisioning script (`templates/scripts/provision-builder.sh`) is the platform team's main tool: it clones the blueprint, sets per-builder tags, invites the user, and outputs the workspace URL. Copy it into the platform repo and adapt the env-var section at the top.
+The provisioning script (`templates/scripts/provision-builder.sh`) is the platform team's main tool for onboarding new builders. Fill in the IDs at the top after Phase 2 and run `./provision-builder.sh <name> <email>`.
+
+## Defaults (customizable later)
+
+| Setting | Default | Change via |
+|---------|---------|-----------|
+| Workspace CPU | 1000m (1 core) | Qovery Console or API |
+| Workspace memory | 2048MB (2GB) | Qovery Console or API |
+| Database | PostgreSQL 16, container, 256MB, 10GB | Qovery Console |
+| TTL (auto-stop) | 24 hours | Edit cron job schedule |
+| Isolation | Project-per-builder | See [customization.md](reference/customization.md) |
+| AI tools | OpenCode + Claude Code | Add API keys as project secrets |
+| Visual builder | Not included (add later) | See [customization.md](reference/customization.md) |
 
 ## Quick reference
 
 ### CLI commands
 
 ```bash
-# Project & template
-qovery project create --name "builder-workspaces"
-qovery environment create --name "builder-template"
-qovery environment deploy --environment "builder-template"
+# Blueprint
+qovery environment deploy --environment "builder-blueprint"
+qovery environment stop --environment "builder-blueprint"
 
-# Builder provisioning
-qovery environment clone --environment "builder-template" --name "builder-{name}"
-qovery environment deploy --environment "builder-{name}"
+# Provisioning
+./provision-builder.sh alice alice@company.com
 
-# Builder management
+# Management
 qovery environment list
-qovery environment stop --environment "builder-{name}"
-qovery environment delete --environment "builder-{name}"
-
-# Monitoring
-qovery status --watch
+qovery environment stop --environment "workspace"
+qovery environment delete --environment "workspace"
 qovery log --service "workspace" --follow
-
-# Project-level secrets (AI API keys)
-qovery project env create --key ANTHROPIC_API_KEY --value "{key}" --scope PROJECT --secret
-qovery project env update --key ANTHROPIC_API_KEY --value "{new-key}" --scope PROJECT --secret
+qovery status --watch
 ```
 
 ### API endpoints
 
 ```
-# Base URL: https://api.qovery.com   Auth: Authorization: Token $QOVERY_API_TOKEN
-
 POST   /organization/{orgId}/project                  Create project
 POST   /project/{projectId}/environment               Create environment
-POST   /environment/{envId}/clone                     Clone environment (provision builder)
-POST   /environment/{envId}/deploy                    Deploy environment
-POST   /environment/{envId}/stop                      Stop environment
-DELETE /environment/{envId}                           Delete environment
-GET    /environment/{envId}/statuses                  All service statuses
-
-POST   /environment/{envId}/application               Create application (IDE container)
-GET    /application/{appId}/link                      Get public URLs
-
+POST   /environment/{envId}/clone                     Clone (provision builder)
+POST   /environment/{envId}/deploy                    Deploy
+POST   /environment/{envId}/stop                      Stop
+DELETE /environment/{envId}                           Delete
+GET    /environment/{envId}/statuses                  Service statuses
+POST   /environment/{envId}/application               Create workspace service
 POST   /environment/{envId}/database                  Create database
-
-POST   /organization/{orgId}/customRole               Create custom role
-PUT    /organization/{orgId}/customRole/{roleId}      Configure role permissions
-
+POST   /environment/{envId}/job                       Create TTL job
+POST   /organization/{orgId}/customRole               Create RBAC role
 POST   /organization/{orgId}/inviteMember             Invite builder
-PUT    /organization/{orgId}/member                   Change member role
-
-POST   /project/{projectId}/environmentVariable       Set project-level secret
+GET    /application/{appId}/link                      Get workspace URL
 ```
 
-## Next step
+## Next steps
 
-Once builder environments are running, generate a self-service web portal on top with the **`qovery-builder-portal`** skill. The portal lets builders create their own environments through a simple UI without ever touching Qovery directly.
+- **Add more builders**: run `./provision-builder.sh <name> <email>`
+- **Self-service portal**: say *"Set up a builder portal"* or run `/qovery-builder-portal`
+- **Add a visual builder**: see [customization guide](reference/customization.md)
+- **Terraformize**: run `/qovery-terraform` (coming soon)
+- **Customize**: see [customization guide](reference/customization.md)
 
 ## Reference links
 
 - **Qovery Documentation**: <https://www.qovery.com/docs/getting-started/introduction>
 - **Qovery Console**: <https://console.qovery.com>
-- **Qovery CLI Reference**: <https://www.qovery.com/docs/cli/commands/overview>
-- **Qovery API Reference**: <https://www.qovery.com/docs/api-reference/introduction>
-- **Qovery Terraform Provider**: <https://registry.terraform.io/providers/Qovery/qovery/latest/docs>
-- **Qovery Custom Roles (RBAC)**: <https://www.qovery.com/docs/using-qovery/configuration/organization/members-rbac>
-- **Qovery SSO / SAML**: <https://www.qovery.com/docs/using-qovery/configuration/organization/authentication>
-- **code-server (VS Code in browser)**: <https://github.com/coder/code-server>
-- **OpenVSCode Server**: <https://github.com/gitpod-io/openvscode-server>
-- **ttyd (web terminal)**: <https://github.com/tsl0922/ttyd>
-- **Qovery Deploy Skill**: <https://github.com/Qovery/qovery-skills>
-- **Qovery Troubleshoot Skill**: <https://github.com/Qovery/qovery-skills>
-- **Qovery Optimize Skill**: <https://github.com/Qovery/qovery-skills>
+- **Qovery CLI**: <https://www.qovery.com/docs/cli/commands/overview>
+- **Qovery API**: <https://www.qovery.com/docs/api-reference/introduction>
+- **code-server**: <https://github.com/coder/code-server>
+- **OpenCode**: <https://opencode.ai>

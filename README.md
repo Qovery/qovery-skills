@@ -359,15 +359,9 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 
 | Phase | Description |
 |-------|-------------|
-| **1. Understand** | Authenticate, understand builders (who, how many, tech level, data needs), platform requirements (SSO, compliance, cloud), choose builder experience tier (visual/VS Code/terminal) |
-| **2. Foundation** | Resolve org/cluster (recommend dedicated builder cluster), create builder project, set up RBAC with custom "Builder" role, configure SSO |
-| **3. Template** | Design environment blueprint, build AI coding tool container (3 Dockerfiles: VS Code Server, OpenVSCode, terminal), configure AI API keys as platform secrets, create and validate template |
-| **4. Provision** | Clone template per builder, invite builders with Builder role, automation script for bulk provisioning, share access URLs |
-| **5. Cost Controls** | Auto-stop schedules (business hours), resource limits per builder, cost monitoring and alerts, cleanup policy for inactive environments |
-| **6. Summary** | Present full platform plan (infra, RBAC, template, builders, costs, security), get explicit confirmation |
-| **7. Execute** | Create project, role, secrets, template, clone per builder, deploy, invite, verify. Optional 7B: production graduation workflow |
-| **8. IaC** | Generate config folder structure, save to git repo, optional Terraform manifests (Qovery provider), commit and push |
-| **9. Onboarding** | Generate builder quick-start guide (non-technical) and platform team runbook (operations, adding/removing builders, key rotation, troubleshooting) |
+| **1. Setup** | Authenticate, resolve org/cluster, optionally provide Anthropic API key. 1-2 questions max |
+| **2. Blueprint** | Create project, all-in-one workspace service (VS Code + OpenCode + Claude Code + Qovery CLI + Node.js + Python), PostgreSQL database, TTL auto-stop cron job. Deploy, validate, stop |
+| **3. Provision** | Clone blueprint per builder with project-per-builder isolation, create RBAC role, TTL job, invite, deploy, share workspace URLs. Provide provisioning script for future builders |
 
 ### qovery-builder-portal
 
