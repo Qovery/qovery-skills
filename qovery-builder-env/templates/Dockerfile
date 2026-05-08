@@ -57,10 +57,32 @@ RUN code-server --install-extension anthropic.claude-code 2>/dev/null || true \
     && code-server --install-extension bradlc.vscode-tailwindcss 2>/dev/null || true \
     && code-server --install-extension esbenp.prettier-vscode 2>/dev/null || true
 
+# Disable code-server's custom Getting Started page (Coder promotion)
+ENV CS_DISABLE_GETTING_STARTED_OVERRIDE=1
+
 # Configure code-server (no auth — Qovery handles access control)
 RUN mkdir -p /home/coder/.config/code-server \
-    && printf 'bind-addr: 0.0.0.0:8080\nauth: none\ncert: false\n' \
+    && printf 'bind-addr: 0.0.0.0:8080\nauth: none\ncert: false\napp-name: Builder Workspace\n' \
        > /home/coder/.config/code-server/config.yaml
+
+# Pre-configure VS Code settings for a clean, dark builder experience
+# No Welcome tab, no tips, no walkthroughs, no telemetry, dark theme
+RUN mkdir -p /home/coder/.local/share/code-server/User \
+    && cat > /home/coder/.local/share/code-server/User/settings.json << 'SETTINGS'
+{
+  "workbench.startupEditor": "none",
+  "workbench.tips.enabled": false,
+  "workbench.welcomePage.walkthroughs.openOnInstall": false,
+  "workbench.colorTheme": "Default Dark Modern",
+  "editor.fontSize": 14,
+  "editor.wordWrap": "on",
+  "editor.minimap.enabled": false,
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "terminal.integrated.fontSize": 14,
+  "extensions.autoUpdate": false,
+  "telemetry.telemetryLevel": "off"
+}
+SETTINGS
 
 # ── Switch to coder user for all user-space installations ──────────────
 USER coder
