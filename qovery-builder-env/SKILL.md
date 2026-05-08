@@ -10,7 +10,7 @@ metadata:
 
 # Qovery Builder Environment Skill
 
-Ships an opinionated, production-ready builder workspace that works out of the box. One combined container with VS Code (code-server), OpenCode, Claude Code, Qovery CLI, Node.js, Python, and PostgreSQL. Non-tech builders use the VS Code UI; tech builders open the integrated terminal and run `opencode` or `claude`.
+Ships an opinionated, production-ready builder workspace that works out of the box. One combined container with VS Code (code-server), OpenCode, Claude Code, RTK (60-90% token savings), GitHub CLI, Qovery CLI, Node.js, Python, and PostgreSQL. Non-tech builders use the VS Code UI; tech builders open the integrated terminal and run `opencode` or `claude`.
 
 Setup takes under 5 minutes: authenticate, pick org/cluster, optionally provide an Anthropic API key, and the skill creates a blueprint environment that gets cloned for each builder. Each builder gets their own isolated project and environment — never shared.
 
@@ -38,11 +38,11 @@ Builder Environment Setup:
 
 | Service | What | Port | Notes |
 |---------|------|------|-------|
-| workspace | VS Code (code-server) + OpenCode + Claude Code + Qovery CLI + Node.js + Python + Git | 8080 | All-in-one container — `templates/Dockerfile` |
+| workspace | VS Code (code-server) + OpenCode + Claude Code + RTK + GitHub CLI + Qovery CLI + Node.js + Python + Git | 8080 | All-in-one container — `templates/Dockerfile` |
 | postgres | PostgreSQL 16 (container mode) | 5432 | 256MB RAM, 10GB storage |
 | ttl-auto-shutdown | Cron job — stops env after 24h | — | `curlimages/curl` + `dockerfile_raw` |
 
-Non-tech builders open the workspace URL in a browser and get VS Code. Tech builders open the integrated terminal (Ctrl+\`) and run `opencode` or `claude` for AI-powered coding.
+Non-tech builders open the workspace URL in a browser and get VS Code. Tech builders open the integrated terminal (Ctrl+\`) and run `opencode` or `claude` for AI-powered coding. RTK auto-compresses shell output to reduce LLM token costs by 60-90%. GitHub CLI (`gh`) is pre-installed for repo operations. Git credential helper is configured — set `$GITHUB_TOKEN` to clone private repos.
 
 A visual builder service (Lovable-like) can be added to the blueprint later — see [customization guide](reference/customization.md).
 

@@ -78,6 +78,40 @@ When a builder's app is ready for production:
 
 IMPORTANT: Builders should NOT have direct access to production. Only the platform team (Admin role) manages production resources.
 
+### Token Savings Analytics (RTK)
+
+RTK is pre-installed in every builder workspace. It auto-rewrites shell commands to reduce LLM token consumption by 60-90% when using Claude Code or OpenCode. No configuration needed — the hooks are set up during the Docker build.
+
+To view token savings across builder environments:
+```bash
+# Inside a builder workspace
+rtk gain                    # Summary stats
+rtk gain --graph            # ASCII graph (last 30 days)
+rtk gain --daily            # Day-by-day breakdown
+rtk discover                # Find missed savings opportunities
+```
+
+The platform team can use these metrics to track API cost efficiency across builders.
+
+- RTK docs: https://www.rtk-ai.app/guide
+- GitHub: https://github.com/rtk-ai/rtk
+
+### Enterprise Security: Egress Firewall
+
+For builders working with sensitive data (CRM, financial, customer PII), add a Squid egress proxy that controls which URLs the workspace can access. This prevents data exfiltration and ensures compliance.
+
+This requires a more complex Dockerfile with:
+1. **s6-overlay** as PID 1 (process supervisor managing code-server, Squid, dnsmasq)
+2. **Squid** — forward HTTP/HTTPS proxy on 127.0.0.1:3128 with hostname ACL
+3. **dnsmasq** — local DNS with per-domain forwarders
+4. An **allowlist** of permitted domains (GitHub, npm, PyPI, Qovery API, etc.)
+
+All outbound traffic is routed through the proxy, and only allowlisted domains are permitted. See the Tint devcontainer for a production reference implementation of this pattern: https://github.com/tint-ai/devcontainer
+
+### Idle Monitor
+
+Instead of a fixed 24h TTL, add an idle monitor that stops the environment after N minutes of no terminal or editor activity. This requires s6-overlay to manage the monitor as a service alongside code-server.
+
 ### Terraform
 
 To terraformize the existing builder environment setup into `.tf` manifests, use the `qovery-terraform` skill (coming soon). It will reverse-engineer the current Qovery configuration into Terraform resources using the Qovery Terraform Provider.
