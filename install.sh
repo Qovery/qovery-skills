@@ -159,8 +159,6 @@ else
   # Tarball install — fetch latest commit SHA from GitHub API (no jq needed)
   SKILLS_VERSION=$(curl -sf "https://api.github.com/repos/Qovery/qovery-skills/git/ref/heads/main" \
     | sed -n 's/.*"sha": *"\([a-f0-9]*\)".*/\1/p' | head -1 | cut -c1-7)
-  # Fall back to VERSION file if API fails (offline, rate-limited)
-  SKILLS_VERSION="${SKILLS_VERSION:-$(cat "$SOURCE_ROOT/VERSION" 2>/dev/null | tr -d '[:space:]')}"
   SKILLS_VERSION="${SKILLS_VERSION:-unknown}"
 fi
 echo -e "  Version: ${BLUE}${SKILLS_VERSION}${NC}"
