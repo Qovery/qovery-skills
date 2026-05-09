@@ -222,18 +222,18 @@ Instead of a fixed 24h TTL, add an idle monitor that stops the environment after
 
 ### Applying Template Changes to Existing Builders
 
-After modifying the blueprint (Dockerfile, extensions, settings), use the builder manager to upgrade all existing builder environments:
+After modifying the blueprint (Dockerfile, extensions, settings), use the `qovery rde upgrade` command to apply changes to all existing builder environments:
 
 ```bash
-# Strategy 1: image-only (fast, preserves env state, just rebuilds/redeploys)
-./builder-manager.sh upgrade --strategy image
+# Strategy 1: image (default, fast — just redeploy to pick up new image)
+qovery rde upgrade -o "org" -s image
 
-# Strategy 2: reclone (clean slate, re-clones from updated blueprint)
+# Strategy 2: reclone (clean slate — delete env, re-clone from blueprint)
 # WARNING: destroys uncommitted changes — code in git is safe
-./builder-manager.sh upgrade --strategy reclone
+qovery rde upgrade -o "org" -s reclone
 
 # Upgrade a specific builder only
-./builder-manager.sh upgrade alice --strategy image
+qovery rde upgrade -n alice -o "org" -s image
 ```
 
 The `image` strategy just redeploys (re-pulls/rebuilds the Docker image). Use this for Dockerfile changes (new tools, updated versions).

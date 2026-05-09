@@ -359,9 +359,9 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 
 | Phase | Description |
 |-------|-------------|
-| **1. Setup** | Authenticate, resolve org/cluster, optionally provide Anthropic API key. 1-2 questions max |
-| **2. Blueprint** | Create project, all-in-one workspace service (VS Code + OpenCode + Claude Code + Qovery CLI + Node.js + Python), PostgreSQL database, TTL auto-stop cron job. Deploy, validate, stop |
-| **3. Provision** | Clone blueprint per builder with project-per-builder isolation, create RBAC role, TTL job, invite, deploy, share workspace URLs. Provide provisioning script for future builders |
+| **1. Setup** | Check Qovery CLI installed (`qovery rde --help`), authenticate, resolve org/cluster, optionally provide Anthropic API key |
+| **2. Blueprint** | Generate Dockerfile + entrypoint.sh, create project + workspace via API, register blueprint (`qovery rde blueprint register`), deploy, validate, stop |
+| **3. Provision** | Create RDEs with `qovery rde create` (one command per builder — handles project, RBAC, clone, TTL, invite, deploy). Manage lifecycle with `qovery rde stop/start/upgrade/delete` |
 
 ### qovery-builder-portal
 

@@ -1,5 +1,28 @@
 ## Phase 1: Setup
 
+### 1.0 Check Qovery CLI
+
+The `qovery rde` command is required for managing builder environments. Check if the CLI is installed:
+
+```bash
+qovery version
+```
+
+If not installed, install it:
+```bash
+curl -s https://get.qovery.com | bash
+```
+
+Verify the `rde` subcommand is available:
+```bash
+qovery rde --help
+```
+
+If `rde` is not recognized, the CLI version may be outdated. Reinstall to get the latest:
+```bash
+curl -s https://get.qovery.com | bash
+```
+
 ### 1.1 Authenticate
 
 Use the same authentication flow as all Qovery skills — see [auth.md](auth.md) for the full flow and security rules.

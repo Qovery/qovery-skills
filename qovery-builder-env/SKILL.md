@@ -1,6 +1,6 @@
 ---
 name: qovery-builder-env
-description: Set up self-service builder environments for non-tech and tech teams. Ships an opinionated workspace blueprint (VS Code + OpenCode + Claude Code + PostgreSQL) that works out of the box. One Dockerfile, 2 questions, under 5 minutes to first builder environment. Customizable after setup. Use when a platform engineer wants to give teams the ability to build and deploy apps on Qovery.
+description: Set up self-service builder environments (Remote Development Environments) for non-tech and tech teams. Ships an opinionated workspace blueprint (VS Code + OpenCode + Claude Code) that works out of the box. Uses the Qovery CLI `qovery rde` commands for lifecycle management. Use when a platform engineer wants to give teams the ability to build and deploy apps on Qovery.
 license: MIT
 compatibility: opencode
 metadata:
@@ -12,7 +12,7 @@ metadata:
 
 Ships an opinionated, production-ready builder workspace that works out of the box. One combined container with VS Code (code-server), OpenCode, Claude Code, RTK (60-90% token savings), GitHub CLI, Qovery CLI, Node.js, Python, and Git. Non-tech builders use the VS Code UI; tech builders open the integrated terminal and run `opencode` or `claude`.
 
-Setup takes under 5 minutes: authenticate, pick org/cluster, optionally provide an Anthropic API key, and the skill creates a blueprint environment that gets cloned for each builder. Each builder gets their own isolated project and environment — never shared.
+Setup takes under 5 minutes: check CLI, authenticate, pick org/cluster, optionally provide an Anthropic API key, and the skill creates a blueprint environment. Then use `qovery rde create` to provision isolated environments for each builder.
 
 ## When to Use This Skill
 
@@ -29,9 +29,9 @@ Trigger phrases:
 
 ```
 Builder Environment Setup:
-- [ ] Phase 1 — Setup: auth, org/cluster, API key (1-2 questions)
-- [ ] Phase 2 — Blueprint: create project + workspace + database + TTL job, deploy, validate, stop
-- [ ] Phase 3 — Provision: clone per builder, invite, share URLs, provide provisioning script
+- [ ] Phase 1 — Setup: check CLI installed, auth, org/cluster, API key
+- [ ] Phase 2 — Blueprint: generate Dockerfile + entrypoint.sh, create project + workspace via API, register blueprint, deploy, validate, stop
+- [ ] Phase 3 — Provision: `qovery rde create` per builder, list, share URLs
 ```
 
 ## What's in the blueprint
@@ -41,7 +41,7 @@ Builder Environment Setup:
 | workspace | VS Code (code-server) + OpenCode + Claude Code + RTK + GitHub CLI + Qovery CLI + Node.js + Python + Git | 8080 | All-in-one container — `templates/Dockerfile` |
 | ttl-auto-shutdown | Cron job — stops env after 24h | — | `curlimages/curl:8.11.1` via Docker Hub registry |
 
-Non-tech builders open the workspace URL in a browser and get VS Code. Tech builders open the integrated terminal (Ctrl+\`) and run `opencode` or `claude` for AI-powered coding. RTK auto-compresses shell output to reduce LLM token costs by 60-90%. GitHub CLI (`gh`) is pre-installed for repo operations. Git credential helper is configured — set `$GITHUB_TOKEN` to clone private repos.
+Non-tech builders open the workspace URL in a browser and get VS Code. Tech builders open the integrated terminal (Ctrl+\`) and run `opencode` or `claude` for AI-powered coding. RTK auto-compresses shell output to reduce LLM token costs by 60-90%. GitHub CLI (`gh`) is pre-installed for repo operations. Git credential helper is configured — set `$GIT_TOKEN` to clone private repos.
 
 Need a database? Builders can ask the AI tools ("I need a PostgreSQL database") and Qovery will provision one on demand. See [customization guide](reference/customization.md) to add a database to the blueprint if most builders need one.
 
@@ -53,9 +53,9 @@ A visual builder service (Lovable-like) can be added to the blueprint later — 
 |---|---|---|
 | Auth | [reference/auth.md](reference/auth.md) | Token handling + security rules |
 | Console URL | [reference/console-url-detection.md](reference/console-url-detection.md) | Extract IDs from Console URLs |
-| Phase 1 | [reference/phase1-setup.md](reference/phase1-setup.md) | Auth, org/cluster, API key (1-2 questions) |
-| Phase 2 | [reference/phase2-blueprint.md](reference/phase2-blueprint.md) | Create project, workspace, database, TTL job, deploy, validate, stop |
-| Phase 3 | [reference/phase3-provision.md](reference/phase3-provision.md) | Clone per builder, RBAC role, invite, deploy, share URLs |
+| Phase 1 | [reference/phase1-setup.md](reference/phase1-setup.md) | Check CLI, auth, org/cluster, API key |
+| Phase 2 | [reference/phase2-blueprint.md](reference/phase2-blueprint.md) | Generate Dockerfile, create project + workspace via API, register blueprint, deploy, validate |
+| Phase 3 | [reference/phase3-provision.md](reference/phase3-provision.md) | `qovery rde create` per builder, list, share URLs |
 | Customize | [reference/customization.md](reference/customization.md) | TTL, resources, isolation, SSO, visual builder, Terraform, production graduation |
 
 ## Code templates (copy and adapt)
@@ -63,29 +63,10 @@ A visual builder service (Lovable-like) can be added to the blueprint later — 
 ```
 templates/
 ├── Dockerfile                    # Combined workspace (all-in-one)
-├── entrypoint.sh                 # Startup: git clone, dep install, start code-server
-├── scripts/
-│   ├── builder-manager.sh        # Unified management (provision, list, upgrade, delete, etc.)
-│   ├── smoke-test-workspace.sh   # Validate workspace after provisioning
-│   ├── ttl-stop-job.sh           # Auto-stop cron job reference
-│   └── ttl-delete-job.sh         # Auto-delete cron job reference
+└── entrypoint.sh                 # Startup: git clone, dep install, start code-server
 ```
 
-The builder manager (`templates/scripts/builder-manager.sh`) is the platform team's main tool for managing builder environments. Fill in the IDs at the top after Phase 2 (`ORG_ID`, `CLUSTER_ID`, `BLUEPRINT_ENV_ID`, `DOCKER_HUB_REGISTRY_ID`). All operations are idempotent — safe to run multiple times.
-
-Common commands:
-```bash
-./builder-manager.sh provision alice alice@company.com   # Create a builder
-./builder-manager.sh provision-bulk builders.csv          # Bulk create from CSV
-./builder-manager.sh list                                 # List all builders (status, uptime, URLs)
-./builder-manager.sh upgrade --strategy image             # Upgrade all (redeploy)
-./builder-manager.sh upgrade --strategy reclone           # Upgrade all (re-clone from blueprint)
-./builder-manager.sh stop-all                             # Stop all (cost savings)
-./builder-manager.sh start-all                            # Start all
-./builder-manager.sh delete alice                         # Full cleanup (env, project, role, token)
-./builder-manager.sh blueprint deploy                     # Validate blueprint changes
-./builder-manager.sh info                                 # Platform overview
-```
+All lifecycle management (provision, list, stop, start, upgrade, delete) is handled by the `qovery rde` CLI commands — no scripts needed.
 
 ## Defaults (customizable later)
 
@@ -95,7 +76,7 @@ Common commands:
 | Workspace memory | 2048MB (2GB) | Qovery Console or API |
 | Database | Not included (add on demand or via blueprint) | See [customization.md](reference/customization.md) |
 | TTL (auto-stop) | 24 hours | Edit cron job schedule |
-| Isolation | Project-per-builder | See [customization.md](reference/customization.md) |
+| Isolation | Project-per-builder (`rde-<name>`) | See [customization.md](reference/customization.md) |
 | AI tools | OpenCode + Claude Code | Add API keys as project secrets |
 | Visual builder | Not included (add later) | See [customization.md](reference/customization.md) |
 | Preview | Live Preview extension + auto port forwarding | Built-in |
@@ -114,56 +95,65 @@ Set these on each builder's Qovery environment to auto-load a project on startup
 
 If `GIT_REPO_URL` is not set, the workspace starts with an empty project directory. On container restart, the entrypoint pulls the latest changes instead of re-cloning.
 
-## Quick reference
-
-### CLI commands
+## Quick reference — `qovery rde` CLI
 
 ```bash
-# Builder management (unified script)
-./builder-manager.sh provision alice alice@company.com    # Create
-./builder-manager.sh provision-bulk builders.csv          # Bulk create
-./builder-manager.sh list                                 # List all
-./builder-manager.sh status alice                         # Detailed status
-./builder-manager.sh stop alice                           # Stop one
-./builder-manager.sh stop-all                             # Stop all
-./builder-manager.sh start alice                          # Start one
-./builder-manager.sh start-all                            # Start all
-./builder-manager.sh delete alice                         # Full cleanup
-./builder-manager.sh delete-all --confirm                 # Delete all
-./builder-manager.sh upgrade --strategy image             # Upgrade all (redeploy)
-./builder-manager.sh upgrade alice --strategy reclone     # Upgrade one (re-clone)
-./builder-manager.sh urls                                 # List workspace URLs
-./builder-manager.sh logs alice                           # Stream logs
+# Prerequisite: install the Qovery CLI
+curl -s https://get.qovery.com | bash
+qovery rde --help    # Verify rde command is available
 
 # Blueprint management
-./builder-manager.sh blueprint deploy                     # Deploy for validation
-./builder-manager.sh blueprint stop                       # Stop (save resources)
-./builder-manager.sh blueprint status                     # Show status
+qovery rde blueprint register -o "org" -p "rde-blueprint"
+qovery rde blueprint deploy -o "org" -p "rde-blueprint"
+qovery rde blueprint stop -o "org" -p "rde-blueprint"
+qovery rde blueprint status -o "org" -p "rde-blueprint"
+qovery rde blueprint list -o "org"
 
-# Platform info
-./builder-manager.sh info                                 # Overview
+# Create builders (one command per builder — handles project, RBAC, clone, TTL, invite, deploy)
+qovery rde create -n alice -e alice@company.com -b rde-blueprint -c "cluster" -o "org"
+qovery rde create -n bob -e bob@company.com -b rde-blueprint -c "cluster" -o "org"
+
+# List and status
+qovery rde list -o "org"
+qovery rde list -o "org" --json
+qovery rde status -n alice -o "org"
+qovery rde urls -o "org"
+
+# Lifecycle
+qovery rde stop -n alice -o "org"
+qovery rde stop-all -o "org"
+qovery rde start -n alice -o "org"
+qovery rde start-all -o "org"
+
+# Upgrade after blueprint changes
+qovery rde upgrade -o "org" -s image              # Redeploy all (fast)
+qovery rde upgrade -o "org" -s reclone            # Re-clone all (clean slate)
+qovery rde upgrade -n alice -o "org" -s reclone   # Re-clone one
+
+# Delete (full cleanup: env + project + RBAC role + TTL token)
+qovery rde delete -n alice -o "org"
+qovery rde delete-all -o "org"
+
+# Logs and info
+qovery rde logs -n alice -o "org"
+qovery rde info -o "org"
 ```
 
-### API endpoints
+### API endpoints (used during blueprint creation in Phase 2)
 
 ```
 POST   /organization/{orgId}/project                  Create project
 POST   /project/{projectId}/environment               Create environment
-POST   /environment/{envId}/clone                     Clone (provision builder)
-POST   /environment/{envId}/deploy                    Deploy
-POST   /environment/{envId}/stop                      Stop
-DELETE /environment/{envId}                           Delete
-GET    /environment/{envId}/statuses                  Service statuses
 POST   /environment/{envId}/application               Create workspace service
 POST   /environment/{envId}/job                       Create TTL job
-POST   /organization/{orgId}/customRole               Create RBAC role
-POST   /organization/{orgId}/inviteMember             Invite builder
+POST   /project/{projectId}/environmentVariable       Set project secrets (API keys)
+GET    /organization/{orgId}/containerRegistry         List registries (Docker Hub ID)
 GET    /application/{appId}/link                      Get workspace URL
 ```
 
 ## Next steps
 
-- **Add more builders**: run `./builder-manager.sh provision <name> <email>`
+- **Add more builders**: `qovery rde create -n name -e email -b rde-blueprint -c cluster -o org`
 - **Self-service portal**: say *"Set up a builder portal"* or run `/qovery-builder-portal`
 - **Add a visual builder**: see [customization guide](reference/customization.md)
 - **Terraformize**: run `/qovery-terraform` (coming soon)

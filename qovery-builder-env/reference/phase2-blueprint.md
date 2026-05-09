@@ -1,6 +1,8 @@
 ## Phase 2: Create Blueprint
 
-The blueprint is a fully configured environment that will be cloned for each builder. It contains the workspace service (all-in-one container) and a TTL auto-stop cron job. A database is not included by default — builders can provision one on demand via the AI tools, or the platform team can add one to the blueprint (see [customization.md](customization.md)).
+The blueprint is a fully configured environment that will be cloned for each builder via `qovery rde create`. It contains the workspace service (all-in-one container) and a TTL auto-stop cron job. A database is not included by default — builders can provision one on demand via the AI tools, or the platform team can add one to the blueprint (see [customization.md](customization.md)).
+
+The project should be named `rde-blueprint` (following the `qovery rde` CLI convention).
 
 ### 2.1 Create the project
 
@@ -8,7 +10,7 @@ The blueprint is a fully configured environment that will be cloned for each bui
 curl -s -X POST "https://api.qovery.com/organization/{orgId}/project" \
   -H "Authorization: Bearer $(qovery auth token --print)" \
   -H "Content-Type: application/json" \
-  -d '{"name": "builder-workspaces", "description": "Self-service builder environments"}'
+  -d '{"name": "rde-blueprint", "description": "Blueprint for Remote Development Environments"}'
 ```
 
 Or via CLI:
@@ -144,24 +146,30 @@ curl -s -X POST "https://api.qovery.com/application/{jobId}/secret" \
   -d '{"key": "SHUTDOWN_TOKEN", "value": "{shutdown-token-value}"}'
 ```
 
-### 2.7 Deploy and validate the blueprint
+### 2.7 Register the project as a blueprint
+
+Register the project so the `qovery rde` CLI can discover it as a blueprint:
 
 ```bash
-# Deploy
-curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/deploy" \
-  -H "Authorization: Bearer $(qovery auth token --print)"
+qovery rde blueprint register -o "{org-name}" -p "{project-name}"
 ```
 
-Watch the deployment — poll statuses every 15-30 seconds:
+This sets `BLUEPRINT_PROJECT_ID` on the project and `BLUEPRINT_KEY` on the first DEVELOPMENT environment. The `qovery rde create` command uses these markers to find and clone the blueprint.
+
+Verify it was registered:
 ```bash
-curl -s -H "Authorization: Bearer $(qovery auth token --print)" \
-  "https://api.qovery.com/environment/{blueprintEnvId}/statuses" | jq '{
-    environment: .environment.state,
-    services: [
-      (.applications[] | {name: .name, state, type: "app"}),
-      (.jobs[] | {name: .name, state, type: "job"})
-    ]
-  }'
+qovery rde blueprint list -o "{org-name}"
+```
+
+### 2.8 Deploy and validate the blueprint
+
+```bash
+qovery rde blueprint deploy -o "{org-name}" -p "{project-name}"
+```
+
+Watch the deployment:
+```bash
+qovery rde blueprint status -o "{org-name}" -p "{project-name}"
 ```
 
 When all services are `DEPLOYED`, verify the workspace is accessible:
@@ -175,21 +183,14 @@ Open the URL and confirm VS Code loads in the browser. Check the terminal works 
 
 On failure: fetch logs with `qovery log --service "workspace" --since 10m` and diagnose.
 
-### 2.8 Stop the blueprint
+### 2.9 Stop the blueprint
 
 The blueprint is a template — it should not consume resources when idle:
-```bash
-curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/stop" \
-  -H "Authorization: Bearer $(qovery auth token --print)"
-```
 
-Or using the builder manager:
 ```bash
-./builder-manager.sh blueprint deploy    # deploy for validation
-./builder-manager.sh blueprint status    # check status
-./builder-manager.sh blueprint stop      # stop after validation
+qovery rde blueprint stop -o "{org-name}" -p "{project-name}"
 ```
 
 Confirm to the user:
-> "Blueprint created and validated. The workspace loaded correctly at {url}.
-> Blueprint is now stopped — it will be cloned for each builder in Phase 3."
+> "Blueprint created, registered, and validated. The workspace loaded correctly at {url}.
+> Blueprint is now stopped — use `qovery rde create` to provision builders in Phase 3."
