@@ -90,6 +90,10 @@ RUN mkdir -p /home/coder/.local/share/code-server/User \
 }
 SETTINGS
 
+# Ensure /home/coder is fully owned by coder before switching user
+# (root created .config/ and .local/ dirs above — coder needs write access)
+RUN chown -R coder:coder /home/coder
+
 # ── Switch to coder user for all user-space installations ──────────────
 USER coder
 
@@ -108,8 +112,7 @@ RUN rtk init -g 2>/dev/null || true \
 # ── Entrypoint: clone git repo (if configured), install deps, start code-server
 USER root
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh \
-    && chown -R coder:coder /home/coder
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 USER coder
 WORKDIR /home/coder/project
