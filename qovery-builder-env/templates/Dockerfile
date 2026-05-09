@@ -90,20 +90,19 @@ RUN mkdir -p /home/coder/.local/share/code-server/User \
 }
 SETTINGS
 
-# Ensure /home/coder is fully owned by coder before switching user
-# (root created .config/ and .local/ dirs above — coder needs write access)
-RUN chown -R coder:coder /home/coder
+# Pre-create skill directories + ensure full ownership before switching to coder
+# (root created .config/ and .local/ above — coder needs write access to everything)
+RUN mkdir -p /home/coder/.config/opencode/skills \
+    /home/coder/.config/opencode/commands \
+    /home/coder/.claude/skills \
+    && chown -R coder:coder /home/coder
 
 # ── Switch to coder user for all user-space installations ──────────────
 USER coder
 
 # Qovery Skills — installed as coder so OpenCode and Claude Code can discover them
+# Platform teams can COPY additional skills into the dirs created above.
 RUN curl -fsSL https://skill.qovery.com/install.sh | bash
-
-# Pre-load custom skills: platform teams can COPY additional skills here.
-RUN mkdir -p /home/coder/.config/opencode/skills \
-    /home/coder/.config/opencode/commands \
-    /home/coder/.claude/skills
 
 # Initialize RTK hooks for Claude Code and OpenCode (auto-rewrite shell commands)
 RUN rtk init -g 2>/dev/null || true \
