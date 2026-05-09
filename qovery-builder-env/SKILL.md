@@ -65,13 +65,27 @@ templates/
 ├── Dockerfile                    # Combined workspace (all-in-one)
 ├── entrypoint.sh                 # Startup: git clone, dep install, start code-server
 ├── scripts/
-│   ├── provision-builder.sh      # Per-builder provisioning (clone + TTL + invite)
+│   ├── builder-manager.sh        # Unified management (provision, list, upgrade, delete, etc.)
 │   ├── smoke-test-workspace.sh   # Validate workspace after provisioning
 │   ├── ttl-stop-job.sh           # Auto-stop cron job reference
 │   └── ttl-delete-job.sh         # Auto-delete cron job reference
 ```
 
-The provisioning script (`templates/scripts/provision-builder.sh`) is the platform team's main tool for onboarding new builders. Fill in the IDs at the top after Phase 2 (`ORG_ID`, `CLUSTER_ID`, `BLUEPRINT_ENV_ID`, `DOCKER_HUB_REGISTRY_ID`) and run `./provision-builder.sh <name> <email>`. The script is idempotent — safe to run multiple times.
+The builder manager (`templates/scripts/builder-manager.sh`) is the platform team's main tool for managing builder environments. Fill in the IDs at the top after Phase 2 (`ORG_ID`, `CLUSTER_ID`, `BLUEPRINT_ENV_ID`, `DOCKER_HUB_REGISTRY_ID`). All operations are idempotent — safe to run multiple times.
+
+Common commands:
+```bash
+./builder-manager.sh provision alice alice@company.com   # Create a builder
+./builder-manager.sh provision-bulk builders.csv          # Bulk create from CSV
+./builder-manager.sh list                                 # List all builders (status, uptime, URLs)
+./builder-manager.sh upgrade --strategy image             # Upgrade all (redeploy)
+./builder-manager.sh upgrade --strategy reclone           # Upgrade all (re-clone from blueprint)
+./builder-manager.sh stop-all                             # Stop all (cost savings)
+./builder-manager.sh start-all                            # Start all
+./builder-manager.sh delete alice                         # Full cleanup (env, project, role, token)
+./builder-manager.sh blueprint deploy                     # Validate blueprint changes
+./builder-manager.sh info                                 # Platform overview
+```
 
 ## Defaults (customizable later)
 
@@ -105,19 +119,29 @@ If `GIT_REPO_URL` is not set, the workspace starts with an empty project directo
 ### CLI commands
 
 ```bash
-# Blueprint
-qovery environment deploy --environment "builder-blueprint"
-qovery environment stop --environment "builder-blueprint"
+# Builder management (unified script)
+./builder-manager.sh provision alice alice@company.com    # Create
+./builder-manager.sh provision-bulk builders.csv          # Bulk create
+./builder-manager.sh list                                 # List all
+./builder-manager.sh status alice                         # Detailed status
+./builder-manager.sh stop alice                           # Stop one
+./builder-manager.sh stop-all                             # Stop all
+./builder-manager.sh start alice                          # Start one
+./builder-manager.sh start-all                            # Start all
+./builder-manager.sh delete alice                         # Full cleanup
+./builder-manager.sh delete-all --confirm                 # Delete all
+./builder-manager.sh upgrade --strategy image             # Upgrade all (redeploy)
+./builder-manager.sh upgrade alice --strategy reclone     # Upgrade one (re-clone)
+./builder-manager.sh urls                                 # List workspace URLs
+./builder-manager.sh logs alice                           # Stream logs
 
-# Provisioning
-./provision-builder.sh alice alice@company.com
+# Blueprint management
+./builder-manager.sh blueprint deploy                     # Deploy for validation
+./builder-manager.sh blueprint stop                       # Stop (save resources)
+./builder-manager.sh blueprint status                     # Show status
 
-# Management
-qovery environment list
-qovery environment stop --environment "workspace"
-qovery environment delete --environment "workspace"
-qovery log --service "workspace" --follow
-qovery status --watch
+# Platform info
+./builder-manager.sh info                                 # Overview
 ```
 
 ### API endpoints
@@ -139,7 +163,7 @@ GET    /application/{appId}/link                      Get workspace URL
 
 ## Next steps
 
-- **Add more builders**: run `./provision-builder.sh <name> <email>`
+- **Add more builders**: run `./builder-manager.sh provision <name> <email>`
 - **Self-service portal**: say *"Set up a builder portal"* or run `/qovery-builder-portal`
 - **Add a visual builder**: see [customization guide](reference/customization.md)
 - **Terraformize**: run `/qovery-terraform` (coming soon)

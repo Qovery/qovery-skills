@@ -12,7 +12,11 @@ If the user provides names without emails, ask for emails — they're needed for
 
 ### 3.2 For each builder, execute these steps
 
-Use the provisioning script at `templates/scripts/provision-builder.sh` or execute the steps manually via the API.
+Use the builder manager script at `templates/scripts/builder-manager.sh` or execute the steps manually via the API.
+
+```bash
+./builder-manager.sh provision alice alice@company.com
+```
 
 **Step 1: Create a project for this builder** (project-per-builder isolation)
 
@@ -160,12 +164,22 @@ curl -s -H "Authorization: Bearer $(qovery auth token --print)" \
 > ./provision-builder.sh <name> <email>
 > ```
 
-### 3.5 Provide provisioning script
+### 3.5 Provide the builder manager script
 
-Copy `templates/scripts/provision-builder.sh` and fill in the IDs at the top (org, cluster, blueprint env). The script handles all 6 steps above in one command.
+Copy `templates/scripts/builder-manager.sh` and fill in the IDs at the top (ORG_ID, CLUSTER_ID, BLUEPRINT_ENV_ID, DOCKER_HUB_REGISTRY_ID). The script handles provisioning plus all lifecycle operations (list, stop, start, delete, upgrade).
 
 Tell the user:
-> "I've provided the provisioning script with your IDs filled in. Save it and use it to onboard new builders in the future."
+> "I've provided the builder-manager.sh script with your IDs filled in. Use it to manage builder environments:
+> ```bash
+> ./builder-manager.sh provision <name> <email>   # Add a builder
+> ./builder-manager.sh list                        # See all builders
+> ./builder-manager.sh stop-all                    # Stop all (end of day)
+> ./builder-manager.sh start-all                   # Start all (morning)
+> ./builder-manager.sh upgrade --strategy image    # Apply template changes
+> ./builder-manager.sh delete <name>               # Full cleanup
+> ./builder-manager.sh blueprint deploy            # Validate blueprint changes
+> ./builder-manager.sh info                        # Platform overview
+> ```"
 
 ### 3.6 Next steps
 
@@ -173,6 +187,7 @@ Tell the user:
 >
 > Optional next steps:
 > - **Self-service portal**: say *"Set up a builder portal"* or run `/qovery-builder-portal` to give builders a web UI for creating their own environments
+> - **Upgrade all builders** after template changes: `./builder-manager.sh upgrade --strategy image` (redeploy) or `--strategy reclone` (full re-clone)
 > - **Add a visual builder**: see the [customization guide](customization.md) to add a Lovable-like service to the blueprint
 > - **Customize TTL, resources, isolation**: see the [customization guide](customization.md)
 > - **Terraformize**: run `/qovery-terraform` to convert this setup to Terraform manifests (coming soon)

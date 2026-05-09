@@ -220,6 +220,26 @@ All outbound traffic is routed through the proxy, and only allowlisted domains a
 
 Instead of a fixed 24h TTL, add an idle monitor that stops the environment after N minutes of no terminal or editor activity. This requires s6-overlay to manage the monitor as a service alongside code-server.
 
+### Applying Template Changes to Existing Builders
+
+After modifying the blueprint (Dockerfile, extensions, settings), use the builder manager to upgrade all existing builder environments:
+
+```bash
+# Strategy 1: image-only (fast, preserves env state, just rebuilds/redeploys)
+./builder-manager.sh upgrade --strategy image
+
+# Strategy 2: reclone (clean slate, re-clones from updated blueprint)
+# WARNING: destroys uncommitted changes — code in git is safe
+./builder-manager.sh upgrade --strategy reclone
+
+# Upgrade a specific builder only
+./builder-manager.sh upgrade alice --strategy image
+```
+
+The `image` strategy just redeploys (re-pulls/rebuilds the Docker image). Use this for Dockerfile changes (new tools, updated versions).
+
+The `reclone` strategy deletes the environment and re-clones from the blueprint. Use this for structural changes (new services, different configuration). The builder's git repo is automatically re-cloned on next start via `entrypoint.sh`.
+
 ### Terraform
 
 To terraformize the existing builder environment setup into `.tf` manifests, use the `qovery-terraform` skill (coming soon). It will reverse-engineer the current Qovery configuration into Terraform resources using the Qovery Terraform Provider.

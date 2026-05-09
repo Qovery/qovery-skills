@@ -183,6 +183,13 @@ curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/stop" \
   -H "Authorization: Bearer $(qovery auth token --print)"
 ```
 
+Or using the builder manager:
+```bash
+./builder-manager.sh blueprint deploy    # deploy for validation
+./builder-manager.sh blueprint status    # check status
+./builder-manager.sh blueprint stop      # stop after validation
+```
+
 Confirm to the user:
 > "Blueprint created and validated. The workspace loaded correctly at {url}.
 > Blueprint is now stopped — it will be cloned for each builder in Phase 3."
