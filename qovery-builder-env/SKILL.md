@@ -38,12 +38,20 @@ Builder Environment Setup:
 
 | Service | What | Port | Notes |
 |---------|------|------|-------|
-| workspace | VS Code (code-server) + OpenCode + Claude Code + RTK + GitHub CLI + Qovery CLI + Node.js + Python + Git | 8080 | All-in-one container — `templates/Dockerfile` |
+| workspace | VS Code + Claude Code sidebar + OpenCode + RTK + GitHub CLI + Qovery CLI + Node.js + Python + Git + Live Preview + WELCOME.md + builder skill + startup extension | 8080 | Template: [evoxmusic/remote-dev-env-template](https://github.com/evoxmusic/remote-dev-env-template) |
 | ttl-auto-shutdown | Cron job — stops env after 24h | — | `curlimages/curl:8.11.1` via Docker Hub registry |
 
-Non-tech builders open the workspace URL in a browser and get VS Code. Tech builders open the integrated terminal (Ctrl+\`) and run `opencode` or `claude` for AI-powered coding. RTK auto-compresses shell output to reduce LLM token costs by 60-90%. GitHub CLI (`gh`) is pre-installed for repo operations. Git credential helper is configured — set `$GIT_TOKEN` to clone private repos.
+When a builder opens the workspace URL:
+- The **Claude Code sidebar** auto-opens on the left (via the builder-startup-extension)
+- A **WELCOME.md** guide opens in the editor — walks non-tech users through their first build in 2 minutes
+- A **CLAUDE.md** file is generated with calibrated instructions (zero-jargon for beginners, technical for devs)
+- If `GIT_REPO_URL` is set, the project is auto-cloned and dependencies installed
+- If a `package.json` with a `dev` script exists, a VS Code task auto-starts the dev server on port 3100
+- The **Live Preview** extension shows the app inline in VS Code
 
-Need a database? Builders can ask the AI tools ("I need a PostgreSQL database") and Qovery will provision one on demand. See [customization guide](reference/customization.md) to add a database to the blueprint if most builders need one.
+Non-tech builders talk to Claude in the sidebar — they never need to touch the terminal. Tech builders open the terminal (Ctrl+\`) and run `opencode` or `claude`. RTK auto-compresses shell output to reduce LLM token costs by 60-90%.
+
+Need a database? Builders can ask the AI tools ("I need a PostgreSQL database") and Qovery will provision one on demand. See [customization guide](reference/customization.md) to add a database to the blueprint.
 
 A visual builder service (Lovable-like) can be added to the blueprint later — see [customization guide](reference/customization.md).
 
@@ -58,15 +66,27 @@ A visual builder service (Lovable-like) can be added to the blueprint later — 
 | Phase 3 | [reference/phase3-provision.md](reference/phase3-provision.md) | `qovery rde create` per builder, list, share URLs |
 | Customize | [reference/customization.md](reference/customization.md) | TTL, resources, isolation, SSO, visual builder, Terraform, production graduation |
 
-## Code templates (copy and adapt)
+## Builder Workspace Template
 
-```
-templates/
-├── Dockerfile                    # Combined workspace (all-in-one)
-└── entrypoint.sh                 # Startup: git clone, dep install, start code-server
-```
+The workspace container is defined in a public template repository:
 
-All lifecycle management (provision, list, stop, start, upgrade, delete) is handled by the `qovery rde` CLI commands — no scripts needed.
+**https://github.com/evoxmusic/remote-dev-env-template.git**
+
+This repository contains everything the workspace needs:
+
+| File/Directory | Purpose |
+|---|---|
+| `Dockerfile` | All-in-one container: code-server + Claude Code + OpenCode + RTK + GitHub CLI + Qovery CLI + Node.js + Python + Git + Live Preview |
+| `entrypoint.sh` | Startup: git clone, dep install, WELCOME.md generation, CLAUDE.md generation, VS Code tasks auto-config, code-server start |
+| `builder-skill/CLAUDE.md` | Instructions for Claude Code — calibrated for non-tech users (zero jargon mode, communication rules, technical defaults) |
+| `builder-skill/SKILL.md` | Same instructions for OpenCode discovery |
+| `builder-startup-extension/` | Custom VS Code extension: auto-opens Claude Code sidebar + WELCOME.md on workspace start |
+
+The blueprint workspace application points directly to this repository. No need to copy or push files — the template repo is the source.
+
+**To customize:** fork the template repo and update the blueprint's git URL. See [customization guide](reference/customization.md).
+
+All lifecycle management (provision, list, stop, start, upgrade, delete) is handled by the `qovery rde` CLI commands.
 
 ## Defaults (customizable later)
 

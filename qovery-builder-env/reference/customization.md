@@ -2,6 +2,34 @@
 
 After the blueprint is running, customize any of these settings. All changes are optional — the defaults work for most teams.
 
+### Fork the Template Repository
+
+The workspace is defined in a public template repository:
+
+**https://github.com/evoxmusic/remote-dev-env-template.git**
+
+To customize anything about the workspace (Dockerfile, tools, extensions, WELCOME.md, builder skill instructions, startup behavior), **fork this repository** and modify it:
+
+1. Fork `https://github.com/evoxmusic/remote-dev-env-template` to your organization
+2. Make your changes (edit Dockerfile, builder-skill/CLAUDE.md, entrypoint.sh, etc.)
+3. Update the blueprint's workspace application to point to your fork:
+   ```bash
+   # Update the git repository URL on the workspace application
+   curl -s -X PUT "https://api.qovery.com/application/{workspaceAppId}" \
+     -H "Authorization: Bearer $(qovery auth token --print)" \
+     -H "Content-Type: application/json" \
+     -d '{"git_repository": {"url": "https://github.com/YOUR-ORG/remote-dev-env-template.git", "branch": "main", "root_path": "/", "provider": "GITHUB"}, ...all other required fields...}'
+   ```
+4. Redeploy the blueprint: `qovery rde blueprint deploy -o "org" -p "rde-blueprint"`
+5. Upgrade existing builders: `qovery rde upgrade -o "org" -s image`
+
+Key files in the template repo:
+- `Dockerfile` — container image (tools, extensions, VS Code settings)
+- `entrypoint.sh` — startup behavior (git clone, dep install, WELCOME.md generation)
+- `builder-skill/CLAUDE.md` — instructions for Claude Code (tone, rules, defaults)
+- `builder-skill/SKILL.md` — same instructions for OpenCode
+- `builder-startup-extension/` — VS Code extension (auto-opens Claude sidebar + WELCOME.md)
+
 ### Change TTL (auto-stop/auto-delete)
 
 **Default:** 24h auto-stop, 7d auto-delete.
@@ -128,35 +156,37 @@ The workspace includes two mechanisms for previewing web apps:
 
 ### Pre-load Custom Skills
 
-The workspace container comes with all Qovery skills pre-installed. To add your own company-specific skills (custom deployment workflows, internal tool generators, etc.), extend the Dockerfile:
+The template repo already includes `builder-skill/CLAUDE.md` and `builder-skill/SKILL.md` with non-tech user instructions (calibration, communication rules, technical defaults, deploy guidance). These are copied into the builder's project on first startup by `entrypoint.sh`.
+
+To customize the builder instructions:
+1. Fork the template repo (see above)
+2. Edit `builder-skill/CLAUDE.md` — this controls how Claude Code behaves in the workspace
+3. Edit `builder-skill/SKILL.md` — same content for OpenCode discovery
+4. Rebuild and upgrade
+
+The workspace also installs all Qovery skills via `curl -fsSL https://skill.qovery.com/install.sh | bash` at build time. To add company-specific skills, add `COPY` lines to the Dockerfile in your fork:
 
 ```dockerfile
-# Add your custom skills to the workspace
 COPY my-company-skills/ /home/coder/.config/opencode/skills/
-```
-
-Or add custom slash commands:
-```dockerfile
 COPY my-commands/ /home/coder/.config/opencode/commands/
-```
-
-Skills placed in `/home/coder/.config/opencode/skills/` are automatically discovered by OpenCode and Claude Code. Each skill must be a directory containing a `SKILL.md` file with the proper frontmatter.
-
-To add skills at runtime (without rebuilding the image), mount a volume:
-```
-# Set as a Qovery environment variable or in the service configuration
-# Mount path: /home/coder/.config/opencode/skills/my-custom-skill
 ```
 
 ### Add or Remove VS Code Extensions
 
-The workspace uses the Microsoft VS Code Marketplace (configured via `EXTENSIONS_GALLERY` env var in the Dockerfile). To add more extensions, add lines to the Dockerfile:
+The template repo's Dockerfile uses the Microsoft VS Code Marketplace. To add extensions, edit the Dockerfile in your fork:
 
 ```dockerfile
-RUN code-server --install-extension <publisher>.<extension-name>
+RUN code-server --user-data-dir /home/coder/.local/share/code-server \
+      --install-extension <publisher>.<extension-name>
 ```
 
-To revert to Open VSX (the default code-server registry), remove the `EXTENSIONS_GALLERY` environment variable from the Dockerfile.
+Note: use `--user-data-dir /home/coder/.local/share/code-server` to ensure extensions install into the correct location (the template repo uses this pattern).
+
+### Customize the Startup Experience
+
+The template repo includes a `builder-startup-extension/` that auto-opens the Claude Code sidebar and WELCOME.md on workspace start. To modify this behavior, edit `builder-startup-extension/extension.js` in your fork.
+
+The `entrypoint.sh` also auto-generates a `.vscode/tasks.json` that starts the dev server on folder open (if `package.json` has a `dev` script). To change this behavior, edit `entrypoint.sh` in your fork.
 
 ### Add a Visual Builder Service
 

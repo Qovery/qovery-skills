@@ -42,16 +42,19 @@ curl -s -X POST "https://api.qovery.com/project/{projectId}/environment" \
 
 ### 2.4 Add the workspace service
 
-The workspace uses `templates/Dockerfile` + `templates/entrypoint.sh` — the combined all-in-one container with VS Code, Claude Code, OpenCode, RTK, Qovery CLI, Node.js, Python, Git, and Live Preview. The entrypoint auto-clones a git repo on startup if `GIT_REPO_URL` is set (with `GIT_TOKEN` for authentication — auto-detects GitHub/GitLab/Bitbucket).
+The workspace is defined in a public template repository that contains everything needed:
+- `Dockerfile` — all-in-one container (code-server + Claude Code + OpenCode + RTK + GitHub CLI + Qovery CLI + Node.js + Python + Git + Live Preview)
+- `entrypoint.sh` — startup script (git clone, dep install, WELCOME.md/CLAUDE.md generation, VS Code tasks auto-config)
+- `builder-skill/` — CLAUDE.md + SKILL.md with non-tech user instructions (calibration, communication rules, technical defaults)
+- `builder-startup-extension/` — custom VS Code extension that auto-opens Claude Code sidebar + WELCOME.md on start
 
-Both the Dockerfile and entrypoint.sh need to be in a git repository for Qovery to build. Ask the user:
-> "Which git repository should I push the workspace Dockerfile to? (Or provide a path if it's already in a repo)"
+Use the template repository directly as the git source — no need to copy files or push a Dockerfile:
 
-Options:
-- Push to an existing repo (e.g., `infra/builder-workspace/Dockerfile`)
-- Create a new repo (e.g., `qovery-builder-platform`)
+**Template URL:** `https://github.com/evoxmusic/remote-dev-env-template.git`
 
-After the Dockerfile is in git, create the workspace application:
+If the platform team has a custom fork of the template, use their fork URL instead. To customize the workspace, fork the template repo and modify it. See [customization.md](customization.md).
+
+Create the workspace application:
 
 ```bash
 curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/application" \
@@ -59,11 +62,11 @@ curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/application
   -H "Content-Type: application/json" \
   -d '{
     "name": "workspace",
-    "description": "Builder workspace — VS Code + OpenCode + Claude Code",
+    "description": "Builder workspace — VS Code + Claude Code + OpenCode",
     "git_repository": {
-      "url": "{git-repo-url}",
+      "url": "https://github.com/evoxmusic/remote-dev-env-template.git",
       "branch": "main",
-      "root_path": "{path-to-dockerfile-dir}",
+      "root_path": "/",
       "provider": "GITHUB"
     },
     "build_mode": "DOCKER",
