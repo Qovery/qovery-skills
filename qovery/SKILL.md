@@ -55,6 +55,7 @@ Analyze the user's message and route to the appropriate specialized skill. **Aut
 | Preview environment, PR environment, test branch | `qovery-preview` | "preview for PR-123", "test this branch", "preview environment", "clone for PR" |
 | Builder environments, non-tech teams, self-service dev | `qovery-builder-env` | "builder environments", "non-tech teams", "vibe coding", "sales team needs to build" |
 | Self-service portal, web UI for builders | `qovery-builder-portal` | "builder portal", "self-service web UI", "web interface for builders" |
+| Terraformize existing setup, convert to IaC | `qovery-terraform` | "terraformize", "convert to terraform", "export as IaC", "terraform manifests", "infrastructure as code" |
 
 ### Auto-Routing
 
@@ -306,6 +307,7 @@ Quick reference for all specialized skills. When routing, tell the user which sk
 | `qovery-preview` | Preview environments for PRs with auto-shutdown | "Preview PR-123" |
 | `qovery-builder-env` | Builder workspaces for non-tech teams with RBAC + TTL | "Set up builder environments" |
 | `qovery-builder-portal` | Self-service web portal for builders (Vite + React) | "Deploy the builder portal" |
+| `qovery-terraform` | Generate Terraform manifests from existing Qovery setup | "Terraformize my setup" |
 
 ---
 

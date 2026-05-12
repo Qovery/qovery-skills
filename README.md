@@ -18,6 +18,7 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | **qovery-preview** | Create preview environments from PRs — detects/creates blueprint environments, clones for each PR, switches branches, configures auto-shutdown (stop/delete/recycle), provides cleanup. Includes `/qovery-preview` slash command |
 | **qovery-builder-env** | Set up self-service builder environments for non-tech teams (sales, finance, ops) — creates controlled workspaces with AI coding tools (VS Code + Copilot, Claude Code, OpenCode), Qovery deployment built-in, RBAC, cost controls, SSO, and optional Terraform IaC |
 | **qovery-builder-portal** | Generate and deploy a self-service web portal for builders — SSO login, one-click environment creation from templates, dashboard with status/URLs/TTL, start/stop/extend/delete controls. Built with Vite + React + TanStack Router + Tailwind + Express. Deployed on Qovery |
+| **qovery-terraform** | Generate Terraform manifests from an existing Qovery setup — reads config from API, generates HCL (qovery/qovery provider), imports resources into state, validates in test clone. Supports single or multiple environments. Safe: never applies to original without confirmation |
 
 ## Quick Install
 
@@ -227,6 +228,13 @@ The onboard skill acts as your personal cloud architect. The deploy skill handle
 - _"Deploy the builder self-service interface"_
 - `/qovery-builder-portal` (slash command)
 
+**Prompts that trigger qovery-terraform:**
+- _"Terraformize my Qovery setup"_
+- _"Convert my environment to Terraform"_
+- _"Export my Qovery config as infrastructure-as-code"_
+- _"Generate Terraform from my existing project"_
+- `/qovery-terraform` (slash command)
+
 ## Slash Commands
 
 Each skill includes a slash command for quick invocation. Type `/` followed by the command name in your AI tool's chat:
@@ -242,6 +250,7 @@ Each skill includes a slash command for quick invocation. Type `/` followed by t
 | `/qovery-preview` | Create a preview environment for a PR | `/qovery-preview` or `/qovery-preview PR-123` |
 | `/qovery-builder-env` | Set up builder environments for non-tech teams | `/qovery-builder-env` or `/qovery-builder-env sales 5` |
 | `/qovery-builder-portal` | Deploy a self-service web portal for builders | `/qovery-builder-portal` or `/qovery-builder-portal google` |
+| `/qovery-terraform` | Generate Terraform from existing Qovery setup | `/qovery-terraform` or `/qovery-terraform https://console.qovery.com/...` |
 
 Commands are installed automatically by the install script. They accept optional arguments (service name, environment name, Console URL) and auto-detect context from your git workspace.
 
@@ -374,6 +383,16 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 | **5. Deploy** | Save generated code to git, create Qovery project + application, set env vars + secrets, configure custom domain, deploy, verify SSO + environment creation flow |
 | **6. Operations** | Generate operations guide: add templates, change branding, rotate credentials, monitoring, troubleshooting |
 
+### qovery-terraform
+
+| Phase | Description |
+|-------|-------------|
+| **1. Context** | Check Terraform + CLI installed, authenticate, identify target (Console URL or names), read full config from API (environments, applications, containers, databases, jobs, helms, env vars, deployment stages) |
+| **2. Generate** | Produce HCL files: provider.tf, variables.tf, {env}.tf (all resources), outputs.tf, terraform.tfvars. Map API responses to Terraform resource attributes. Secrets as variable references, never plaintext |
+| **3. Import** | `terraform init` + `terraform import` for every resource. `terraform plan` must show zero changes. Fix HCL until plan is clean |
+| **4. Validate** | Clone to test project, apply Terraform there, verify all services deploy correctly, clean up. Recommended but skippable |
+| **5. Finalize** | Save files, git commit, provide import.sh script, safety warnings (managed databases, state management, secrets handling) |
+
 ## Deployment Methods
 
 The skill supports two deployment paths — the user chooses which one:
@@ -393,19 +412,19 @@ git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
 # Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.agents/skills/
+mkdir -p ~/.claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal qovery-terraform ~/.claude/skills/
+mkdir -p ~/.config/opencode/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal qovery-terraform ~/.config/opencode/skills/
+mkdir -p ~/.agents/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal qovery-terraform ~/.agents/skills/
 
 # Install all slash commands (Claude Code, OpenCode, etc.)
 mkdir -p ~/.claude/commands && cp qovery-*/commands/*.md ~/.claude/commands/
 mkdir -p ~/.config/opencode/commands && cp qovery-*/commands/*.md ~/.config/opencode/commands/
 
 # Or project-local install
-mkdir -p .claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal .claude/skills/
+mkdir -p .claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal qovery-terraform .claude/skills/
 ```
 
-Verify the skills are discovered by checking if your tool lists all nine Qovery skills.
+Verify the skills are discovered by checking if your tool lists all ten Qovery skills.
 
 ## Links
 

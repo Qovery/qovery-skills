@@ -242,7 +242,15 @@ The `reclone` strategy deletes the environment and re-clones from the blueprint.
 
 ### Terraform
 
-To terraformize the existing builder environment setup into `.tf` manifests, use the `qovery-terraform` skill (coming soon). It will reverse-engineer the current Qovery configuration into Terraform resources using the Qovery Terraform Provider.
+To terraformize the existing builder environment setup into `.tf` manifests, use the `qovery-terraform` skill:
+
+```
+/qovery-terraform
+```
+
+Or say: *"Terraformize my Qovery setup"*
+
+The skill reads the current configuration from the Qovery API, generates HCL for the Qovery Terraform provider (`qovery/qovery ~> 0.54.0`), imports existing resources into Terraform state, and validates in a test clone. It safely converts Console-managed resources to infrastructure-as-code without disrupting the existing environment.
 
 For manual Terraform setup, see the Qovery Terraform Provider docs:
 https://registry.terraform.io/providers/Qovery/qovery/latest/docs
