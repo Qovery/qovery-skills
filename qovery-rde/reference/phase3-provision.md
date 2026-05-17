@@ -115,7 +115,6 @@ Tell the user:
 > **Your builder environments are ready!**
 >
 > Optional next steps:
-> - **Self-service portal**: say *"Set up a builder portal"* or run `/qovery-builder-portal` to give builders a web UI for creating their own environments
 > - **Upgrade all builders** after template changes: `qovery rde upgrade -o org -s image`
 > - **Add a visual builder**: see the [customization guide](customization.md) to add a Lovable-like service to the blueprint
 > - **Customize TTL, resources, isolation**: see the [customization guide](customization.md)

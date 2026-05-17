@@ -137,7 +137,7 @@ curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/job" \
     "source": {"image": {"image_name": "curlimages/curl", "tag": "8.11.1", "registry_id": "{DOCKER_HUB_REGISTRY_ID}"}},
     "schedule": {"cronjob": {
       "entrypoint": "sh",
-      "arguments": ["-c", "curl -sf -H '\''User-Agent: QoverySkill/qovery-builder-env-ttl'\'' -X POST https://api.qovery.com/environment/{blueprintEnvId}/stop -H \"Authorization: Token $SHUTDOWN_TOKEN\" || true"],
+      "arguments": ["-c", "curl -sf -H '\''User-Agent: QoverySkill/qovery-rde-ttl'\'' -X POST https://api.qovery.com/environment/{blueprintEnvId}/stop -H \"Authorization: Token $SHUTDOWN_TOKEN\" || true"],
       "scheduled_at": "0 */24 * * *", "timezone": "Etc/UTC"
     }}
   }'

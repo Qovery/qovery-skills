@@ -1,2 +1,0 @@
-- GET / → return loadConfig().templates (array of Template objects)
-- No complex logic — just read from config and return

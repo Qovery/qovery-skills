@@ -1,14 +1,14 @@
 ---
-name: qovery-builder-env
-description: Set up self-service builder environments (Remote Development Environments) for non-tech and tech teams. Ships an opinionated workspace blueprint (VS Code + OpenCode + Claude Code) that works out of the box. Uses the Qovery CLI `qovery rde` commands for lifecycle management. Use when a platform engineer wants to give teams the ability to build and deploy apps on Qovery.
+name: qovery-rde
+description: Set up Remote Development Environments (RDEs) on Qovery. Creates a blueprint workspace with VS Code, OpenCode, and Claude Code, then provisions isolated RDE instances for team members via `qovery rde` CLI. Use when the user wants remote dev environments, RDEs, or cloud workspaces for their team.
 license: MIT
 compatibility: opencode
 metadata:
   audience: platform-engineers
-  workflow: builder-environments
+  workflow: rde
 ---
 
-# Qovery Builder Environment Skill
+# Qovery RDE Skill
 
 Ships an opinionated, production-ready builder workspace that works out of the box. One combined container with VS Code (code-server), OpenCode, Claude Code, RTK (60-90% token savings), GitHub CLI, Qovery CLI, Node.js, Python, and Git. Non-tech builders use the VS Code UI; tech builders open the integrated terminal and run `opencode` or `claude`.
 
@@ -23,7 +23,7 @@ Trigger phrases:
 - "Set up a self-service platform for internal tool builders"
 - "Create a controlled environment where business teams can vibe-code"
 - "Set up remote dev environments managed by Qovery"
-- `/qovery-builder-env` (slash command)
+- `/qovery-rde` (slash command)
 
 ## Workflow checklist
 
@@ -174,7 +174,6 @@ GET    /application/{appId}/link                      Get workspace URL
 ## Next steps
 
 - **Add more builders**: `qovery rde create -n name -e email -b rde-blueprint -c cluster -o org`
-- **Self-service portal**: say *"Set up a builder portal"* or run `/qovery-builder-portal`
 - **Add a visual builder**: see [customization guide](reference/customization.md)
 - **Terraformize**: run `/qovery-terraform` (coming soon)
 - **Customize**: see [customization guide](reference/customization.md)
