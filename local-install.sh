@@ -176,6 +176,44 @@ echo -e "${BOLD}Installing Qovery skills (symlinks)...${NC}"
 echo -e "  Source: ${BLUE}$REPO_DIR${NC}"
 echo ""
 
+# Clean up stale qovery-* skill dirs and command symlinks from previous installs
+# (e.g. skills that were renamed or removed from the SKILLS array).
+cleaned=0
+while IFS= read -r base; do
+  # Clean stale skill directories
+  for existing in "$base"/qovery-*; do
+    [ -e "$existing" ] || [ -L "$existing" ] || continue
+    skill_name=$(basename "$existing")
+    is_current=0
+    for s in "${SKILLS[@]}"; do
+      [ "$s" = "$skill_name" ] && { is_current=1; break; }
+    done
+    if [ "$is_current" = "0" ]; then
+      rm -rf "$existing"
+      echo -e "  ${RED}Cleaned stale${NC} $existing"
+      cleaned=$((cleaned + 1))
+    fi
+  done
+  # Clean stale command symlinks (commands/ sits alongside skills/)
+  cmd_base="$(dirname "$base")/commands"
+  if [ -d "$cmd_base" ]; then
+    for cmd_file in "$cmd_base"/qovery-*.md; do
+      [ -e "$cmd_file" ] || [ -L "$cmd_file" ] || continue
+      cmd_name=$(basename "$cmd_file" .md)
+      is_current=0
+      for s in "${SKILLS[@]}"; do
+        [ "$s" = "$cmd_name" ] && { is_current=1; break; }
+      done
+      if [ "$is_current" = "0" ]; then
+        rm -f "$cmd_file"
+        echo -e "  ${RED}Cleaned stale${NC} $cmd_file"
+        cleaned=$((cleaned + 1))
+      fi
+    done
+  fi
+done < <(get_base_dirs "$MODE")
+[ "$cleaned" -gt 0 ] && echo ""
+
 installed=0
 
 for skill in "${SKILLS[@]}"; do

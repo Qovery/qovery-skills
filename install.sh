@@ -164,6 +164,26 @@ fi
 echo -e "  Version: ${BLUE}${SKILLS_VERSION}${NC}"
 echo ""
 
+# Clean up stale qovery-* skill dirs from previous installs
+# (e.g. skills that were renamed or removed from the SKILLS array).
+cleaned=0
+while IFS= read -r base; do
+  for existing in "$base"/qovery-*; do
+    [ -e "$existing" ] || [ -L "$existing" ] || continue
+    skill_name=$(basename "$existing")
+    is_current=0
+    for s in "${SKILLS[@]}"; do
+      [ "$s" = "$skill_name" ] && { is_current=1; break; }
+    done
+    if [ "$is_current" = "0" ]; then
+      rm -rf "$existing"
+      echo -e "  ${RED}Cleaned stale${NC} $existing"
+      cleaned=$((cleaned + 1))
+    fi
+  done
+done < <(get_base_dirs "$MODE")
+[ "$cleaned" -gt 0 ] && echo ""
+
 installed=0
 
 for skill in "${SKILLS[@]}"; do
