@@ -31,7 +31,7 @@ Trigger phrases:
 Builder Environment Setup:
 - [ ] Phase 1 — Setup: check CLI installed, auth, org/cluster, API key
 - [ ] Phase 2 — Blueprint: generate Dockerfile + entrypoint.sh, create project + workspace via API, register blueprint, deploy, validate, stop
-- [ ] Phase 3 — Provision: `qovery rde create` per builder, list, share URLs
+- [ ] Phase 3 — Provision: ask git repo config questions, `qovery rde create` per builder, set env vars, list, share URLs
 ```
 
 ## What's in the blueprint
@@ -101,19 +101,24 @@ All lifecycle management (provision, list, stop, start, upgrade, delete) is hand
 | Visual builder | Not included (add later) | See [customization.md](reference/customization.md) |
 | Preview | Live Preview extension + auto port forwarding | Built-in |
 
-### Per-builder environment variables (optional)
+### Git repository configuration (ask during Phase 3)
 
-Set these on each builder's Qovery environment to auto-load a project on startup:
+**Before creating RDEs, ask the user** whether builders will work on an existing git repository or start with an empty project. If a git repo is involved, gather the details and configure the environment variables below on each builder's Qovery environment. See [Phase 3](reference/phase3-provision.md) for the exact questions and API calls.
+
+These environment variables are read by the workspace [entrypoint.sh](https://github.com/evoxmusic/remote-dev-env-template/blob/main/entrypoint.sh) at container startup:
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `GIT_REPO_URL` | No | — | HTTPS URL of the repo to clone (e.g., `https://github.com/org/project.git`) |
-| `GIT_TOKEN` | No | — | Git personal access token (secret). Auto-detects provider (GitHub/GitLab/Bitbucket) |
+| `GIT_TOKEN` | No | — | Git personal access token (secret). Auto-detects provider from URL (GitHub/GitLab/Bitbucket) |
+| `GITHUB_TOKEN` | No | — | Fallback for `GIT_TOKEN` (GitHub repos only). Use `GIT_TOKEN` for multi-provider support |
 | `GIT_BRANCH` | No | `main` | Branch to checkout |
 | `GIT_USER_NAME` | No | — | Git author name for commits |
 | `GIT_USER_EMAIL` | No | — | Git author email for commits |
 
 If `GIT_REPO_URL` is not set, the workspace starts with an empty project directory. On container restart, the entrypoint pulls the latest changes instead of re-cloning.
+
+The entrypoint also auto-detects and installs dependencies (`npm install` for Node.js, `pip install -r requirements.txt` for Python) and auto-generates `.vscode/tasks.json` to start the dev server if a `dev`/`start`/`serve` script is found in `package.json`.
 
 ## Quick reference — `qovery rde` CLI
 
