@@ -16,12 +16,13 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | **qovery-optimize** | Optimize costs and right-size resources — analyzes historical consumption, understands business context (seasonal, growth), estimates cloud costs, generates detailed reports with CSV export |
 | **qovery-speedup** | Speed up deployments — measures pipeline timeline, identifies bottlenecks (build, startup, health check, scheduling), classifies user vs Qovery responsibility, proposes Dockerfile and config fixes |
 | **qovery-preview** | Create preview environments from PRs — detects/creates blueprint environments, clones for each PR, switches branches, configures auto-shutdown (stop/delete/recycle), provides cleanup. Includes `/qovery-preview` slash command |
-| **qovery-rde** | Set up Remote Development Environments (RDEs) — creates blueprint workspaces with AI coding tools (VS Code, Claude Code, OpenCode), Qovery deployment built-in, RBAC, cost controls, and lifecycle management via `qovery rde` CLI |
 | **qovery-terraform** | Generate Terraform manifests from an existing Qovery setup — reads config from API, generates HCL (qovery/qovery provider), imports resources into state, validates in test clone. Supports single or multiple environments. Safe: never applies to original without confirmation |
+
+> **Looking for Remote Development Environments (RDEs)?** RDEs are now managed directly via [rde.qovery.com](https://rde.qovery.com). See the [RDE documentation](https://www.qovery.com/docs/getting-started/quickstart/remote-dev-environments) to get started.
 
 ## Quick Install
 
-**One command — installs all nine skills globally for all your projects:**
+**One command — installs all eight skills globally for all your projects:**
 
 ```bash
 curl -fsSL https://skill.qovery.com/install.sh | bash
@@ -39,7 +40,7 @@ curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --project
 curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --uninstall
 ```
 
-That's it. The installer automatically places all nine skills (with their `reference/`, `templates/`, and `examples/` sub-directories) in all the right locations so they're discovered by any compatible tool.
+That's it. The installer automatically places all eight skills (with their `reference/`, `templates/`, and `examples/` sub-directories) in all the right locations so they're discovered by any compatible tool.
 
 **Update to the latest version** — just run the install command again. It overwrites the previous versions:
 
@@ -212,14 +213,6 @@ The onboard skill acts as your personal cloud architect. The deploy skill handle
 - _"Preview this branch on Qovery"_
 - `/qovery-preview` (slash command)
 
-**Prompts that trigger qovery-rde:**
-- _"Set up remote dev environments for my team"_
-- _"Create RDEs for our sales team"_
-- _"I want to give non-tech employees the ability to build and deploy apps"_
-- _"Set up cloud workspaces for internal tool builders"_
-- _"Set up remote development environments managed by Qovery"_
-- `/qovery-rde` (slash command)
-
 **Prompts that trigger qovery-terraform:**
 - _"Terraformize my Qovery setup"_
 - _"Convert my environment to Terraform"_
@@ -240,7 +233,6 @@ Each skill includes a slash command for quick invocation. Type `/` followed by t
 | `/qovery-optimize` | Analyze costs and right-size resources | `/qovery-optimize` or `/qovery-optimize production` |
 | `/qovery-speedup` | Analyze and fix deployment bottlenecks | `/qovery-speedup` or `/qovery-speedup my-service` |
 | `/qovery-preview` | Create a preview environment for a PR | `/qovery-preview` or `/qovery-preview PR-123` |
-| `/qovery-rde` | Set up Remote Development Environments | `/qovery-rde` or `/qovery-rde sales 5` |
 | `/qovery-terraform` | Generate Terraform from existing Qovery setup | `/qovery-terraform` or `/qovery-terraform https://console.qovery.com/...` |
 
 Commands are installed automatically by the install script. They accept optional arguments (service name, environment name, Console URL) and auto-detect context from your git workspace.
@@ -355,14 +347,6 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 | **6. Deploy** | Deploy preview environment, active watch loop, fetch logs on failure, verify health, present preview URLs and console link |
 | **7. Cleanup** | Delete preview environment, clean up shutdown tokens, blueprint maintenance guidance, bulk cleanup for sprint resets |
 
-### qovery-rde
-
-| Phase | Description |
-|-------|-------------|
-| **1. Setup** | Check Qovery CLI installed (`qovery rde --help`), authenticate, resolve org/cluster, optionally provide Anthropic API key |
-| **2. Blueprint** | Generate Dockerfile + entrypoint.sh, create project + workspace via API, register blueprint (`qovery rde blueprint register`), deploy, validate, stop |
-| **3. Provision** | Create RDEs with `qovery rde create` (one command per builder — handles project, RBAC, clone, TTL, invite, deploy). Manage lifecycle with `qovery rde stop/start/upgrade/delete` |
-
 ### qovery-terraform
 
 | Phase | Description |
@@ -392,19 +376,19 @@ git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
 # Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-rde qovery-terraform ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-rde qovery-terraform ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-rde qovery-terraform ~/.agents/skills/
+mkdir -p ~/.claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-terraform ~/.claude/skills/
+mkdir -p ~/.config/opencode/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-terraform ~/.config/opencode/skills/
+mkdir -p ~/.agents/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-terraform ~/.agents/skills/
 
 # Install all slash commands (Claude Code, OpenCode, etc.)
 mkdir -p ~/.claude/commands && cp qovery-*/commands/*.md ~/.claude/commands/
 mkdir -p ~/.config/opencode/commands && cp qovery-*/commands/*.md ~/.config/opencode/commands/
 
 # Or project-local install
-mkdir -p .claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-rde qovery-terraform .claude/skills/
+mkdir -p .claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-terraform .claude/skills/
 ```
 
-Verify the skills are discovered by checking if your tool lists all nine Qovery skills.
+Verify the skills are discovered by checking if your tool lists all eight Qovery skills.
 
 ## Links
 

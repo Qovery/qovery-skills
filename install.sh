@@ -9,7 +9,7 @@ set -euo pipefail
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-rde" "qovery-terraform")
+SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-terraform")
 TARBALL_URL="https://codeload.github.com/Qovery/qovery-skills/tar.gz/refs/heads/main"
 
 # Colors (if terminal supports them)
@@ -251,7 +251,6 @@ echo -e "  ${YELLOW}qovery-troubleshoot${NC}  — Diagnose and fix deployment is
 echo -e "  ${YELLOW}qovery-optimize${NC}      — Optimize costs and right-size resources"
 echo -e "  ${YELLOW}qovery-speedup${NC}       — Speed up deployments and builds"
 echo -e "  ${YELLOW}qovery-preview${NC}       — Create preview environments from PRs"
-echo -e "  ${YELLOW}qovery-rde${NC}           — Set up Remote Development Environments (RDEs)"
 echo -e "  ${YELLOW}qovery-terraform${NC}     — Terraformize existing Qovery setups"
 echo ""
 echo -e "${BOLD}Compatible with:${NC}"
