@@ -8,7 +8,7 @@ set -euo pipefail
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-rde" "qovery-terraform")
+SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-terraform")
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Colors (if terminal supports them)
@@ -274,10 +274,9 @@ echo -e "  ${YELLOW}qovery-troubleshoot${NC}  — Diagnose and fix deployment is
 echo -e "  ${YELLOW}qovery-optimize${NC}      — Optimize costs and right-size resources"
 echo -e "  ${YELLOW}qovery-speedup${NC}       — Speed up deployments and builds"
 echo -e "  ${YELLOW}qovery-preview${NC}       — Create preview environments from PRs"
-echo -e "  ${YELLOW}qovery-rde${NC}           — Set up Remote Development Environments (RDEs)"
 echo -e "  ${YELLOW}qovery-terraform${NC}     — Terraformize existing Qovery setups"
 echo ""
-echo -e "${BOLD}Slash commands:${NC} /qovery-<skill> (e.g. /qovery-deploy, /qovery-troubleshoot, /qovery-rde…)."
+echo -e "${BOLD}Slash commands:${NC} /qovery-<skill> (e.g. /qovery-deploy, /qovery-troubleshoot, /qovery-terraform…)."
 echo ""
 echo -e "Changes in ${BLUE}$REPO_DIR${NC} are now ${BOLD}instantly available${NC} — no re-install needed."
 echo ""

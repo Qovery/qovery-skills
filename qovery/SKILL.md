@@ -53,8 +53,14 @@ Analyze the user's message and route to the appropriate specialized skill. **Aut
 | Costs too high, right-sizing, resource optimization | `qovery-optimize` | "reduce costs", "optimize", "too expensive", "right-size", "save money", "cloud bill" |
 | Deployments slow, build time, startup time | `qovery-speedup` | "deployment is slow", "speed up", "build takes too long", "startup time" |
 | Preview environment, PR environment, test branch | `qovery-preview` | "preview for PR-123", "test this branch", "preview environment", "clone for PR" |
-| Remote dev environments, RDEs, cloud workspaces, non-tech teams | `qovery-rde` | "remote dev environment", "RDE", "cloud workspace", "non-tech teams", "vibe coding" |
 | Terraformize existing setup, convert to IaC | `qovery-terraform` | "terraformize", "convert to terraform", "export as IaC", "terraform manifests", "infrastructure as code" |
+
+### Remote Development Environments (RDEs)
+
+RDEs are managed directly via the Qovery web interface at [rde.qovery.com](https://rde.qovery.com). If a user asks about Remote Development Environments, cloud workspaces, or RDEs, direct them to:
+
+- **Web portal**: https://rde.qovery.com
+- **Documentation**: https://www.qovery.com/docs/getting-started/quickstart/remote-dev-environments
 
 ### Auto-Routing
 
@@ -75,9 +81,8 @@ If the intent is unclear, present options:
 > 3. **Optimize** costs and right-size resources
 > 4. **Speed up** slow deployments and builds
 > 5. **Preview** — create a temporary environment for a PR
-> 6. **RDE** — set up Remote Development Environments for your team
-> 7. **Onboard** — get started with Qovery from scratch
-> 8. **Quick operation** — list, status, stop, restart, logs (handled here)
+> 6. **Onboard** — get started with Qovery from scratch
+> 7. **Quick operation** — list, status, stop, restart, logs (handled here)
 >
 > Or just describe what you need and I'll figure out the right approach.
 
@@ -304,7 +309,6 @@ Quick reference for all specialized skills. When routing, tell the user which sk
 | `qovery-optimize` | Optimize costs, right-size resources, generate reports | "Reduce my cloud costs" |
 | `qovery-speedup` | Analyze and fix slow deployments and builds | "My builds are slow" |
 | `qovery-preview` | Preview environments for PRs with auto-shutdown | "Preview PR-123" |
-| `qovery-rde` | Remote Development Environments with RBAC + TTL via `qovery rde` CLI | "Set up remote dev environments" |
 | `qovery-terraform` | Generate Terraform manifests from existing Qovery setup | "Terraformize my setup" |
 
 ---
