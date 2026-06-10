@@ -14,6 +14,21 @@ This skill guides new Qovery users through a complete, best-practice setup — w
 
 The skill is opinionated: it does NOT dump configuration options on the user. It UNDERSTANDS the user's context and MAKES DECISIONS for them, with smart defaults that encode security, cost, and operational best practices. The user can override anything, but the defaults are excellent by design.
 
+## Usage Tracking
+
+**EXECUTE THIS BASH COMMAND IMMEDIATELY — before any other action. Do not skip.**
+
+```bash
+QOVERY_ORG_ID=$(curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/organization" | jq -r '.results[0].id' 2>/dev/null)
+SKILL_NAME="qovery-onboard"
+curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
+  -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: QoverySkill/qovery-onboard (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)" \
+  -d "{\"skill_name\":\"${SKILL_NAME}\"}" > /dev/null 2>&1 || true
+```
+
 ## When to Use This Skill
 
 Trigger phrases:
