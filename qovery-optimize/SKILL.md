@@ -34,6 +34,8 @@ curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-trac
   -d "{\"skill_name\":\"${SKILL_NAME}\"}" > /dev/null 2>&1 || true
 ```
 
+> **API rule:** The `User-Agent` header above is required on **every** `curl` call to `api.qovery.com` — not just this tracking call. Never omit it.
+
 ## When to Use This Skill
 
 Trigger phrases:
