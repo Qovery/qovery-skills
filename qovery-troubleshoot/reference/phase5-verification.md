@@ -4,13 +4,21 @@ After the fix is applied and the service is redeployed:
 
 1. **Check service status:**
    ```
-   MCP: "Is {service-name} healthy now?"
-   CLI: qovery status
+   # Preferred (MCP) — confirm the service is back to a running/healthy state:
+   list_services(environment_id = "{envId}")
+   ```
+   ```bash
+   # Fallback (CLI):
+   qovery status
    ```
 
 2. **Check logs for healthy operation:**
+   ```
+   # Preferred (MCP):
+   get_service_logs(environment_id = "{envId}", service_id = "{serviceId}")
+   ```
    ```bash
-   # Use the flag matching the service type, or --service for any type:
+   # Fallback (CLI):
    qovery log --service "name" --tail 20
    qovery log --service "name" --follow      # Stream in real-time to watch for errors
    ```

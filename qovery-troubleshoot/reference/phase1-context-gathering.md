@@ -4,6 +4,8 @@ Before diagnosing anything, you MUST understand what's deployed and what the use
 
 ### 1.1 Authenticate
 
+**If you are using the Qovery MCP Server, skip this step** — the MCP Server authenticates internally (OAuth or its configured token), so no token needs to flow through the shell. Authentication below is only needed for the CLI/API fallback tiers.
+
 Use the same authentication flow as the deploy skill:
 1. Check if `QOVERY_CLI_ACCESS_TOKEN` or `QOVERY_API_TOKEN` is set
 2. Try `qovery auth token --print` — if the CLI is authenticated, this outputs a valid token (auto-refreshed). Use with `Authorization: Bearer $(qovery auth token --print)`.
@@ -12,24 +14,28 @@ Use the same authentication flow as the deploy skill:
 
 ### 1.2 Get Overview of All Services
 
-Get the status of everything in the user's environment:
+Get the status of everything in the user's environment. If you don't already have the environment ID (e.g. from a Console URL), resolve it first by chaining `list_organizations` → `list_projects` → `list_environments`.
 
-**Via MCP (preferred):**
+**Via MCP tools (preferred):**
 ```
-"Show me the status of all services in the {environment} environment"
-"What services are failing?"
-"Is everything healthy?"
-"Show failing services"
+list_services(environment_id = "{envId}")
+```
+Returns every service (application, container, job, database, helm, terraform) with its current state — this single call replaces the `/environment/{envId}/statuses` API request. To triage, filter the result for services not in a healthy/running state.
+
+For a narrative status ("what's failing and why"), you can also ask the Copilot:
+```
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Show the status of every service in environment {envId} and list which ones are failing.")
 ```
 
-**Via CLI:**
+**Via CLI (fallback):**
 ```bash
 qovery context set    # Set org/project/environment
 qovery service list   # List all services and statuses
 qovery status         # Detailed status
 ```
 
-**Via API:**
+**Via API (fallback):**
 ```bash
 # Get environment statuses (all services at once)
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
@@ -65,14 +71,20 @@ Ask the user or detect from service statuses:
 
 Once you know which service to diagnose:
 
-**Via MCP:**
+**Via MCP tools (preferred):**
 ```
-"Show me the configuration for {service-name}"
-"Show deployment history for {service-name}"
-"What environment variables are set for {service-name}?"
-```
+# Runtime / build logs — works for ANY service type (app, container, job, database, helm):
+get_service_logs(environment_id = "{envId}", service_id = "{serviceId}")
+#   optional: deployment_id = "{deploymentId}"  → scope to one deployment
+#   optional: pod_name      = "{podName}"        → isolate a single crashing pod
 
-**Via CLI:**
+# Config, deployment history, and env vars — via the Copilot (reference resources by UUID):
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Show the configuration, recent deployment history, and environment variables for service {serviceId}.")
+```
+`get_service_logs` replaces every per-type `curl` log endpoint (and covers job/database/helm logs, which have no API endpoint). `devops_copilot` READ replaces the `/application/{id}`, `/deploymentHistory`, and `/environmentVariable` API calls.
+
+**Via CLI (fallback):**
 ```bash
 qovery application env list          # Environment variables
 
@@ -84,7 +96,7 @@ qovery log --job "name"              # Job (cronjob/lifecycle) logs
 qovery log --service "name"          # Generic — works for any service type
 ```
 
-**Via API:**
+**Via API (fallback):**
 ```bash
 # Service details
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
@@ -105,7 +117,7 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 # Container logs
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
   "https://api.qovery.com/container/{containerId}/log" | jq '.results[-50:] | .[] | .message'
-# NOTE: Job, Helm, and Database log API endpoints do NOT exist — use `qovery log` CLI instead.
+# NOTE: Job, Helm, and Database log API endpoints do NOT exist — use `get_service_logs` (MCP) or `qovery log` CLI instead.
 
 # Environment deployment logs (v2 — includes error details, stages, and hints):
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \

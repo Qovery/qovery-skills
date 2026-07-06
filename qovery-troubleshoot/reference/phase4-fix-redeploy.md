@@ -27,6 +27,23 @@
 
 ### Redeploy After Fix
 
+**Via MCP tools (preferred)** — the Copilot's WRITE capability deploys/redeploys/restarts (reference resources by UUID):
+```
+# Redeploy a single service
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Redeploy service {serviceId}.")
+
+# Or redeploy the whole environment
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Redeploy environment {envId}.")
+```
+
+**Via CLI (fallback):**
+```bash
+qovery application redeploy --application "name"
+```
+
+**Via API (fallback):**
 ```bash
 # Redeploy a single service
 curl -s -X POST "https://api.qovery.com/application/{appId}/restart" \
@@ -35,13 +52,6 @@ curl -s -X POST "https://api.qovery.com/application/{appId}/restart" \
 # Or redeploy the whole environment
 curl -s -X POST "https://api.qovery.com/environment/{envId}/deploy" \
   -H "Authorization: Token $QOVERY_API_TOKEN"
-
-# Or via CLI
-qovery application redeploy --application "name"
-
-# Or via MCP
-# "Redeploy the backend application"
-# "Restart the API service"
 ```
 
 ### Watch and Verify

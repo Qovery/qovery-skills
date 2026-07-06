@@ -30,7 +30,7 @@ Pre-built diagnostic sequences for the most common problems. Jump directly to th
 
 **Triggers:** "can't connect to database", "ECONNREFUSED", "connection timeout", "database unreachable"
 
-1. Is the database service running? (Layer 1 — `qovery service list`)
+1. Is the database service running? (Layer 1 — `list_services(environment_id="{envId}")`, or `qovery service list`)
 2. Are deployment stages correct? (Layer 6 — DB must deploy before app)
 3. Is `DATABASE_URL` set correctly? (Layer 5 — should be an alias, not hardcoded)
 4. Is it using `_INTERNAL` hostname? (Layer 5 — `_HOST_INTERNAL`, not `_HOST`)
@@ -52,11 +52,15 @@ Pre-built diagnostic sequences for the most common problems. Jump directly to th
 3. Check cluster status (Layer 8) — is the cluster healthy?
 4. Check if there are resource constraints (no node capacity)
 5. Cancel the stuck deployment and retry:
+   ```
+   # Preferred (MCP):
+   devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+     message = "Cancel the ongoing deployment in environment {envId}.")
+   ```
    ```bash
-   # Cancel via API
+   # Fallback (API):
    curl -s -X POST "https://api.qovery.com/environment/{envId}/cancelDeployment" \
      -H "Authorization: Token $QOVERY_API_TOKEN"
-   # Or via MCP: "Cancel the ongoing deployment"
    ```
 6. Retry the deployment
 7. If it's still stuck: check Qovery Console for more details or contact support
@@ -66,7 +70,13 @@ Pre-built diagnostic sequences for the most common problems. Jump directly to th
 **Triggers:** "domain not working", "SSL error", "certificate issue", "custom domain 404"
 
 1. Check if the custom domain is registered in Qovery:
+   ```
+   # Preferred (MCP):
+   devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+     message = "List the custom domains configured for service {serviceId}.")
+   ```
    ```bash
+   # Fallback (API):
    curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
      "https://api.qovery.com/application/{appId}/customDomain" | jq
    ```
@@ -76,7 +86,12 @@ Pre-built diagnostic sequences for the most common problems. Jump directly to th
    # Must point to the Qovery-generated domain
    ```
 3. Check if the service is publicly accessible (port config has `publicly_accessible: true`)
-4. Check TLS certificate — Qovery uses Let's Encrypt, may take a few minutes to provision
+4. Check TLS certificate — Qovery uses Let's Encrypt, may take a few minutes to provision.
+   Inspect the cert-manager objects directly to see whether it's still issuing:
+   ```
+   get_cluster_status(cluster_id = "{clusterId}", category = "certificate",
+     object_filter = { type = "service", environment_id = "{envId}", service_id = "{serviceId}" })
+   ```
 5. Check if the protocol is `HTTP` (not `TCP`/`UDP`) for web traffic
 6. If DNS is correct but still not working: wait 5-10 minutes for DNS propagation
 
@@ -84,7 +99,7 @@ Pre-built diagnostic sequences for the most common problems. Jump directly to th
 
 **Triggers:** "terraform error", "terraform plan failed", "terraform service stuck"
 
-1. Fetch Terraform execution logs via MCP or API
+1. Fetch Terraform execution logs — `get_service_logs(environment_id="{envId}", service_id="{serviceId}")` (MCP, preferred), or `qovery log --service "name"`
 2. Common causes:
    - **Variable errors**: Missing or wrong `variables` in the Terraform service config
    - **Permission errors**: Cloud credentials don't have required IAM permissions
@@ -97,7 +112,7 @@ Pre-built diagnostic sequences for the most common problems. Jump directly to th
 
 **Triggers:** "helm install failed", "chart error", "helm timeout"
 
-1. Fetch Helm install/upgrade logs via MCP or API
+1. Fetch Helm install/upgrade logs — `get_service_logs(environment_id="{envId}", service_id="{serviceId}")` (MCP, preferred), or `qovery log --service "name"`
 2. Common causes:
    - **Invalid values**: YAML syntax error in `values_override`
    - **Missing dependencies**: Chart requires a dependency that isn't deployed
@@ -123,7 +138,14 @@ Pre-built diagnostic sequences for the most common problems. Jump directly to th
 **Manual diagnosis:**
 
 1. **List all services with resource allocations:**
+   ```
+   # Preferred (MCP) — services + states, then per-service config via the Copilot:
+   list_services(environment_id = "{envId}")
+   devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+     message = "Show the CPU, memory, and instance allocation for every service in environment {envId}.")
+   ```
    ```bash
+   # Fallback (API):
    curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
      "https://api.qovery.com/environment/{envId}/statuses" | jq
    ```
@@ -157,7 +179,13 @@ Pre-built diagnostic sequences for the most common problems. Jump directly to th
 
 1. Confirm OOM from logs (Layer 3): `OOMKilled`, `exit code 137`, `SIGKILL`
 2. Check current memory allocation:
+   ```
+   # Preferred (MCP):
+   devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+     message = "What is the current memory allocation for service {serviceId}?")
+   ```
    ```bash
+   # Fallback (API):
    curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
      "https://api.qovery.com/application/{appId}" | jq '.memory'
    ```
