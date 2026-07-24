@@ -348,5 +348,32 @@ Follow these rules to keep environment variables clean and DRY:
 
 8. **Secrets are scoped too**: Secret overrides work the same way as regular variable overrides. Define a secret at project scope and override its value at environment scope for different environments.
 
+### 6.10 Wiring Applications to a Blueprint-Provisioned Resource (MANDATORY)
+
+Whenever an infrastructure piece was deployed as a **Blueprint** (Phase 3C) instead of a native database, any application that needs to reach it MUST be wired up here — creating the blueprint alone does NOT connect it to your app. Do not leave a blueprint deployed with no application referencing it, and never hardcode its connection details.
+
+1. **List the blueprint service's exposed variables** once it's created (and ideally after its first successful deploy, since some values like a generated password or endpoint resolve only post-apply):
+   ```bash
+   curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+     -H "User-Agent: QoverySkill/qovery-deploy (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+     "https://api.qovery.com/environment/{environmentId}/environmentVariable" \
+     | jq '.results[] | select(.service_id == "{blueprintServiceId}") | {id, key, scope}'
+   ```
+   Terraform/OpenTofu-engine blueprints expose their module's `output` blocks as environment variables on the service (e.g. a generated `endpoint`, `port`, `username`, `password`); Helm-engine blueprints expose whatever the chart's notes/values surface the same way native Helm services do. Names vary by blueprint — there's no fixed `QOVERY_DATABASE_*` pattern like native databases have, so always list them rather than guessing.
+
+2. **Alias each variable the application needs**, exactly like you would for a native database (6.4) — never hardcode the blueprint's host/port/password into the application's own variables:
+   ```bash
+   curl -s -X POST "https://api.qovery.com/application/{appId}/environmentVariable/alias" \
+     -H "Authorization: Token $QOVERY_API_TOKEN" \
+     -H "Content-Type: application/json" \
+     -H "User-Agent: QoverySkill/qovery-deploy (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+     -d '{"key": "DATABASE_URL", "alias_parent_id": "{blueprintEndpointVariableId}"}'
+   ```
+   If the blueprint doesn't expose one composed connection-string variable (common for Terraform-engine blueprints, which tend to expose host/port/user/password separately), alias each part individually and compose the final URL with **interpolation** (6.5) the same way you would compose a custom-params `DATABASE_URL` from a native database's parts.
+
+3. **Confirm in the Phase 3B plan**: the "Environment variables to set" section must list the alias/interpolation wiring from each application to each blueprint it depends on — this is exactly as required as wiring to a native database, and must be present before the user confirms the plan.
+
+4. **Verify after deploy** (Phase 9): once both the blueprint and the dependent application are healthy, confirm the application can actually resolve and use the aliased variables (e.g. check logs for a successful DB connection, or exec into the pod and inspect the env). A blueprint that deployed successfully but whose variables were never wired into the consuming service is an incomplete deployment — treat it as a failure to fix (Phase 10), not a done task.
+
 ---
 

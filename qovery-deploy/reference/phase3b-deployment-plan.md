@@ -30,6 +30,12 @@ Based on all information gathered in Phase 1 (user answers, resolved organizatio
 > | postgres | PostgreSQL | 16 | Container | 10GB | — |
 > | redis | Redis | 7 | Container | 5GB | — |
 >
+> **Blueprints to deploy** *(reused from the catalog instead of hand-rolled Terraform — see Phase 3C)*:
+>
+> | Name | Blueprint tag | Provider | Category |
+> |------|---------------|----------|----------|
+> | prod-postgres | aws/postgres/17/1.0.1 | AWS | Managed Database |
+>
 > **Deployment stages (execution order):**
 > 1. **Infrastructure**: postgres, redis
 > 2. **Backend**: backend, worker
@@ -39,6 +45,7 @@ Based on all information gathered in Phase 1 (user answers, resolved organizatio
 > - `PORT` = `8080`
 > - `NODE_ENV` = `production`
 > - `DATABASE_URL` = alias -> `QOVERY_DATABASE_..._CONNECTION_URI_INTERNAL`
+> - `PROD_DATABASE_URL` (backend) = alias -> `prod-postgres` blueprint's `endpoint` output *(see Phase 3C/6.10 — every app depending on a blueprint MUST have its connection wired via alias here)*
 > - `JWT_SECRET` = *(secret — value provided by user)*
 > - *(N other variables from .env file)*
 >
@@ -53,7 +60,7 @@ Based on all information gathered in Phase 1 (user answers, resolved organizatio
 > - Database `postgres` is in **Container** mode — suitable for dev/test but not recommended for production workloads
 > - Frontend has no `.dockerignore` — `node_modules` will be excluded via the generated file
 
-Adapt this template to the actual services detected. Omit sections that don't apply (e.g., no "Databases" section if no databases are needed, no "Files to create" if all Dockerfiles exist).
+Adapt this template to the actual services detected. Omit sections that don't apply (e.g., no "Databases" section if no databases are needed, no "Blueprints" section if the catalog had no match for anything requested, no "Files to create" if all Dockerfiles exist).
 
 For the **Terraform path**, also include:
 > **Terraform files to generate:**
@@ -78,7 +85,7 @@ If the user wants to modify the plan:
 
 Common change requests:
 - Switch cluster (e.g., "use staging instead of production")
-- Change database mode (e.g., "use managed for production")
+- Change database mode (e.g., "use managed for production", "use the RDS blueprint instead of a container database")
 - Adjust resources (e.g., "give the backend 1GB memory")
 - Change port or public accessibility
 - Add/remove services
