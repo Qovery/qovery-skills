@@ -6,14 +6,18 @@ Work through these layers IN ORDER, from most common to least common. Stop at th
 
 **What to check:** Current service state and recent deployment history.
 
-**Via MCP:**
+**Via MCP tools (preferred):**
 ```
-"Why is my deployment failing?"
-"Show deployment history for {service-name}"
-"What happened during the last deployment?"
-```
+# Current state of every service (find the failing one and its state):
+list_services(environment_id = "{envId}")
 
-**Via CLI/API:**
+# Diagnose the failure + read deployment history (rich errors, stages, hints):
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Why is service {serviceId} failing to deploy? Show its recent deployment history and the error details, stages, and hints from the last deployment.")
+```
+The Copilot's TROUBLESHOOT capability replaces the v2 deployment-logs `curl` (`/environment/{envId}/logs`) — it returns the same error tags, stages, and hints. Its READ capability replaces `/deploymentHistory`.
+
+**Via CLI/API (fallback):**
 ```bash
 qovery status
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
@@ -44,14 +48,18 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 
 **When to check:** Service state is `BUILD_ERROR`.
 
-**Via MCP:**
+**Via MCP tools (preferred):**
 ```
-"Show build logs for {service-name}"
-"Analyze failed build logs"
-"Why is my build failing?"
-```
+# Fetch the failing deployment's logs for any service type:
+get_service_logs(environment_id = "{envId}", service_id = "{serviceId}", deployment_id = "{deploymentId}")
 
-**Via CLI:**
+# Or have the Copilot analyze the build failure directly:
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Analyze the failed build logs for service {serviceId} and tell me which step failed and why.")
+```
+`get_service_logs` works for applications, containers, jobs, and helms — replacing both the per-type `curl` log endpoints and the `qovery log` CLI, including the job/helm cases the API cannot serve.
+
+**Via CLI (fallback):**
 ```bash
 # Use the flag matching the service type (--application, --container, --job, or --service):
 qovery log --application "name" --since 30m
@@ -60,7 +68,7 @@ qovery log --job "name" --since 30m
 qovery log --service "name" --since 30m     # Generic — works for any service type
 ```
 
-**Via API:**
+**Via API (fallback):**
 ```bash
 # Application build logs
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
@@ -68,7 +76,7 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 # Container build logs
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
   "https://api.qovery.com/container/{containerId}/log" | jq '.results[] | .message'
-# NOTE: For jobs/helms, use `qovery log` CLI — no API log endpoint exists for these service types.
+# NOTE: For jobs/helms, use `get_service_logs` (MCP) or `qovery log` CLI — no API log endpoint exists for these service types.
 ```
 
 **Error patterns and fixes:**
@@ -90,14 +98,23 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 
 **When to check:** Service was deployed but is crashing, returning errors, or misbehaving.
 
-**Via MCP:**
+**Via MCP tools (preferred):**
 ```
-"Show error logs from the last hour for {service-name}"
-"Why is my app returning 500 errors?"
-"Investigate application crashes for {service-name}"
-```
+# Application/runtime logs for any service type (isolate a crashing pod with pod_name):
+get_service_logs(environment_id = "{envId}", service_id = "{serviceId}")
 
-**Via CLI:**
+# Pod-level health — is it CrashLoopBackOff, Pending, OOMKilled? Scope to the service:
+get_cluster_status(cluster_id = "{clusterId}", category = "pod",
+  object_filter = { type = "service", environment_id = "{envId}", service_id = "{serviceId}" })
+
+# Kubernetes events (OOMKilled, SIGKILL, evictions, image pull errors) over a time window:
+get_cluster_events(cluster_id = "{clusterId}",
+  from_datetime = "{start ISO-8601}", to_datetime = "{end ISO-8601}",
+  pod_filter = { type = "service_id", service_id = "{serviceId}" })
+```
+`get_service_logs` replaces the per-type log `curl` endpoints (and covers job/database/helm). For crash/OOM symptoms, `get_cluster_status` (pod conditions) and `get_cluster_events` (the actual `OOMKilled`/`SIGKILL`/`FailedScheduling` events) give the Kubernetes-level signal the REST API can't. Chunk event queries into ≤30-min windows.
+
+**Via CLI (fallback):**
 ```bash
 # Get recent logs — use the flag matching the service type:
 qovery log --application "name" --since 1h    # Application
@@ -124,7 +141,7 @@ qovery log --service "name" --tail 100
 qovery log --service "name" --from "2024-01-01T00:00:00Z" --to "2024-01-01T23:59:59Z"
 ```
 
-**Via API:**
+**Via API (fallback):**
 ```bash
 # Application logs (last 1000 lines)
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
@@ -135,7 +152,7 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
   "https://api.qovery.com/container/{containerId}/log" | jq '.results[-50:] | .[] | {created_at, message, pod_name}'
 
 # NOTE: Job, Helm, and Database log API endpoints do NOT exist.
-# Use `qovery log --job`, `qovery log --database`, or MCP queries for these service types.
+# Use `get_service_logs` (MCP), or `qovery log --job` / `qovery log --database` for these service types.
 
 # Environment deployment logs v2 (useful for deployment-related runtime errors):
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
@@ -177,7 +194,13 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 **Diagnosis steps:**
 
 1. **Get current health check config:**
+   ```
+   # Preferred (MCP):
+   devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+     message = "Show the health check configuration (liveness and readiness probes) for service {serviceId}.")
+   ```
    ```bash
+   # Fallback (API):
    curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
      "https://api.qovery.com/application/{appId}" | jq '.healthchecks'
    ```
@@ -206,6 +229,22 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 
 **Fixes:**
 
+**Via MCP tools (preferred)** — the Copilot's WRITE capability updates health checks and ports directly (reference the service by UUID):
+```
+# Fix port mismatch (auto-fix)
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Set the port of service {serviceId} to internal 3000, external 443, protocol HTTP, publicly accessible.")
+
+# Switch to a TCP probe on port 3000 (auto-fix — when app has no /health endpoint)
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Change the liveness probe of service {serviceId} to a TCP probe on port 3000 with a 30s initial delay.")
+
+# Increase initial delay to 120s (auto-fix — when app is slow to start)
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Set the HTTP liveness probe of service {serviceId} to path /health on port 8080 with initial_delay_seconds = 120.")
+```
+
+**Via API (fallback):**
 ```bash
 # Fix port mismatch (auto-fix)
 curl -s -X PUT "https://api.qovery.com/application/{appId}" \
@@ -252,14 +291,13 @@ curl -s -X PUT "https://api.qovery.com/application/{appId}" \
 
 **When to check:** App starts but crashes due to missing config, or connects to wrong services.
 
-**Via MCP:**
+**Via MCP tools (preferred):**
 ```
-"What environment variables are set for {service-name}?"
-"Why isn't my environment variable working?"
-"Show configuration for {service-name}"
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "List the environment variables and secrets set for service {serviceId}, including their scope and whether each is an alias or interpolated value.")
 ```
 
-**Via CLI:**
+**Via CLI (fallback):**
 ```bash
 qovery application env list
 ```
@@ -292,6 +330,23 @@ qovery application env list
 
 **Fixes:**
 
+**Via MCP tools (preferred)** — the Copilot's WRITE capability manages environment variables:
+```
+# Add a missing non-secret variable (auto-fix)
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Add environment variable PORT=8080 to service {serviceId}.")
+
+# Create an alias for the database connection (auto-fix)
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "On service {serviceId}, create an env var DATABASE_URL as an alias of the variable {sourceVariableId}.")
+
+# For missing secrets — ASK USER for the value first, then:
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Add secret API_KEY to service {serviceId}.", instructions = "The secret value was provided by the user.")
+```
+> Adding/changing secrets requires user approval per Phase 4 — ask before writing.
+
+**Via API (fallback):**
 ```bash
 # Add a missing non-secret variable (auto-fix)
 curl -s -X POST "https://api.qovery.com/application/{appId}/environmentVariable" \
@@ -327,7 +382,12 @@ curl -s -X POST "https://api.qovery.com/application/{appId}/secret" \
 **Diagnosis steps:**
 
 1. **Is the target service running?**
+   ```
+   # Preferred (MCP) — states of every service in the environment:
+   list_services(environment_id = "{envId}")
+   ```
    ```bash
+   # Fallback (CLI):
    qovery service list
    ```
    If the database or dependent service is not running, that's the problem.
@@ -365,6 +425,14 @@ curl -s -X POST "https://api.qovery.com/application/{appId}/secret" \
    ```
 
 **Fixes:**
+
+**Via MCP tools (preferred)** — ask the Copilot to reorder deployment stages so the dependency deploys first:
+```
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "In environment {envId}, order the deployment stages so the database service {dbServiceId} deploys before the application {serviceId}.")
+```
+
+**Via API (fallback):**
 ```bash
 # Fix deployment stage ordering (auto-fix)
 curl -s -X PUT "https://api.qovery.com/deploymentStage/{stageId}" \
@@ -386,12 +454,24 @@ curl -s -X PUT "https://api.qovery.com/deploymentStage/{stageId}" \
 "Optimize resource allocation for {service-name}"
 ```
 
-**Via CLI:**
+**Via MCP tools (preferred):**
+```
+# Current CPU/memory/instance allocation:
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Show the CPU, memory, and min/max instance configuration for service {serviceId}.")
+
+# Confirm OOM from Kubernetes events rather than guessing from allocation:
+get_cluster_events(cluster_id = "{clusterId}",
+  from_datetime = "{start ISO-8601}", to_datetime = "{end ISO-8601}",
+  pod_filter = { type = "service_id", service_id = "{serviceId}" })
+```
+
+**Via CLI (fallback):**
 ```bash
 qovery status    # Shows current resource usage if available
 ```
 
-**Via API:**
+**Via API (fallback):**
 ```bash
 # Get service configuration (cpu, memory, instances)
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
@@ -422,6 +502,23 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
    - For ML/GPU workloads: size based on model requirements
 
 **Fixes:**
+
+**Via MCP tools (preferred)** — the Copilot's WRITE capability updates resources and autoscaling:
+```
+# Increase memory to 1024 MB (auto-fix)
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Set the memory of service {serviceId} to 1024 MB.")
+
+# Increase CPU to 1000 millicores (auto-fix)
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Set the CPU of service {serviceId} to 1000m.")
+
+# Enable autoscaling: min 2, max 10 instances (auto-fix)
+devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
+  message = "Set service {serviceId} to autoscale between 2 and 10 instances.")
+```
+
+**Via API (fallback):**
 ```bash
 # Increase memory (auto-fix)
 curl -s -X PUT "https://api.qovery.com/application/{appId}" \
@@ -455,12 +552,28 @@ curl -s -X PUT "https://api.qovery.com/application/{appId}" \
 "What version of Kubernetes is running?"
 ```
 
-**Via CLI:**
+**Via MCP tools (preferred):**
+```
+# Node health, pressure, and capacity (also surfaces Karpenter NodePools):
+get_cluster_status(cluster_id = "{clusterId}", category = "node")
+
+# Cluster-wide events over a window (FailedScheduling, node NotReady, evictions).
+# Chunk into ≤30-min windows to stay under the 5000-event cap; omit pod_filter for all events:
+get_cluster_events(cluster_id = "{clusterId}",
+  from_datetime = "{start ISO-8601}", to_datetime = "{end ISO-8601}")
+
+# Cluster-level settings / status narrative:
+devops_copilot(organization_id = "{orgId}",
+  message = "Show the status, advanced settings, and security settings for cluster {clusterId}.")
+```
+`get_cluster_status` and `get_cluster_events` give the Kubernetes-level node and scheduling signal that the `/cluster` REST endpoint doesn't expose.
+
+**Via CLI (fallback):**
 ```bash
 qovery cluster list
 ```
 
-**Via API:**
+**Via API (fallback):**
 ```bash
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
   "https://api.qovery.com/organization/{orgId}/cluster" | jq '.results[] | {id, name, status, cloud_provider, region, version}'

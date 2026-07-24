@@ -63,7 +63,7 @@ Troubleshooting Progress:
 |---|---|---|
 | Console URL | [reference/console-url-detection.md](reference/console-url-detection.md) | Extract IDs from a Qovery Console URL |
 | Auth | [reference/auth.md](reference/auth.md) | API token flow |
-| MCP | [reference/mcp-server-integration.md](reference/mcp-server-integration.md) | When to prefer MCP over CLI/API; how to set up MCP |
+| MCP | [reference/mcp-server-integration.md](reference/mcp-server-integration.md) | Primary interface: the Qovery MCP tools, each mapped to the curl it replaces; setup |
 | Phase 1 | [reference/phase1-context-gathering.md](reference/phase1-context-gathering.md) | Service inventory, problem identification, log fetching |
 | Phase 2 | [reference/phase2-8-layer-diagnosis.md](reference/phase2-8-layer-diagnosis.md) | Cluster → Kubernetes → image → container → app → connectivity → config → cost |
 | Phase 3 | [reference/phase3-playbooks.md](reference/phase3-playbooks.md) | Build failure, OOM, port mismatch, health check, stuck deploy, DB connectivity, etc. |
@@ -87,39 +87,35 @@ When triaging an issue, walk top-down through these layers in [reference/phase2-
 
 ## Quick reference
 
-### MCP queries
+### MCP tools (primary interface)
+
+Prefer these Qovery MCP tools over CLI/API for every step. Resolve IDs top-down, then act. See [reference/mcp-server-integration.md](reference/mcp-server-integration.md) for full parameters and the tool→curl mapping.
 
 ```
-# Status & Health
-"Is everything healthy?"
-"Show failing services"
-"What's the status of all services?"
-"Is the cluster healthy?"
+# Resolve IDs (org → project → environment → service)
+list_organizations()
+list_projects(organization_id)
+list_environments(project_id)
+list_services(environment_id)                 # every service + its state
 
-# Logs & Diagnostics
-"Show error logs from the last hour for {service}"
-"Why is my deployment failing?"
-"Analyze failed build logs for {service}"
-"Why is the health check failing?"
+# Logs (any service type: app, container, job, database, helm)
+get_service_logs(environment_id, service_id[, deployment_id, pod_name])
 
-# Connectivity
-"Why can't my app connect to the database?"
-"Is the database running?"
-"Show database connection info"
+# Kubernetes-level health & events
+get_cluster_status(cluster_id, category)      # pod | node | networking | certificate | storage
+get_cluster_events(cluster_id, from_datetime, to_datetime[, pod_filter])
 
-# Resources
-"Show CPU usage across all services"
-"Why is my service out of memory?"
-
-# Actions
-"Restart the API service"
-"Redeploy the backend"
-"Cancel the ongoing deployment"
-"Scale the API to 5 replicas"
-"Rollback the API to previous version"
+# Everything else — config reads, deployment diagnosis, and fixes (reference resources by UUID):
+devops_copilot(organization_id, message[, project_id, environment_id, thread_id])
+#   READ        : status, config, env vars, health checks, custom domains, db/cluster settings
+#   TROUBLESHOOT: diagnose a failing/stuck deployment; which service caused a failure
+#   WRITE       : deploy/redeploy/stop/restart/scale; update cpu/memory/env vars/health checks;
+#                 reorder deployment stages; add/remove custom domain; cancel a deployment
 ```
 
-### CLI commands
+> Phase 4's auto-fix vs. ask-first rules govern every WRITE — using `devops_copilot` to apply a change does not bypass them.
+
+### CLI commands (fallback — when MCP is not configured)
 
 ```bash
 # Context and status
@@ -148,7 +144,9 @@ qovery shell --service "name"
 qovery cluster list
 ```
 
-### API endpoints
+### API endpoints (fallback — when MCP and CLI are unavailable)
+
+Each endpoint below has an MCP equivalent (see the tool→curl mapping in [reference/mcp-server-integration.md](reference/mcp-server-integration.md)); use these only when the MCP Server is not configured.
 
 ```
 # Base URL: https://api.qovery.com   Auth: Authorization: Token $QOVERY_API_TOKEN
