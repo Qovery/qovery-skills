@@ -28,7 +28,7 @@ Cache this list for the conversation — do not re-fetch it per service. Match t
 
 Each `BlueprintItem` has one or more `majorVersions`, each with a `serviceVersion` (e.g. `"17"`) and a `latestTag` (e.g. `aws/postgres/17/1.0.1`). Ask the user which major version they want if more than one is available, otherwise use the only one. The `latestTag` is what you pass as `tag` when creating the service — do not hand-construct this string.
 
-Optionally show the blueprint's README before proceeding, especially if the user wants to understand what the module provisions:
+Fetch and read the blueprint's README before proceeding — it's the module's own documentation and often explains things the manifest's per-field metadata doesn't (e.g. required cloud IAM permissions, conditional requirements between variables, naming/format quirks and why they exist, what shape the outputs take, or lifecycle/update caveats). Use it to inform the questions you ask the user and the plan you present, not just to answer "what does this provision" if asked:
 
 ```bash
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
@@ -36,6 +36,8 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
   "https://api.qovery.com/organization/{organizationId}/blueprint/catalog/{provider}/{serviceFamily}/{serviceVersion}/readme" \
   | jq -r '.content'
 ```
+
+If the README is missing or the request fails (`502`), don't block the flow — proceed with the manifest alone.
 
 ### 3C.3 Fetch the Manifest (Form Fields)
 
