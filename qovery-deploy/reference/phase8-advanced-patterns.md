@@ -71,6 +71,8 @@ git remote get-url origin
 
 IMPORTANT: The user's Qovery organization must have the corresponding git provider connected (GitHub App installed, GitLab token, or Bitbucket integration). Check this at Organization Settings > Git Repository Access in the Qovery Console.
 
+IMPORTANT: Whatever URL ends up in `git_repository.url` (API) or `git_repository_url` (Terraform) MUST end in `.git`. `git remote get-url origin` usually already includes it, but a URL freshly created via `gh repo create`, copied from a browser address bar, or typed by the user often won't — append `.git` before using it in any create-application/create-terraform-service call.
+
 ### 8.6 Monorepo Support
 
 For monorepos with multiple services in subdirectories:

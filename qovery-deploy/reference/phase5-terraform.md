@@ -62,7 +62,7 @@ variable "environment_mode" {
 }
 
 variable "git_repository_url" {
-  description = "Git repository URL"
+  description = "Git repository URL — MUST end in .git (e.g. https://github.com/user/repo.git)"
   type        = string
 }
 
@@ -185,6 +185,8 @@ resource "qovery_database" "postgres" {
 ```
 
 ### 5.8 Database — RDS Aurora via Terraform Service (Advanced Production)
+
+Before hand-writing this, check the Blueprint catalog ([reference/phase3c-blueprints.md](phase3c-blueprints.md), Phase 3C) — a maintained `aws-rds-postgresql`/`aws-rds-mysql` blueprint may already cover this without owning custom Terraform code. Use the pattern below only for setups the catalog doesn't offer (e.g. a non-standard Aurora Serverless topology, custom VPC peering) or when the user wants full control over the module source.
 
 For advanced database needs (Aurora Serverless, custom VPC configuration, etc.), use a Qovery Terraform service that runs your own Terraform module:
 
@@ -628,6 +630,8 @@ resource "qovery_job" "daily_cleanup" {
 
 ### 5.15 Terraform Service (S3, Lambda, CloudFront, etc.)
 
+Before hand-writing this, check the Blueprint catalog ([reference/phase3c-blueprints.md](phase3c-blueprints.md), Phase 3C) for a maintained module covering the same resource. Use a hand-rolled Terraform service only when no blueprint matches.
+
 For any cloud resource not natively managed by Qovery, use a Terraform service. This runs your own Terraform code as a Qovery-managed job:
 
 ```hcl
@@ -723,7 +727,7 @@ qovery_project_id      = "your-project-uuid"
 qovery_cluster_id      = "your-cluster-uuid"
 environment_name       = "production"
 environment_mode       = "PRODUCTION"
-git_repository_url     = "https://github.com/user/repo"
+git_repository_url     = "https://github.com/user/repo.git"
 git_branch             = "main"
 auto_deploy_enabled    = true
 ```

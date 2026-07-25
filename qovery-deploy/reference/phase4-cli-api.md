@@ -63,6 +63,8 @@ curl -s -X POST "https://api.qovery.com/project/{projectId}/environment" \
 
 ### 4.4 Create Database (if needed)
 
+Before creating a native database here, Phase 3C should already have checked the Blueprint catalog for a matching offering (in any environment, not just production) and either deployed a blueprint or confirmed no match exists. Only use the native resource below when Phase 3C found no matching blueprint, or the user explicitly asked for the native/bare resource.
+
 #### Container Mode (dev/test — cheaper, on-cluster)
 
 ```bash
@@ -110,6 +112,8 @@ git remote get-url origin
 - `gitlab.com` or self-hosted GitLab -> `GITLAB`
 - `bitbucket.org` -> `BITBUCKET`
 
+IMPORTANT: The `git_repository.url` MUST end in `.git` (e.g. `https://github.com/user/repo.git`, not `https://github.com/user/repo`). If the URL was obtained from `git remote get-url origin`, it usually already has the suffix. If it was constructed from a `gh repo create` output, a Console-pasted link, or any other source that omits it, append `.git` before using it here.
+
 ```bash
 curl -s -X POST "https://api.qovery.com/environment/{envId}/application" \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
@@ -117,7 +121,7 @@ curl -s -X POST "https://api.qovery.com/environment/{envId}/application" \
   -d '{
     "name": "my-app",
     "git_repository": {
-      "url": "https://github.com/user/repo",
+      "url": "https://github.com/user/repo.git",
       "branch": "main",
       "root_path": "/",
       "provider": "GITHUB"
@@ -215,6 +219,8 @@ curl -s -X POST "https://api.qovery.com/environment/{envId}/container" \
 ### 4.7 Set Environment Variables
 
 IMPORTANT: Use the right scope and mechanism to avoid duplication. See Phase 6 for the full guide on aliases, interpolation, and overrides.
+
+**If any Blueprint was deployed in Phase 3C, this step is mandatory, not optional**: every application that depends on it must have its connection variables aliased to the blueprint's exposed outputs (see [phase6-env-vars.md](phase6-env-vars.md) 6.10) before moving on to Phase 9. A blueprint with no application wired to it is an incomplete deployment.
 
 **Set variables at the appropriate scope:**
 

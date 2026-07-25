@@ -64,6 +64,8 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 
 IMPORTANT: Do NOT skip the cluster check. Without a running cluster, no services can be deployed. Store the selected cluster ID — it will be used when creating environments.
 
+**NEVER guess a cluster by pattern-matching its name against the user's username, org name, or project name** (e.g. picking `local-demo-acarrano` because the user is Alessandro Carrano). A name match is not consent. With more than one cluster, always show the full list and ask — no exceptions, even if one name looks like an obvious personal/demo cluster. This matters even more when the deployment involves cloud resources (a database, a Blueprint, a Terraform service) whose provider/region must match the chosen cluster — silently picking the wrong cluster here means provisioning real infrastructure in the wrong place, cloud account, or region.
+
 #### Step 4: Resolve Project & Environment
 
 Ask the user:
@@ -105,11 +107,14 @@ Then tell the user what you detected and ask:
    - Look for database connection strings in code, ORM configs (Prisma, TypeORM, SQLAlchemy, GORM, etc.)
 
 9. **Is this deployment for development/testing or production?**
-   - **Dev/test** -> Database in Container mode (cheaper, runs on the Kubernetes cluster, fast to provision)
-   - **Production** -> Database in Managed mode (cloud-managed, e.g. AWS RDS — higher availability, automated backups) OR via a Terraform service for advanced setups like RDS Aurora Serverless
+   - Regardless of the answer, check the **Blueprint catalog first** (Phase 3C) before reaching for a native database resource or a hand-rolled Terraform service — the catalog can offer both cloud-managed and container-based variants, so it's worth checking even for dev/test.
+   - **Dev/test, no blueprint match** -> Use Qovery's native database service in Container mode (cheaper, runs on the Kubernetes cluster, fast to provision, disposable).
+   - **Production, no blueprint match** -> Managed-mode database (e.g. AWS RDS) or a hand-rolled Terraform service for setups the catalog doesn't cover (e.g. a custom Aurora Serverless topology).
 
 10. **Do you need any additional cloud resources?** (S3 buckets, Redis cache, message queues, Lambda functions, CDN, etc.)
-    - These can be provisioned via Qovery Terraform services
+    - Check the **Blueprint catalog** (Phase 3C) first, in any environment. Anything not covered by a blueprint can still be provisioned via a hand-rolled Qovery Terraform service.
+
+11. Whatever gets deployed above (blueprint, native container/managed database, or Terraform service), the application(s) depending on it MUST have their environment variables wired to it via **alias** before the deployment is considered complete (Phase 6.10). Never leave an application pointing at a hardcoded or missing connection string for a piece of infrastructure that was just provisioned.
 
 ### Group 4: Deployment Method
 

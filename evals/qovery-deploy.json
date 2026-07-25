@@ -35,5 +35,33 @@
       "Generates a Python FastAPI Dockerfile with uvicorn from the Phase 3 templates",
       "Does not deploy any service before the cluster status is DEPLOYED or READY"
     ]
+  },
+  {
+    "skills": ["qovery-deploy"],
+    "query": "Deploy my app in production and set up a managed Postgres database for it on AWS",
+    "files": [],
+    "expected_behavior": [
+      "During Phase 1 Group 3, identifies the need for a production database",
+      "Enters Phase 3C and reads reference/phase3c-blueprints.md before reaching for a native MANAGED database or hand-rolled Terraform",
+      "Fetches the blueprint catalog via GET /organization/{organizationId}/blueprint/catalog and finds an aws-rds-postgresql entry",
+      "Resolves the major version and latestTag instead of hand-constructing the tag string",
+      "Fetches the manifest (GET .../manifest?environmentId=...) and only asks the user about editable variable fields without defaults, not context variables",
+      "Presents the blueprint (name, tag, provider) in the Phase 3B deployment plan summary under a Blueprints section and waits for explicit confirmation before calling POST /environment/{environmentId}/blueprint",
+      "Marks password-like variables as is_secret: true when creating the blueprint",
+      "Includes the User-Agent header on every blueprint API call",
+      "After creating the app and the blueprint, lists the blueprint service's exposed environment variables and creates an alias (POST /application/{appId}/environmentVariable/alias) wiring the app's DATABASE_URL-equivalent variable to the blueprint's connection output, per reference/phase6-env-vars.md section 6.10 — does not leave the app with a hardcoded or missing connection string"
+    ]
+  },
+  {
+    "skills": ["qovery-deploy"],
+    "query": "Deploy my Node.js app for local dev/testing with a Postgres database — nothing fancy, just get it running",
+    "files": [],
+    "expected_behavior": [
+      "Even though this is a dev/test deployment, still enters Phase 3C and checks the blueprint catalog first (GET /organization/{organizationId}/blueprint/catalog) rather than jumping straight to a native CONTAINER database",
+      "If a container-based blueprint variant exists for the requested database family, offers it as an option, sized appropriately for dev/test (not a large/production instance class)",
+      "If no blueprint matches or the user declines it in favor of simplicity, falls back to the native CONTAINER-mode database (POST /environment/{envId}/database with mode=CONTAINER) from reference/phase4-cli-api.md 4.4",
+      "Regardless of which path was taken (blueprint or native container database), wires the app's DB connection env var to the deployed resource via alias (reference/phase6-env-vars.md 6.4 or 6.10) before considering the task complete",
+      "Does not skip the Phase 3C catalog check purely because the environment is dev/test"
+    ]
   }
 ]

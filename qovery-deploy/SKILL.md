@@ -1,6 +1,6 @@
 ---
 name: qovery-deploy
-description: Deploys any application, database, Helm chart, or Terraform module to Kubernetes via Qovery. Analyzes the user's codebase, creates missing Dockerfiles, provisions databases (container or managed), sets up environment variables, and deploys via Qovery CLI + API or Terraform provider. Supports Node.js, Python, Go, Java, Ruby, PHP, .NET, React, Vite, Next.js and more. Use when the user asks to deploy, ship, set up, or release an application on Qovery or Kubernetes via Qovery.
+description: Deploys any application, database, Helm chart, Terraform module, or managed infrastructure Blueprint (RDS, Redis, S3, and more) to Kubernetes via Qovery. Analyzes the user's codebase, creates missing Dockerfiles, provisions databases (container, managed, or blueprint) and cloud resources, sets up environment variables, and deploys via Qovery CLI + API or Terraform provider. Supports Node.js, Python, Go, Java, Ruby, PHP, .NET, React, Vite, Next.js and more. Use when the user asks to deploy, ship, set up, or release an application on Qovery or Kubernetes via Qovery.
 license: MIT
 compatibility: opencode
 metadata:
@@ -53,6 +53,7 @@ Deployment Progress:
 - [ ] Phase 2 — Prerequisites & authentication
 - [ ] Phase 2B — Cluster setup (only if no cluster exists)
 - [ ] Phase 3 — Codebase analysis & Dockerfile creation
+- [ ] Phase 3C — Blueprint catalog check (MANDATORY whenever any infra piece — DB, cache, storage, queue, etc. — is needed, any environment)
 - [ ] Phase 3B — Deployment plan summary + USER CONFIRMATION
 - [ ] Phase 4 OR Phase 5 — Deploy (CLI+API vs Terraform)
 - [ ] Phase 6 — Environment variables (scopes, aliases, interpolation)
@@ -76,6 +77,7 @@ When entering each phase, read the matching reference file via the bash Read too
 | Phase 2 | [reference/phase2-prereq-auth.md](reference/phase2-prereq-auth.md) | CLI install, login, context, API token |
 | Phase 2B | [reference/phase2b-cluster-setup.md](reference/phase2b-cluster-setup.md) | First-time cluster on AWS / GCP / Azure / Scaleway |
 | Phase 3 | [reference/phase3-dockerfiles.md](reference/phase3-dockerfiles.md) | Production Dockerfile templates for 12+ stacks |
+| Phase 3C | [reference/phase3c-blueprints.md](reference/phase3c-blueprints.md) | Blueprint catalog: reuse managed infra components (RDS, Redis, etc.) instead of hand-rolled Terraform |
 | Phase 3B | [reference/phase3b-deployment-plan.md](reference/phase3b-deployment-plan.md) | Plan summary template + confirmation gate |
 | Phase 4 | [reference/phase4-cli-api.md](reference/phase4-cli-api.md) | Deploy via CLI + API (quick path) |
 | Phase 5 | [reference/phase5-terraform.md](reference/phase5-terraform.md) | Deploy via Terraform provider (production path) |
@@ -93,10 +95,26 @@ Gather four groups of information conversationally (do not dump as a wall of tex
 
 1. **Account & infrastructure** — Qovery org (auto-list via API), cluster (must be `DEPLOYED`/`READY`), project, environment.
 2. **Project analysis** — language, framework, port, public accessibility, monorepo paths.
-3. **Database & services** — type, mode (`CONTAINER` for dev, `MANAGED` for prod), extra cloud resources.
+3. **Database & services** — type, mode (`CONTAINER` for dev, `MANAGED` for prod, or Blueprint if the catalog has a match), extra cloud resources.
 4. **Deployment method** — CLI + API (quick) or Terraform (production).
 
 Detailed questions and API calls live in [reference/phase1-discovery.md](reference/phase1-discovery.md). If the user shared a Qovery Console URL, extract the IDs first using [reference/console-url-detection.md](reference/console-url-detection.md) and skip the corresponding questions.
+
+---
+
+## Phase 3C — Blueprint catalog check
+
+**MANDATORY: whenever any infrastructure piece is needed — a database (dev/test or production), cache, queue, storage bucket, or any other cloud resource — check the Blueprint catalog FIRST**, before deciding between a native `qovery_database` resource (CONTAINER or MANAGED) or a hand-rolled Terraform service. This applies in every environment, not just production. Blueprints are pre-built infrastructure components (managed RDS PostgreSQL/MySQL, Redis, S3, and more) published in the `Qovery/service-catalog` repo, and the catalog can contain both cloud-managed and container-based blueprints for the same service family — check `majorVersions`/manifest rather than assuming a family is only offered one way.
+
+```bash
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  -H "User-Agent: QoverySkill/qovery-deploy (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+  "https://api.qovery.com/organization/{organizationId}/blueprint/catalog" | jq '.blueprints[] | {name, provider, serviceFamily}'
+```
+
+Full flow (version/tag resolution, manifest-driven variable prompts, creation, engine overrides, updates) lives in [reference/phase3c-blueprints.md](reference/phase3c-blueprints.md). Skip *deploying* the blueprint only if no matching one exists or the user explicitly wants a bare native resource / fully custom Terraform — but always run the catalog check itself first.
+
+**Whichever infra piece you end up deploying — blueprint, native container database, native managed database, or Terraform service — Phase 6 (env vars) MUST wire dependent applications to it via alias, not hardcoded hostnames.** See the Phase 6 note below.
 
 ---
 
@@ -142,11 +160,16 @@ User wants to deploy with Qovery
 ├─ Needs Database? ─────── NO ──> Skip database setup
 │       │
 │       YES
-│       ├─ Dev/Test? ──────────> Database mode = CONTAINER (cheap, on-cluster)
-│       └─ Production? ───────┬> Database mode = MANAGED (simple, cloud-managed RDS)
-│                              └> Terraform service for RDS Aurora (advanced, full control)
+│       ├─ Phase 3C: check Blueprint catalog FIRST (always — dev/test or production)
+│       │       ├─ Match found ──> deploy the blueprint (may itself be container-based — pick sizing to fit dev/test vs prod)
+│       │       └─ No match ──┬─ Dev/Test? ──> Database mode = CONTAINER (native Qovery resource, cheap, on-cluster)
+│       │                      └─ Production? ─┬> Database mode = MANAGED (simple, cloud-managed RDS)
+│       │                                       └> Terraform service for RDS Aurora (advanced, full control)
+│       └─ Wire dependent apps' env vars to whichever was deployed (alias — Phase 6.10). Never leave a DB unconnected.
 │
-├─ Needs cloud resources? ──> Terraform service (S3, Lambda, CloudFront, etc.)
+├─ Needs cloud resources? ──> Phase 3C: check Blueprint catalog FIRST (always)
+│       ├─ Match found ──> deploy the blueprint (e.g. S3, Redis) — then alias its vars into dependent apps (Phase 6.10)
+│       └─ No match ──> Terraform service (S3, Lambda, CloudFront, etc.)
 │
 ├─ Has Helm charts? ────────> qovery_helm resource
 │
