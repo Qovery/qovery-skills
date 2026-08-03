@@ -9,7 +9,7 @@ set -euo pipefail
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-builder-env" "qovery-builder-portal")
+SKILLS=("qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-builder-env" "qovery-builder-portal" "qovery-cluster-ops")
 TARBALL_URL="https://codeload.github.com/Qovery/qovery-skills/tar.gz/refs/heads/main"
 
 # Colors (if terminal supports them)

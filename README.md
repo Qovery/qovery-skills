@@ -17,6 +17,7 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | **qovery-preview** | Create preview environments from PRs — detects/creates blueprint environments, clones for each PR, switches branches, configures auto-shutdown (stop/delete/recycle), provides cleanup. Includes `/qovery-preview` slash command |
 | **qovery-builder-env** | Set up self-service builder environments for non-tech teams (sales, finance, ops) — creates controlled workspaces with AI coding tools (VS Code + Copilot, Claude Code, OpenCode), Qovery deployment built-in, RBAC, cost controls, SSO, and optional Terraform IaC |
 | **qovery-builder-portal** | Generate and deploy a self-service web portal for builders — SSO login, one-click environment creation from templates, dashboard with status/URLs/TTL, start/stop/extend/delete controls. Built with Vite + React + TanStack Router + Tailwind + Express. Deployed on Qovery |
+| **qovery-cluster-ops** | Diagnose and tune cluster infrastructure: node churn diagnosis, pods stuck in Pending, Karpenter node pool tuning (consolidation, instance requirements, limits, spot), disruption resilience (PDBs, multi-AZ), and Kubernetes upgrade preparation |
 
 ## Quick Install
 
@@ -217,6 +218,15 @@ The onboard skill acts as your personal cloud architect. The deploy skill handle
 - _"Deploy the builder self-service interface"_
 - `/qovery-builder-portal` (slash command)
 
+**Prompts that trigger qovery-cluster-ops:**
+- _"My nodes keep getting replaced"_
+- _"Karpenter is killing my pods"_
+- _"Pods are stuck in Pending"_
+- _"My cluster never scales down"_
+- _"Configure the Karpenter node pools"_
+- _"When is my Kubernetes version upgraded?"_
+- `/qovery-cluster-ops` (slash command)
+
 ## Slash Commands
 
 Each skill includes a slash command for quick invocation. Type `/` followed by the command name in your AI tool's chat:
@@ -231,6 +241,7 @@ Each skill includes a slash command for quick invocation. Type `/` followed by t
 | `/qovery-preview` | Create a preview environment for a PR | `/qovery-preview` or `/qovery-preview PR-123` |
 | `/qovery-builder-env` | Set up builder environments for non-tech teams | `/qovery-builder-env` or `/qovery-builder-env sales 5` |
 | `/qovery-builder-portal` | Deploy a self-service web portal for builders | `/qovery-builder-portal` or `/qovery-builder-portal google` |
+| `/qovery-cluster-ops` | Diagnose and tune cluster nodes and Karpenter | `/qovery-cluster-ops` or `/qovery-cluster-ops my-cluster` |
 
 Commands are installed automatically by the install script. They accept optional arguments (service name, environment name, Console URL) and auto-detect context from your git workspace.
 
@@ -388,16 +399,16 @@ git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
 # Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal ~/.agents/skills/
+mkdir -p ~/.claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal qovery-cluster-ops ~/.claude/skills/
+mkdir -p ~/.config/opencode/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal qovery-cluster-ops ~/.config/opencode/skills/
+mkdir -p ~/.agents/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal qovery-cluster-ops ~/.agents/skills/
 
 # Install all slash commands (Claude Code, OpenCode, etc.)
 mkdir -p ~/.claude/commands && cp qovery-*/commands/*.md ~/.claude/commands/
 mkdir -p ~/.config/opencode/commands && cp qovery-*/commands/*.md ~/.config/opencode/commands/
 
 # Or project-local install
-mkdir -p .claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal .claude/skills/
+mkdir -p .claude/skills && cp -r qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-builder-env qovery-builder-portal qovery-cluster-ops .claude/skills/
 ```
 
 Verify the skills are discovered by checking if your tool lists all eight Qovery skills.
