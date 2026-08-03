@@ -6,6 +6,8 @@ Analyze the infrastructure across 7 dimensions. For each, calculate current cost
 
 For EACH service, compare allocated resources vs actual peak usage over the analysis period.
 
+**If Qovery observability is enabled on the cluster** (`metrics_parameters.enabled` is `true`, checked in Phase 1.3): get the measurements and recommendations from KRR instead of computing them by hand. Load the Phase 2b reference (`phase2b-krr-rightsizing.md`) from the SKILL.md navigation table. The formulas below are the fallback when observability is off or KRR cannot run; the business-context rules (seasonal peaks, minimum thresholds, growth buffers) apply in both cases.
+
 **Right-sizing formula (adjusted by business context):**
 
 | Context | Formula | Safety Buffer | Rationale |
