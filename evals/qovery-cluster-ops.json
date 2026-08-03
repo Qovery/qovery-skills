@@ -1,0 +1,49 @@
+[
+  {
+    "skills": ["qovery-cluster-ops"],
+    "query": "My nodes keep getting replaced every few minutes and my pods restart even though the apps don't crash",
+    "files": [],
+    "expected_behavior": [
+      "Identifies the cluster and checks the KARPENTER feature via GET /organization/{orgId}/cluster/{clusterId}",
+      "Fetches the kubeconfig (qovery cluster kubeconfig) and sorts nodes by creationTimestamp to quantify churn",
+      "Loads reference/phase3-diagnose.md playbook 3.1 and inspects disruption/consolidation events",
+      "Distinguishes root causes: aggressive consolidate_after vs sensitive pods on the default pool vs narrow instance requirements vs spot interruptions",
+      "Proposes a concrete fix from reference/phase4-karpenter-tuning.md (e.g. raise consolidate_after on default_override) and applies it via PUT cluster + cluster deploy, then re-measures churn against the baseline"
+    ]
+  },
+  {
+    "skills": ["qovery-cluster-ops"],
+    "query": "My cluster never scales down after traffic drops — I'm paying for idle nodes all night",
+    "files": [],
+    "expected_behavior": [
+      "Loads reference/phase3-diagnose.md playbook 3.2 (consolidation blocked)",
+      "Checks nodepool disruption settings and looks for Unconsolidatable / blocked-disruption events",
+      "Identifies blockers: over-strict PDBs, do-not-disrupt pods, bare pods, single locked InstanceSize, or over-requested apps",
+      "Routes app right-sizing findings to qovery-optimize instead of fixing them here",
+      "For cluster-side causes, proposes changes in the KARPENTER feature (widen requirements, tune stable pool consolidation window) and applies via Console/API + cluster update"
+    ]
+  },
+  {
+    "skills": ["qovery-cluster-ops"],
+    "query": "Pods have been stuck in Pending for 30 minutes on my Qovery cluster",
+    "files": [],
+    "expected_behavior": [
+      "Lists Pending pods and reads the FailedScheduling message verbatim via kubectl describe",
+      "Loads reference/phase3-diagnose.md playbook 3.3 and maps the message to a cause (pool limits reached, arch mismatch, untolerated taint, Karpenter unhealthy)",
+      "Checks node pool limits and requirements in the KARPENTER feature before proposing a fix",
+      "If Karpenter creates no nodeclaim at all, prepares an escalation to Qovery support using reference/report-template.md instead of guessing"
+    ]
+  },
+  {
+    "skills": ["qovery-cluster-ops"],
+    "query": "Restrict my cluster to m5 and m6i instances and set a consolidation window on the stable pool for Saturday night",
+    "files": [],
+    "expected_behavior": [
+      "Reads the current KARPENTER feature value before modifying anything",
+      "Builds qovery_node_pools.requirements with InstanceFamily In [m5, m6i] and warns against locking a single InstanceSize",
+      "Sets stable_override.consolidation with enabled=true, days=[SATURDAY], start_time in PThh:mm format and a duration in PThhHmmM format",
+      "Applies via PUT /organization/{orgId}/cluster/{clusterId} then POST .../deploy (or flags Terraform-managed clusters to change the qovery_cluster resource instead)",
+      "Warns that requirement changes cause rolling node replacement and verifies the new values on the cluster afterwards"
+    ]
+  }
+]
