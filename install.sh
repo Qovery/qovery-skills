@@ -9,7 +9,7 @@ set -euo pipefail
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-terraform")
+SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-terraform" "qovery-policy-token")
 TARBALL_URL="https://codeload.github.com/Qovery/qovery-skills/tar.gz/refs/heads/main"
 
 # Colors (if terminal supports them)
@@ -252,6 +252,7 @@ echo -e "  ${YELLOW}qovery-optimize${NC}      — Optimize costs and right-size 
 echo -e "  ${YELLOW}qovery-speedup${NC}       — Speed up deployments and builds"
 echo -e "  ${YELLOW}qovery-preview${NC}       — Create preview environments from PRs"
 echo -e "  ${YELLOW}qovery-terraform${NC}     — Terraformize existing Qovery setups"
+echo -e "  ${YELLOW}qovery-policy-token${NC}  — Create and verify scoped API policy tokens"
 echo ""
 echo -e "${BOLD}Compatible with:${NC}"
 echo "  Claude Code, OpenCode, Cursor, VS Code Copilot, Gemini CLI,"

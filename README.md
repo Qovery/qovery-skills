@@ -17,6 +17,7 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | **qovery-speedup** | Speed up deployments — measures pipeline timeline, identifies bottlenecks (build, startup, health check, scheduling), classifies user vs Qovery responsibility, proposes Dockerfile and config fixes |
 | **qovery-preview** | Create preview environments from PRs — detects/creates blueprint environments, clones for each PR, switches branches, configures auto-shutdown (stop/delete/recycle), provides cleanup. Includes `/qovery-preview` slash command |
 | **qovery-terraform** | Generate Terraform manifests from an existing Qovery setup — reads config from API, generates HCL (qovery/qovery provider), imports resources into state, validates in test clone. Supports single or multiple environments. Safe: never applies to original without confirmation |
+| **qovery-policy-token** | Create a scoped, least-privilege API Policy Token — turns your intent into an OPA/Rego policy, tests it locally with OPA and live against the API, creates the token, and verifies it allows exactly what you want and denies everything else. Includes `/qovery-policy-token` slash command |
 
 > **Looking for Remote Development Environments (RDEs)?** RDEs are now managed directly via [rde.qovery.com](https://rde.qovery.com). See the [RDE documentation](https://www.qovery.com/docs/getting-started/quickstart/remote-dev-environments) to get started.
 
@@ -220,6 +221,13 @@ The onboard skill acts as your personal cloud architect. The deploy skill handle
 - _"Generate Terraform from my existing project"_
 - `/qovery-terraform` (slash command)
 
+**Prompts that trigger qovery-policy-token:**
+- _"Create a restricted API token that can only deploy, never delete"_
+- _"I need a scoped token for an AI agent limited to the staging environment"_
+- _"Make an OPA/Rego policy token for Qovery"_
+- _"Lock a token down to one service"_
+- `/qovery-policy-token` (slash command)
+
 ## Slash Commands
 
 Each skill includes a slash command for quick invocation. Type `/` followed by the command name in your AI tool's chat:
@@ -234,6 +242,7 @@ Each skill includes a slash command for quick invocation. Type `/` followed by t
 | `/qovery-speedup` | Analyze and fix deployment bottlenecks | `/qovery-speedup` or `/qovery-speedup my-service` |
 | `/qovery-preview` | Create a preview environment for a PR | `/qovery-preview` or `/qovery-preview PR-123` |
 | `/qovery-terraform` | Generate Terraform from existing Qovery setup | `/qovery-terraform` or `/qovery-terraform https://console.qovery.com/...` |
+| `/qovery-policy-token` | Create and verify a scoped API Policy Token | `/qovery-policy-token` or `/qovery-policy-token read-only on staging, can deploy the api service` |
 
 Commands are installed automatically by the install script. They accept optional arguments (service name, environment name, Console URL) and auto-detect context from your git workspace.
 
