@@ -8,29 +8,57 @@ The policy is only as good as the intent behind it. This phase turns a vague ask
 - **organizationId.** Resolve it (MCP `list_organizations`, or `GET /organization` → `.results[0].id`). Confirm with the user if they belong to more than one org.
 - **OPA CLI** (`opa version`) for local testing — best-effort; see `phase3-local-testing.md` if missing.
 
-## 1.2 Elicit the intent
+## 1.2 Guided interview — build the intent with the user
 
-Ask the user, concretely:
+**Do not guess the policy.** Walk the user through the interview below, asking one topic at a time and offering concrete menus (use your interactive question UI if you have one). Each answer maps directly to a Rego building block in [phase2-authoring-rego.md](phase2-authoring-rego.md) §2.3b. Skip a step only when the user has already answered it.
 
-1. **Who/what will use the token?** (an AI agent, a CI job, a partner script) — this sets how tight it must be.
-2. **What must it be able to do?** Verbs + targets: "read", "deploy", "restart", "set env vars", "scale". For each, *which* resource.
-3. **What must it NEVER do?** Especially "never delete", "never touch production", "never read secrets".
-4. **Scope boundaries.** One environment? One project? One service? A whole org (rarely appropriate)?
-5. **Expiry?** Optional `expires_at` (RFC 3339). Recommend one for agent tokens.
+**Step A — Purpose & principal.** "Who or what will use this token?" — an AI agent, a CI/CD pipeline, a teammate, an external partner, a one-off script. This sets how tight to be and whether to recommend an expiry (Step G). Agent/partner tokens should be the tightest.
 
-Restate the answer as two explicit lists before writing any Rego:
+**Step B — Blast radius (scope).** "What is the widest boundary this token may ever act within?" Offer:
+- **one service** → scope rules on `input.qovery_metadata.service_id`
+- **one environment** → scope on `environment_id`
+- **one project** (any environment/service under it) → scope on `project_id`
+- **whole organization** → no resource scope (rare; flag it as broad and confirm twice)
+
+Resolve the chosen boundary's real UUID(s) in §1.3. Everything the token can do will be *and*-ed with this scope.
+
+**Step C — Capabilities (the allow-list).** "Which actions should it be able to perform?" Present this menu and let the user pick as many as apply — each maps to a building block in §2.3b:
+- Read / observe (GET) — dashboards, logs, config, statuses
+- Deploy / redeploy environments
+- Clone environments
+- Stop / restart environments
+- Cancel a running deployment
+- Deploy a specific service (application / container / job / database / helm)
+- Manage environment variables (optionally constrained — Step E)
+- Scale or update resources (CPU/RAM/instances)
+- Create new services
+- Delete resources
+
+For each picked capability, confirm the granularity: does it apply to the *whole scope* from Step B, or only to one named resource inside it?
+
+**Step D — Hard denials (safety double-check).** "Is there anything it must NEVER do, even by accident?" e.g. never delete, never touch production, never read secrets, never modify another project. With `default allow := false` these are already denied unless a capability in Step C grants them — but naming them explicitly turns each into a **deny test case** (Phase 3) that proves the boundary holds. Always capture at least one.
+
+**Step E — Value/body constraints (optional).** If a capability touches request bodies (e.g. creating env vars), ask for limits: "only keys starting with `FEATURE_`", "only these allowed values", etc. Maps to the body-constraint block in §2.3b.
+
+**Step F — Usability reads.** Many actions need a preceding read (a CLI/Console lists environments before cloning; a deploy tool reads status). Ask: "Does the tool need to list or read resources in this scope to function?" If yes and Step C didn't already include reads, add a **scoped GET** block so the token isn't so strict it can't be used. If the user truly wants *only* the write verbs, note that reads will return `401`.
+
+**Step G — Expiry.** "Should the token expire?" Optional `expires_at` (RFC 3339). Recommend one for agent, CI, and partner tokens.
+
+Then **restate the answers as two explicit lists** and get agreement before writing Rego:
 
 ```
+SCOPE: project <proj-uuid> (Lifecycle Demo)
 ALLOW:
-  - GET/HEAD anything in environment <env-uuid> (read-only staging)
-  - POST deploy service <svc-uuid>
-DENY (must be blocked):
-  - any DELETE anywhere
-  - any write to environment <prod-env-uuid>
-  - reading/writing any other environment
+  - POST clone any environment in the project
+  - POST deploy any environment in the project
+DENY (must be blocked — becomes test cases):
+  - any DELETE in the project
+  - clone/deploy in any OTHER project
+  - any GET/read (token is write-only by request)
+EXPIRES: none
 ```
 
-If the user's ask is broad ("a token for our agent to manage staging"), narrow it with follow-ups — a policy that allows more than needed defeats the purpose. When in doubt, start smaller; adding a rule later means delete + recreate, but that is safer than over-granting.
+If the ask is broad ("a token to manage staging"), narrow it with follow-ups — a policy that allows more than needed defeats the purpose. When in doubt start smaller: adding a capability later means delete + recreate, which is safer than over-granting.
 
 ## 1.3 Resolve the real UUIDs (never guess)
 

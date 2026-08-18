@@ -1,6 +1,30 @@
 [
   {
     "skills": ["qovery-policy-token"],
+    "query": "I need a policy token but I'm not sure exactly what it should allow — help me build it.",
+    "files": [],
+    "expected_behavior": [
+      "Runs the Phase 1 guided interview instead of guessing: asks purpose/principal, blast-radius scope (service/environment/project/org), the capability menu (read, deploy, clone, stop/restart, env vars, etc.), hard denials, body constraints, usability reads, and expiry",
+      "Resolves the real UUIDs for the chosen scope (MCP/CLI/API) and restates the answers as explicit ALLOW + DENY lists for the user to confirm",
+      "Assembles the policy from the Phase 2 capability building-block library (one scope predicate + one block per chosen capability, OR-ed under `default allow := false`), trimming the env_actions/service_kinds sets to only what was asked",
+      "Runs opa-preflight.sh with an allow case per capability and a deny case per named denial until green, then creates the token only after explicit confirmation",
+      "Live-verifies (deny cases -> 401, non-destructive allow reads -> 2xx, destructive allows skipped) and delivers the token once with immutability + revoke guidance"
+    ]
+  },
+  {
+    "skills": ["qovery-policy-token"],
+    "query": "Create a policy token that can clone and deploy any environment in the Lifecycle Demo project, and that's it.",
+    "files": [],
+    "expected_behavior": [
+      "Resolves the Lifecycle Demo project UUID and confirms it; recognizes the scope is the project (input.qovery_metadata.project_id), not a single environment",
+      "Authors a policy from clone-deploy-project.rego: allows POST on `[\"api\",\"environment\",<id>,\"deploy\"]` and `[\"api\",\"environment\",<id>,\"clone\"]` only when project_id matches, with count(path)==4",
+      "Builds a matrix with allow cases (clone, deploy in project) and deny cases (clone/deploy in another project, delete/stop/read in the project) and gets opa-preflight green",
+      "Notes that clone+deploy are destructive so live-verify probes only the deny cases (expect 401) and verifies the allow side statically, unless the user opts into a real clone-and-cleanup",
+      "Flags the strictness tradeoff: with no read capability, GET/list calls will return 401 — offers to add a scoped read block if the tool needs to list environments first"
+    ]
+  },
+  {
+    "skills": ["qovery-policy-token"],
     "query": "Create a Qovery API token that can only read the staging environment and nothing else.",
     "files": [],
     "expected_behavior": [

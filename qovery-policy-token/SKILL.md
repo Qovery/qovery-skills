@@ -63,8 +63,8 @@ For a regular role-based API token (CI/CD, Terraform, broad access), this skill 
 ```
 Create & Verify a Policy Token:
 - [ ] Phase 0 — Prereqs: owner/admin API token available, resolve organizationId, check for OPA CLI
-- [ ] Phase 1 — Intent + IDs: capture allow-list + deny-list, resolve real resource UUIDs (MCP/CLI/API)
-- [ ] Phase 2 — Author Rego: write least-privilege policy, explain each rule, confirm with user
+- [ ] Phase 1 — Guided interview: ask purpose → scope → capabilities → denials → reads → expiry; resolve real UUIDs (MCP/CLI/API)
+- [ ] Phase 2 — Author Rego: assemble least-privilege policy from the capability library, explain each rule, confirm with user
 - [ ] Phase 3 — Local test: build allow/deny matrix, run opa-preflight.sh, iterate until all green
 - [ ] Phase 4 — Create: POST the token AFTER user confirms policy; capture id + secret without echoing
 - [ ] Phase 5 — Live verify: probe deny cases (expect 401) + safe allow reads (expect 2xx), report
@@ -101,8 +101,8 @@ Every request is evaluated against this JSON `input`. Policies branch on these f
 |---|---|---|
 | Auth | [reference/auth.md](reference/auth.md) | Token handling + secrecy rules + User-Agent header |
 | Console URL | [reference/console-url-detection.md](reference/console-url-detection.md) | Extract org/project/env/service IDs from Console URLs |
-| Phase 1 | [reference/phase1-intent-and-ids.md](reference/phase1-intent-and-ids.md) | Intent questionnaire; resolve real resource UUIDs via MCP/CLI/API |
-| Phase 2 | [reference/phase2-authoring-rego.md](reference/phase2-authoring-rego.md) | Rego patterns, documented example policies, constraints, template picker |
+| Phase 1 | [reference/phase1-intent-and-ids.md](reference/phase1-intent-and-ids.md) | **Guided interview** (purpose → scope → capabilities → denials → body constraints → reads → expiry); resolve real UUIDs via MCP/CLI/API |
+| Phase 2 | [reference/phase2-authoring-rego.md](reference/phase2-authoring-rego.md) | Rego patterns + **capability→Rego building-block library** (verified API paths) to assemble a complete policy; constraints; pitfalls |
 | Phase 3 | [reference/phase3-local-testing.md](reference/phase3-local-testing.md) | Install/check OPA, build the allow/deny matrix, run pre-flight, read results |
 | Phase 4 | [reference/phase4-create-token.md](reference/phase4-create-token.md) | Create endpoint, request/response, error handling (400/403/409), secret capture |
 | Phase 5 | [reference/phase5-live-verify.md](reference/phase5-live-verify.md) | Safe live testing (why deny is safe / allow-destructive is not), report format |
@@ -116,6 +116,7 @@ Every request is evaluated against this JSON `input`. Policies branch on these f
 | [templates/policies/deploy-only.rego](templates/policies/deploy-only.rego) | Deploy a specific service/app and nothing else |
 | [templates/policies/modify-one-service-never-delete.rego](templates/policies/modify-one-service-never-delete.rego) | Change one service, never DELETE |
 | [templates/policies/body-constrained-env-var.rego](templates/policies/body-constrained-env-var.rego) | Constrain the request body (e.g. env var keys prefixed `FEATURE_`) |
+| [templates/policies/clone-deploy-project.rego](templates/policies/clone-deploy-project.rego) | Clone + deploy any environment in one project, nothing else (project-scoped) |
 | [templates/test-matrix.example.json](templates/test-matrix.example.json) | Schema for allow/deny test cases (input document + expected result + live probe) |
 | [templates/scripts/opa-preflight.sh](templates/scripts/opa-preflight.sh) | Run `opa check` + `opa eval` per matrix case, print a pass/fail table |
 | [templates/scripts/create-policy-token.sh](templates/scripts/create-policy-token.sh) | POST create; capture id + token to env WITHOUT echoing; handle 400/403/409 |
