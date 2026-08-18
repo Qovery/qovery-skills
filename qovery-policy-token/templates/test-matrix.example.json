@@ -1,0 +1,90 @@
+{
+  "_comment": "Test matrix for a policy that allows read-only on one env + deploy one service, and denies everything else. Copy this file, replace every <...UUID> with real IDs from Phase 1, and edit the cases to match your policy's allow-list + deny-list. `input` drives local OPA eval (Phase 3); `live` drives the real API probe (Phase 5). Include at least one allow case per rule and one deny case per deny-list item.",
+  "cases": [
+    {
+      "name": "read staging services (allow)",
+      "expect": true,
+      "live": { "method": "GET", "path": "/environment/<ENV_UUID>/application", "destructive": false },
+      "input": {
+        "request": { "method": "GET", "path": ["api", "environment", "<ENV_UUID>", "application"], "body": null },
+        "qovery_metadata": {
+          "organization_id": "<ORG_UUID>",
+          "environment_id": "<ENV_UUID>",
+          "project_id": "<PROJ_UUID>",
+          "service_id": null,
+          "service_type": null,
+          "cluster_id": "<CLUSTER_UUID>"
+        },
+        "token": { "id": "00000000-0000-0000-0000-000000000000", "name": "preflight" }
+      }
+    },
+    {
+      "name": "deploy api service (allow, destructive - static only)",
+      "expect": true,
+      "live": { "method": "POST", "path": "/environment/<ENV_UUID>/service/deploy", "body": {}, "destructive": true },
+      "input": {
+        "request": { "method": "POST", "path": ["api", "environment", "<ENV_UUID>", "service", "deploy"], "body": {} },
+        "qovery_metadata": {
+          "organization_id": "<ORG_UUID>",
+          "environment_id": "<ENV_UUID>",
+          "project_id": "<PROJ_UUID>",
+          "service_id": "<SVC_UUID>",
+          "service_type": "APPLICATION",
+          "cluster_id": "<CLUSTER_UUID>"
+        },
+        "token": { "id": "00000000-0000-0000-0000-000000000000", "name": "preflight" }
+      }
+    },
+    {
+      "name": "delete api service (deny)",
+      "expect": false,
+      "live": { "method": "DELETE", "path": "/application/<SVC_UUID>", "destructive": true },
+      "input": {
+        "request": { "method": "DELETE", "path": ["api", "application", "<SVC_UUID>"], "body": null },
+        "qovery_metadata": {
+          "organization_id": "<ORG_UUID>",
+          "environment_id": "<ENV_UUID>",
+          "project_id": "<PROJ_UUID>",
+          "service_id": "<SVC_UUID>",
+          "service_type": "APPLICATION",
+          "cluster_id": "<CLUSTER_UUID>"
+        },
+        "token": { "id": "00000000-0000-0000-0000-000000000000", "name": "preflight" }
+      }
+    },
+    {
+      "name": "write to production env (deny)",
+      "expect": false,
+      "live": { "method": "POST", "path": "/environment/<PROD_ENV_UUID>/service/deploy", "body": {}, "destructive": true },
+      "input": {
+        "request": { "method": "POST", "path": ["api", "environment", "<PROD_ENV_UUID>", "service", "deploy"], "body": {} },
+        "qovery_metadata": {
+          "organization_id": "<ORG_UUID>",
+          "environment_id": "<PROD_ENV_UUID>",
+          "project_id": "<PROJ_UUID>",
+          "service_id": null,
+          "service_type": null,
+          "cluster_id": "<CLUSTER_UUID>"
+        },
+        "token": { "id": "00000000-0000-0000-0000-000000000000", "name": "preflight" }
+      }
+    },
+    {
+      "name": "read a different environment (deny)",
+      "expect": false,
+      "live": { "method": "GET", "path": "/environment/<OTHER_ENV_UUID>/service", "destructive": false },
+      "input": {
+        "request": { "method": "GET", "path": ["api", "environment", "<OTHER_ENV_UUID>", "service"], "body": null },
+        "qovery_metadata": {
+          "organization_id": "<ORG_UUID>",
+          "environment_id": "<OTHER_ENV_UUID>",
+          "project_id": "<PROJ_UUID>",
+          "service_id": null,
+          "service_type": null,
+          "cluster_id": "<CLUSTER_UUID>"
+        },
+        "token": { "id": "00000000-0000-0000-0000-000000000000", "name": "preflight" }
+      }
+    }
+  ]
+}

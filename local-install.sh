@@ -8,7 +8,7 @@ set -euo pipefail
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-terraform")
+SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-terraform" "qovery-policy-token")
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Colors (if terminal supports them)
@@ -275,6 +275,7 @@ echo -e "  ${YELLOW}qovery-optimize${NC}      — Optimize costs and right-size 
 echo -e "  ${YELLOW}qovery-speedup${NC}       — Speed up deployments and builds"
 echo -e "  ${YELLOW}qovery-preview${NC}       — Create preview environments from PRs"
 echo -e "  ${YELLOW}qovery-terraform${NC}     — Terraformize existing Qovery setups"
+echo -e "  ${YELLOW}qovery-policy-token${NC}  — Create and verify scoped API policy tokens"
 echo ""
 echo -e "${BOLD}Slash commands:${NC} /qovery-<skill> (e.g. /qovery-deploy, /qovery-troubleshoot, /qovery-terraform…)."
 echo ""

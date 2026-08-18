@@ -1,0 +1,62 @@
+[
+  {
+    "skills": ["qovery-policy-token"],
+    "query": "I need a policy token but I'm not sure exactly what it should allow — help me build it.",
+    "files": [],
+    "expected_behavior": [
+      "Runs the Phase 1 guided interview instead of guessing: asks purpose/principal, blast-radius scope (service/environment/project/org), the capability menu (read, deploy, clone, stop/restart, env vars, etc.), hard denials, body constraints, usability reads, and expiry",
+      "Resolves the real UUIDs for the chosen scope (MCP/CLI/API) and restates the answers as explicit ALLOW + DENY lists for the user to confirm",
+      "Assembles the policy from the Phase 2 capability building-block library (one scope predicate + one block per chosen capability, OR-ed under `default allow := false`), trimming the env_actions/service_kinds sets to only what was asked",
+      "Runs opa-preflight.sh with an allow case per capability and a deny case per named denial until green, then creates the token only after explicit confirmation",
+      "Live-verifies (deny cases -> 401, non-destructive allow reads -> 2xx, destructive allows skipped) and delivers the token once with immutability + revoke guidance"
+    ]
+  },
+  {
+    "skills": ["qovery-policy-token"],
+    "query": "Create a policy token that can clone and deploy any environment in the Lifecycle Demo project, and that's it.",
+    "files": [],
+    "expected_behavior": [
+      "Resolves the Lifecycle Demo project UUID and confirms it; recognizes the scope is the project (input.qovery_metadata.project_id), not a single environment",
+      "Authors a policy from clone-deploy-project.rego: allows POST on `[\"api\",\"environment\",<id>,\"deploy\"]` and `[\"api\",\"environment\",<id>,\"clone\"]` only when project_id matches, with count(path)==4",
+      "Builds a matrix with allow cases (clone, deploy in project) and deny cases (clone/deploy in another project, delete/stop/read in the project) and gets opa-preflight green",
+      "Notes that clone+deploy are destructive so live-verify probes only the deny cases (expect 401) and verifies the allow side statically, unless the user opts into a real clone-and-cleanup",
+      "Flags the strictness tradeoff: with no read capability, GET/list calls will return 401 — offers to add a scoped read block if the tool needs to list environments first"
+    ]
+  },
+  {
+    "skills": ["qovery-policy-token"],
+    "query": "Create a Qovery API token that can only read the staging environment and nothing else.",
+    "files": [],
+    "expected_behavior": [
+      "Resolves the real staging environment UUID via MCP list_environments (or CLI/API), never guessing it, and confirms it with the user",
+      "Authors a least-privilege Rego policy starting with `default allow := false` that allows only GET/HEAD scoped to `input.qovery_metadata.environment_id == <staging-uuid>`, with no `package` line",
+      "Builds an allow/deny test matrix and runs templates/scripts/opa-preflight.sh (opa check + opa eval) until every case is green before creating anything, including a deny case proving another environment is not readable",
+      "Creates the token with POST /organization/{organizationId}/policyApiToken only after the user confirms the policy, and captures the returned `token` without echoing or storing it in plaintext",
+      "Live-verifies with the policy token: a read of staging returns 2xx and a read of a different environment returns 401, then hands the token over once and explains it cannot be retrieved again"
+    ]
+  },
+  {
+    "skills": ["qovery-policy-token"],
+    "query": "I need a token for our deploy bot that can deploy the api service but must never be able to delete anything.",
+    "files": [],
+    "expected_behavior": [
+      "Captures intent as an explicit allow-list (deploy the api service) and deny-list (any DELETE) and resolves the api service + environment UUIDs before writing Rego",
+      "Writes a policy allowing the exact deploy path (e.g. `input.request.path == [\"api\", \"environment\", <env>, \"service\", \"deploy\"]`) and denying deletes, warning that `method != \"DELETE\"` blocks only HTTP DELETE and scoping tightly if destructive actions are exposed as POST/PUT",
+      "Runs opa-preflight.sh with a deny case that sends a DELETE against the allowed service and asserts it is denied (false), iterating until the matrix is green",
+      "Explains that policies are immutable (no edit endpoint) so the policy must be confirmed before creation; creates the token and handles 400/403/409 (400=won't compile or has package, 403=not owner/admin, 409=name exists)",
+      "Live-verifies safely: the DELETE deny case is probed for real and must return 401 (blocked at auth before execution), while the destructive deploy allow case is verified statically via OPA and NOT auto-executed unless the user opts in per action"
+    ]
+  },
+  {
+    "skills": ["qovery-policy-token"],
+    "query": "Give me a token that can only set environment variables whose names start with FEATURE_ on our web app.",
+    "files": [],
+    "expected_behavior": [
+      "Resolves the web application UUID and confirms it, then authors a body-constrained Rego policy using `startswith(input.request.body.key, \"FEATURE_\")` scoped to POST on that app's environmentVariable path",
+      "Includes both an allow case (a FEATURE_-prefixed key) and deny cases (a non-prefixed key, and the same action on a different app) in the test matrix",
+      "Runs opa-preflight.sh and confirms the FEATURE_ key is allowed while a non-FEATURE_ key and other apps are denied, before creating the token",
+      "Notes the 65,536-character policy size limit and that no `package` line may be submitted, and creates the token with an owner/admin API token",
+      "Delivers the token once, records the token id, and explains list/revoke (GET/DELETE .../policyApiToken/{id}) plus audit-log attribution as policy:<token-id>:<token-name>"
+    ]
+  }
+]
