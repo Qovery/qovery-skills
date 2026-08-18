@@ -35,7 +35,8 @@ if ! opa check "$SCRATCH_POLICY"; then
   exit 1
 fi
 
-N="$(jq '.cases | length' "$MATRIX")"
+N="$(jq '.cases | length' "$MATRIX" 2>/dev/null || true)"
+[[ "$N" =~ ^[0-9]+$ ]] || { echo "ERROR: $MATRIX is not valid JSON or has no .cases array."; exit 2; }
 [ "$N" -gt 0 ] || { echo "ERROR: matrix has no cases."; exit 2; }
 
 printf '\n%-45s %-8s %-8s %s\n' "CASE" "EXPECT" "ACTUAL" "RESULT"

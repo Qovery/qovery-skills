@@ -4,13 +4,16 @@
 
 **CRITICAL: NEVER display, log, print, or capture Qovery token values.**
 
-- NEVER run `qovery auth token --print` as a standalone command — the output would expose the token in the conversation. Always use it **inline** within curl commands so the token flows through the shell but is never visible:
+- NEVER run `qovery auth token --print` (or `qovery auth token --json`) as a standalone command — the output dumps the token into the conversation. `--json` emits the raw access token too, so always pipe it through `jq` to extract only the field you need. Use `--print` **inline** within curl commands so the token flows through the shell but is never visible:
   ```bash
   # CORRECT — token is inline, never shown:
   curl -s -H "Authorization: Bearer $(qovery auth token --print)" https://api.qovery.com/...
+  # CORRECT — check auth without printing the token (jq extracts one field only):
+  qovery auth token --json 2>/dev/null | jq -r '.token_type'
 
   # WRONG — token value would appear in output:
   qovery auth token --print
+  qovery auth token --json            # dumps the full access_token
   echo $(qovery auth token --print)
   export TOKEN=$(qovery auth token --print)
   ```

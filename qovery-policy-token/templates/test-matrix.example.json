@@ -4,9 +4,9 @@
     {
       "name": "read staging services (allow)",
       "expect": true,
-      "live": { "method": "GET", "path": "/environment/<ENV_UUID>/service", "destructive": false },
+      "live": { "method": "GET", "path": "/environment/<ENV_UUID>/application", "destructive": false },
       "input": {
-        "request": { "method": "GET", "path": ["api", "environment", "<ENV_UUID>", "service"], "body": null },
+        "request": { "method": "GET", "path": ["api", "environment", "<ENV_UUID>", "application"], "body": null },
         "qovery_metadata": {
           "organization_id": "<ORG_UUID>",
           "environment_id": "<ENV_UUID>",

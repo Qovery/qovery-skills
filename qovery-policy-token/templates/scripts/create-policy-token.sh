@@ -4,7 +4,8 @@
 # Usage:
 #   bash create-policy-token.sh <organizationId> <name> <policy.rego> [description] [expires_at]
 #
-# Requires an OWNER/ADMIN Qovery API token in $QOVERY_API_TOKEN (used to authorize creation).
+# Authorizes creation with owner/admin credentials: an API token in $QOVERY_API_TOKEN (Token
+# scheme) if set, otherwise the CLI's OIDC session (`qovery auth`, Bearer scheme).
 # Writes the ONE-TIME secret token to a gitignored env file the caller controls and NEVER
 # prints it. Prints only the non-secret id/name. Handles 400/403/409 with specific guidance.
 #
@@ -20,7 +21,16 @@ EXPIRES_AT="${5:-}"
 
 command -v jq >/dev/null 2>&1 || { echo "ERROR: jq not found."; exit 2; }
 [ -f "$POLICY" ] || { echo "ERROR: policy file not found: $POLICY"; exit 2; }
-[ -n "${QOVERY_API_TOKEN:-}" ] || { echo "ERROR: QOVERY_API_TOKEN (owner/admin) not set."; exit 2; }
+
+# Admin credential: prefer an owner/admin API token (Token scheme); otherwise fall back to the
+# CLI's OIDC session (Bearer scheme) — used inline so the value is never printed or persisted.
+if [ -n "${QOVERY_API_TOKEN:-}" ]; then
+  AUTH=(-H "Authorization: Token ${QOVERY_API_TOKEN}")
+elif command -v qovery >/dev/null 2>&1 && qovery auth token --print >/dev/null 2>&1; then
+  AUTH=(-H "Authorization: Bearer $(qovery auth token --print)")
+else
+  echo "ERROR: no admin credential. Set QOVERY_API_TOKEN (owner/admin) or run 'qovery auth' first."; exit 2
+fi
 
 if grep -qE '^\s*package\s' "$POLICY"; then
   echo "ERROR: $POLICY contains a 'package' line — Qovery returns 400. Remove it and re-run."
@@ -48,7 +58,7 @@ BODY="$(jq -n \
 
 RESP="$(curl -s -w $'\n%{http_code}' -X POST \
   "https://api.qovery.com/organization/${ORG_ID}/policyApiToken" \
-  -H "Authorization: Token ${QOVERY_API_TOKEN}" \
+  "${AUTH[@]}" \
   -H "Content-Type: application/json" \
   -H "User-Agent: ${UA}" \
   -d "$BODY")"

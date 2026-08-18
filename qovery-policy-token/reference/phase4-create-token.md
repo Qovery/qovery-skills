@@ -33,7 +33,7 @@ bash templates/scripts/create-policy-token.sh "$QOVERY_ORG_ID" "deploy-agent" po
 
 The script:
 1. Reads `policy.rego`, verifies it has **no** `package` line (else the API returns `400`), and JSON-encodes it with `jq` (so newlines/quotes are escaped correctly).
-2. POSTs with the `Authorization: Token` + `User-Agent` headers.
+2. POSTs with the `User-Agent` header and owner/admin auth: `Authorization: Token $QOVERY_API_TOKEN` if set, otherwise falling back to the CLI's OIDC session (`Authorization: Bearer $(qovery auth token --print)`, used inline). Either works — the API accepts an API token or an OIDC Bearer for an owner/admin.
 3. On success, writes the token to a shell env file the *user* controls and never echoes it — following the secrecy rules in `auth.md`. It prints only the non-secret `id`, `name`, and a masked confirmation.
 4. On error, prints the HTTP status and the specific remedy below.
 

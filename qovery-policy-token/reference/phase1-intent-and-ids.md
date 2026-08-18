@@ -60,7 +60,10 @@ qovery service list --environment "<env-id>"         # service ids + types
 ```bash
 curl -s "https://api.qovery.com/organization/{organizationId}/project" | jq '.results[] | {id, name}'
 curl -s "https://api.qovery.com/project/{projectId}/environment"        | jq '.results[] | {id, name}'
-curl -s "https://api.qovery.com/environment/{environmentId}/service"    | jq '.results[] | {id, name, service_type}'
+# Services are listed per type — there is no /environment/{id}/service endpoint (it 404s):
+for t in application container database job helm; do
+  curl -s "https://api.qovery.com/environment/{environmentId}/$t" | jq --arg t "$t" '.results[]? | {id, name, service_type: $t}'
+done
 ```
 
 If the user gave a **Console URL**, extract IDs from it first (see `console-url-detection.md`) and confirm the names match what they intend.
