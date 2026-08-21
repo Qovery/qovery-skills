@@ -70,6 +70,7 @@ Analyze the user's message and route to the appropriate specialized skill. **Aut
 | Preview environment, PR environment, test branch | `qovery-preview` | "preview for PR-123", "test this branch", "preview environment", "clone for PR" |
 | Terraformize existing setup, convert to IaC | `qovery-terraform` | "terraformize", "convert to terraform", "export as IaC", "terraform manifests", "infrastructure as code" |
 | Scoped/least-privilege API token, OPA/Rego policy token | `qovery-policy-token` | "restricted token", "scoped token", "least-privilege token", "policy token", "OPA/Rego token", "token that can only deploy / never delete", "token for an AI agent" |
+| New to Qovery, no account yet, sign up, create organization | `qovery-signup` | "sign up", "create an account", "install the CLI and log in", "create a new organization", "get started from scratch" |
 
 ### Remote Development Environments (RDEs)
 
@@ -327,6 +328,7 @@ Quick reference for all specialized skills. When routing, tell the user which sk
 | `qovery-preview` | Preview environments for PRs with auto-shutdown | "Preview PR-123" |
 | `qovery-terraform` | Generate Terraform manifests from existing Qovery setup | "Terraformize my setup" |
 | `qovery-policy-token` | Create and verify a scoped, least-privilege API Policy Token (OPA/Rego) | "Restricted token that can only deploy" |
+| `qovery-signup` | Sign up, install/auth the CLI, and create your first organization | "I'm new to Qovery, help me sign up" |
 
 ---
 
