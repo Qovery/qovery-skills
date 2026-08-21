@@ -1,8 +1,8 @@
-# Phase 4 — Next Steps and Hand-off
+# Phase 5 — Next Steps and Hand-off
 
 The user now has an account and an organization. Close the loop: confirm it, unblock deployments, and route them to the right next skill.
 
-## 4.1 Confirm the organization exists
+## 5.1 Confirm the organization exists
 
 ```bash
 qovery api organization | jq -r '.results[] | "\(.name) — \(.id)"'
@@ -10,7 +10,7 @@ qovery api organization | jq -r '.results[] | "\(.name) — \(.id)"'
 
 The new org should appear. If the user set the context in Phase 3, subsequent `qovery` commands target it by default.
 
-## 4.2 Unblock real deployments (add a credit card) — or use the demo cluster
+## 5.2 Unblock real deployments (add a credit card) — or use the demo cluster
 
 A brand-new org is under `NO_CREDIT_CARD` restriction: **managed clusters and cloud deployments are blocked** until a card is added.
 
@@ -24,11 +24,11 @@ A brand-new org is under `NO_CREDIT_CARD` restriction: **managed clusters and cl
 
 Recommend the demo path for someone just exploring, and the credit-card path when they're ready to deploy to their own cloud.
 
-## 4.3 Invite teammates (optional)
+## 5.3 Invite teammates (optional)
 
 Add members when creating the org (`--field admin_emails=…`) or later in the Console under **Settings → Members**. Enterprise plans support SSO / enterprise connections (`qovery enterprise-connection`).
 
-## 4.4 Generate an API token for automation (optional)
+## 5.4 Generate an API token for automation (optional)
 
 For CI/CD or scripts, create a token and store it securely (never printed):
 
@@ -38,7 +38,7 @@ qovery token
 
 Save it in the user's secret manager as `QOVERY_API_TOKEN` (or `QOVERY_CLI_ACCESS_TOKEN` for the CLI). See [auth.md](auth.md) for handling rules.
 
-## 4.5 Configure for the use case (optional, no billing needed)
+## 5.5 Configure for the use case (optional, no billing needed)
 
 Use the **use case** captured in Phase 3.1 to start shaping Qovery. Creating a **project** is free and needs no cluster or credit card — it's a good first structural step that matches the user's intent:
 
@@ -47,9 +47,9 @@ qovery api organization/$NEW_ORG_ID/project --field name="<use-case project, e.g
   --field description="<from the use case>"
 ```
 
-Name the project after what they're building (e.g. "Backend API", "PR Previews", "Internal Tools"). Deeper configuration — clusters, environments, deployment pipelines — is billing/cluster-gated and belongs to qovery-onboard (§4.6); don't attempt cluster or environment creation here.
+Name the project after what they're building (e.g. "Backend API", "PR Previews", "Internal Tools"). Deeper configuration — clusters, environments, deployment pipelines — is billing/cluster-gated and belongs to qovery-onboard (§5.6); don't attempt cluster or environment creation here.
 
-## 4.6 Hand off to qovery-onboard (with a brief)
+## 5.6 Hand off to qovery-onboard (with a brief)
 
 Sign-up is done — the heavier setup lives in the **qovery-onboard** skill. Hand it the context you gathered so it doesn't re-ask:
 

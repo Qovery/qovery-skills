@@ -37,6 +37,18 @@
   },
   {
     "skills": ["qovery-signup"],
+    "query": "When someone signs up through this skill, make sure it's tracked in our funnel like the console does.",
+    "files": [],
+    "expected_behavior": [
+      "After account + org creation, records the sign-up by firing `POST /admin/userSignUp` via `qovery api` (CLI auth), mapping the use case to qovery_usage and the org to company_name, with identity auto-read from `qovery api account`",
+      "Also sends the lead to the HubSpot funnel via the Cargo ingest endpoint, tagged signup_source='CLI' (or 'AI-Agent') so it's distinguishable from web ('Console') sign-ups",
+      "Reads the Cargo ingest token only from the QOVERY_CARGO_INGEST_TOKEN env var (never hardcoded or printed); skips the Cargo step gracefully if it's unset",
+      "Treats tracking as best-effort and non-blocking — a tracking failure never breaks the sign-up — and only sends fields the user actually provided (no invented PII)",
+      "Notes that browser-only HubSpot/GTM analytics and UTM attribution cannot be replicated from a terminal, and offers `--dry-run` via record-signup.sh to preview payloads"
+    ]
+  },
+  {
+    "skills": ["qovery-signup"],
     "query": "How does authentication work — I don't want to paste any API tokens into the chat.",
     "files": [],
     "expected_behavior": [

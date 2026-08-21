@@ -1,6 +1,6 @@
 ---
 name: qovery-signup
-description: Takes a brand-new user from nothing to a working Qovery account and first organization — checks the Qovery CLI is installed (installs it if missing), signs them in with `qovery auth --headless` (which creates the account on first OAuth login), then creates an organization via the API and sets the CLI context. Relies entirely on the CLI's own credential store, never handling raw tokens. Use when someone has no Qovery account yet, wants to sign up, log in, or create a new Qovery organization from scratch — then hands off to qovery-onboard for cluster and environment setup.
+description: Takes a brand-new user from nothing to a working Qovery account and first organization — checks the Qovery CLI is installed (installs it if missing), signs them in with `qovery auth --headless` (which creates the account on first OAuth login), then creates an organization via the API, enriches it from the company website, records the sign-up for tracking and lead qualification (tagged as a CLI/agent sign-up), and sets the CLI context. Relies entirely on the CLI's own credential store, never handling raw tokens. Use when someone has no Qovery account yet, wants to sign up, log in, or create a new Qovery organization from scratch — then hands off to qovery-onboard for cluster and environment setup.
 license: MIT
 compatibility: opencode
 metadata:
@@ -43,6 +43,8 @@ SKILL_NAME="qovery-signup"
 > **There is no `qovery organization` CLI command.** Manage organizations through `qovery api organization …` (which uses the CLI's auth) or the REST API — not a CLI noun.
 >
 > **Set expectations about billing.** A new organization has no credit card, so managed clusters and deployments are blocked (`billing_deployment_restriction: NO_CREDIT_CARD`) until one is added. A local demo cluster (`qovery demo up`) works with no card.
+>
+> **Sign-up tracking is tagged, consented, and best-effort.** Phase 4 records the sign-up in Qovery's pipeline and the HubSpot lead funnel, always tagged `signup_source: "CLI"` / `"AI-Agent"` so it's distinguishable from web sign-ups. Only send data the user gave in the interview — never invent PII. The Cargo/HubSpot token comes from `QOVERY_CARGO_INGEST_TOKEN` (or backend forwarding) and is **never committed or printed**. Tracking must never block or fail the sign-up.
 
 ## When to Use This Skill
 
@@ -63,7 +65,8 @@ Sign up + create an organization:
 - [ ] Phase 1 — CLI setup: detect OS, check `qovery` is installed (install if missing), verify version
 - [ ] Phase 2 — Authenticate: run `qovery auth --headless` (first login creates the account); verify auth
 - [ ] Phase 3 — Interview + create + enrich: ask name, website, use case, plan; create the org; enrich its profile (description, logo, icon) from the website; set context
-- [ ] Phase 4 — Configure + hand off: optional first project for the use case, billing/demo-cluster note, invite team, hand a brief to qovery-onboard
+- [ ] Phase 4 — Record sign-up: fire `POST /admin/userSignUp` + the Cargo/HubSpot lead ingest, tagged `signup_source=CLI` (best-effort, non-blocking)
+- [ ] Phase 5 — Configure + hand off: optional first project for the use case, billing/demo-cluster note, invite team, hand a brief to qovery-onboard
 ```
 
 ## Authentication model (how auth is handled)
@@ -81,7 +84,8 @@ Sign up + create an organization:
 | Phase 1 | [reference/phase1-cli-setup.md](reference/phase1-cli-setup.md) | Detect OS, check/install the CLI per platform, verify version |
 | Phase 2 | [reference/phase2-authenticate.md](reference/phase2-authenticate.md) | `qovery auth --headless` flow, account creation, verifying auth, token env vars |
 | Phase 3 | [reference/phase3-create-organization.md](reference/phase3-create-organization.md) | Interview (name, website, use case, plan); create via `qovery api`; enrich profile (description/logo/icon) from the website; update via PUT; set context; billing restriction |
-| Phase 4 | [reference/phase4-next-steps.md](reference/phase4-next-steps.md) | Configure for the use case (optional first project), add credit card / `qovery demo up`, invite teammates, hand a brief to qovery-onboard |
+| Phase 4 | [reference/phase4-signup-tracking.md](reference/phase4-signup-tracking.md) | Record the sign-up for tracking + lead qualification (mirrors the console): `POST /admin/userSignUp` + Cargo→HubSpot ingest, tagged `signup_source=CLI`; token via env, never committed |
+| Phase 5 | [reference/phase5-next-steps.md](reference/phase5-next-steps.md) | Configure for the use case (optional first project), add credit card / `qovery demo up`, invite teammates, hand a brief to qovery-onboard |
 
 ## Templates
 
@@ -89,6 +93,7 @@ Sign up + create an organization:
 |---|---|
 | [templates/scripts/check-and-install-cli.sh](templates/scripts/check-and-install-cli.sh) | Detect whether the CLI is installed + its version; print the right install command per OS if missing |
 | [templates/scripts/enrich-from-website.sh](templates/scripts/enrich-from-website.sh) | Derive candidate org profile (description, logo_url, icon_url) from a company website, with fallbacks |
+| [templates/scripts/record-signup.sh](templates/scripts/record-signup.sh) | Record the sign-up: `POST /admin/userSignUp` + Cargo/HubSpot lead ingest, tagged `signup_source`; `--dry-run` supported; Cargo token from env only |
 
 ## Quick reference
 
@@ -109,7 +114,10 @@ bash templates/scripts/enrich-from-website.sh example.com
 qovery api organization --field name="My Org" --field plan=USER_2025
 #    …or with the enriched profile via --input (see Phase 3.4)
 
-# 4. Point the CLI at it, then hand off to qovery-onboard
+# 4. Record the sign-up for tracking + lead qualification (tagged CLI; --dry-run to preview)
+COMPANY="My Org" USE_CASE="<use case>" SIGNUP_SOURCE="CLI" bash templates/scripts/record-signup.sh
+
+# 5. Point the CLI at it, then hand off to qovery-onboard
 qovery context set
 
 # Optional: try Qovery locally with no credit card

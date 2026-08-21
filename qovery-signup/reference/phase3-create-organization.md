@@ -1,6 +1,6 @@
 # Phase 3 — Interview, Create, and Enrich the Organization
 
-An organization is the top-level container for everything in Qovery (projects, environments, clusters, members). Interview the user, create the org, and enrich its profile (description + logo + icon) from their website — then let Phase 4 configure Qovery for their use case.
+An organization is the top-level container for everything in Qovery (projects, environments, clusters, members). Interview the user, create the org, and enrich its profile (description + logo + icon) from their website — Phase 4 then records the sign-up, and Phase 5 configures Qovery for their use case.
 
 ## 3.1 Guided interview
 
@@ -8,7 +8,7 @@ Ask the user (one at a time, plain menus where it helps):
 
 1. **Organization name** — what to call it (case-insensitive). Usually the company or team name.
 2. **Website** — the company/product URL. Used to auto-fill the description, logo, and icon (§3.3) and stored as `website_url`. Optional but recommended; skip enrichment if they have none.
-3. **Use case** — what they want to do with Qovery: e.g. "deploy a Node.js API + Postgres to AWS", "preview environments for PRs", "run internal tools", "migrate off Heroku". This drives how Phase 4 configures Qovery and what you hand to **qovery-onboard**.
+3. **Use case** — what they want to do with Qovery: e.g. "deploy a Node.js API + Postgres to AWS", "preview environments for PRs", "run internal tools", "migrate off Heroku". It is recorded as `qovery_usage` in Phase 4 and drives how Phase 5 configures Qovery and what you hand to **qovery-onboard**.
 4. **Plan** — see §3.2. Default individuals to `USER_2025`.
 
 Confirm the name and plan before creating (org creation is a real, billable-tier resource).
@@ -86,6 +86,6 @@ Select the new organization (and later a project/environment) so subsequent comm
 
 ## 3.7 Billing restriction on brand-new orgs (set expectations)
 
-A newly created org has **no credit card**, so it carries `billing_deployment_restriction: NO_CREDIT_CARD`: managed (cloud) cluster creation and deployments are blocked until a card is added (Console → **Settings → Billing**). A local demo cluster works without a card (Phase 4). Mention this now so it isn't a surprise.
+A newly created org has **no credit card**, so it carries `billing_deployment_restriction: NO_CREDIT_CARD`: managed (cloud) cluster creation and deployments are blocked until a card is added (Console → **Settings → Billing**). A local demo cluster works without a card (Phase 5). Mention this now so it isn't a surprise.
 
-Carry the **use case** from §3.1 into Phase 4.
+Carry the **use case** from §3.1 into Phase 4 (recorded as `qovery_usage`) and Phase 5 (configuration).
