@@ -38,17 +38,30 @@ qovery token
 
 Save it in the user's secret manager as `QOVERY_API_TOKEN` (or `QOVERY_CLI_ACCESS_TOKEN` for the CLI). See [auth.md](auth.md) for handling rules.
 
-## 4.5 Hand off to qovery-onboard
+## 4.5 Configure for the use case (optional, no billing needed)
 
-Sign-up is done — the heavier setup lives in the **qovery-onboard** skill. Route the user there to:
-- pick a cloud provider and create a cluster (managed or BYOK),
-- structure projects and environments,
-- set security, cost, and RBAC defaults,
-- migrate from another platform if needed.
+Use the **use case** captured in Phase 3.1 to start shaping Qovery. Creating a **project** is free and needs no cluster or credit card — it's a good first structural step that matches the user's intent:
 
-If instead they just want to ship an app immediately, point them at **qovery-deploy**.
+```bash
+qovery api organization/$NEW_ORG_ID/project --field name="<use-case project, e.g. Backend API>" \
+  --field description="<from the use case>"
+```
+
+Name the project after what they're building (e.g. "Backend API", "PR Previews", "Internal Tools"). Deeper configuration — clusters, environments, deployment pipelines — is billing/cluster-gated and belongs to qovery-onboard (§4.6); don't attempt cluster or environment creation here.
+
+## 4.6 Hand off to qovery-onboard (with a brief)
+
+Sign-up is done — the heavier setup lives in the **qovery-onboard** skill. Hand it the context you gathered so it doesn't re-ask:
+
+- **Organization**: `<name>` (`<uuid>`), plan `<plan>`
+- **Use case**: `<the use case from Phase 3.1>`
+- **Website / domain**: `<website_url>`
+- **Billing**: card added? (yes → managed clusters available; no → demo cluster only)
+
+qovery-onboard will then pick a cloud provider and create a cluster (managed or BYOK), structure projects/environments, and set security/cost/RBAC defaults. If instead they just want to ship an app immediately, point them at **qovery-deploy**.
 
 Summary to give the user:
 - ✅ CLI installed and authenticated (credentials stored locally by the CLI)
-- ✅ Organization `<name>` created (id `<uuid>`)
-- ▶️ Next: add a credit card **or** `qovery demo up`, then run **qovery-onboard** to create a cluster and environments
+- ✅ Organization `<name>` created (id `<uuid>`) — profile enriched from `<website>` (description, logo, icon)
+- ✅ First project `<name>` created for the use case (if applicable)
+- ▶️ Next: add a credit card **or** `qovery demo up`, then run **qovery-onboard** (with the brief above) to create a cluster and environments

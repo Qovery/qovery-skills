@@ -62,8 +62,8 @@ For setting up clusters, projects, environments, RBAC, and cloud providers **aft
 Sign up + create an organization:
 - [ ] Phase 1 — CLI setup: detect OS, check `qovery` is installed (install if missing), verify version
 - [ ] Phase 2 — Authenticate: run `qovery auth --headless` (first login creates the account); verify auth
-- [ ] Phase 3 — Create organization: confirm name + plan, create via `qovery api organization`, set context
-- [ ] Phase 4 — Next steps: billing/credit-card note, demo cluster option, invite team, hand off to qovery-onboard
+- [ ] Phase 3 — Interview + create + enrich: ask name, website, use case, plan; create the org; enrich its profile (description, logo, icon) from the website; set context
+- [ ] Phase 4 — Configure + hand off: optional first project for the use case, billing/demo-cluster note, invite team, hand a brief to qovery-onboard
 ```
 
 ## Authentication model (how auth is handled)
@@ -80,14 +80,15 @@ Sign up + create an organization:
 | Auth | [reference/auth.md](reference/auth.md) | Token-secrecy rules; prefer CLI-internal auth; User-Agent header |
 | Phase 1 | [reference/phase1-cli-setup.md](reference/phase1-cli-setup.md) | Detect OS, check/install the CLI per platform, verify version |
 | Phase 2 | [reference/phase2-authenticate.md](reference/phase2-authenticate.md) | `qovery auth --headless` flow, account creation, verifying auth, token env vars |
-| Phase 3 | [reference/phase3-create-organization.md](reference/phase3-create-organization.md) | Plan choice (2025 plans), create via `qovery api`, capture id, set context, billing restriction |
-| Phase 4 | [reference/phase4-next-steps.md](reference/phase4-next-steps.md) | Add credit card, `qovery demo up`, invite teammates, hand off to qovery-onboard |
+| Phase 3 | [reference/phase3-create-organization.md](reference/phase3-create-organization.md) | Interview (name, website, use case, plan); create via `qovery api`; enrich profile (description/logo/icon) from the website; update via PUT; set context; billing restriction |
+| Phase 4 | [reference/phase4-next-steps.md](reference/phase4-next-steps.md) | Configure for the use case (optional first project), add credit card / `qovery demo up`, invite teammates, hand a brief to qovery-onboard |
 
 ## Templates
 
 | Template | Use |
 |---|---|
 | [templates/scripts/check-and-install-cli.sh](templates/scripts/check-and-install-cli.sh) | Detect whether the CLI is installed + its version; print the right install command per OS if missing |
+| [templates/scripts/enrich-from-website.sh](templates/scripts/enrich-from-website.sh) | Derive candidate org profile (description, logo_url, icon_url) from a company website, with fallbacks |
 
 ## Quick reference
 
@@ -101,8 +102,12 @@ qovery version
 #    Verify it worked (should return JSON, not an auth error):
 qovery api organization
 
-# 3. Create an organization (uses the CLI's stored auth; no token handling)
+# 3. (optional) Derive description/logo/icon from the company website, confirm with the user
+bash templates/scripts/enrich-from-website.sh example.com
+
+# 3b. Create an organization (uses the CLI's stored auth; no token handling)
 qovery api organization --field name="My Org" --field plan=USER_2025
+#    …or with the enriched profile via --input (see Phase 3.4)
 
 # 4. Point the CLI at it, then hand off to qovery-onboard
 qovery context set

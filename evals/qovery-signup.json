@@ -25,6 +25,18 @@
   },
   {
     "skills": ["qovery-signup"],
+    "query": "Sign me up and set up an org for my company at https://acme.com — we want to run preview environments for our PRs.",
+    "files": [],
+    "expected_behavior": [
+      "Ensures CLI + auth first, then interviews: confirms the organization name, records the website (https://acme.com) and the use case (PR preview environments), and the plan",
+      "Runs enrich-from-website.sh on acme.com to derive a candidate description, logo_url, and icon_url (with Clearbit/Google-favicon fallbacks), and shows them to the user to confirm before setting anything",
+      "Creates the organization via `qovery api organization --input -` including name, plan, website_url, description, logo_url, and icon_url",
+      "Configures for the use case without needing billing — e.g. creates a first project (POST organization/{id}/project) named for PR previews — and notes clusters/environments are handled by qovery-onboard",
+      "Hands off to qovery-onboard with a brief (org id, use case = PR previews, website, billing status), and mentions qovery-preview as the eventual skill for per-PR environments"
+    ]
+  },
+  {
+    "skills": ["qovery-signup"],
     "query": "How does authentication work — I don't want to paste any API tokens into the chat.",
     "files": [],
     "expected_behavior": [
