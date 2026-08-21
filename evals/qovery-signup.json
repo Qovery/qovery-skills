@@ -1,0 +1,38 @@
+[
+  {
+    "skills": ["qovery-signup"],
+    "query": "I'm brand new to Qovery — help me sign up and get an organization set up.",
+    "files": [],
+    "expected_behavior": [
+      "Checks whether the Qovery CLI is installed (command -v qovery / qovery version) and installs it per the user's OS if missing (brew on macOS, scoop on Windows, release binary on Linux)",
+      "Explains that the first login creates the account, and has the user run `qovery auth --headless` (interactive, in Claude Code via `! qovery auth --headless`) to complete OAuth in a browser — never asking for or printing a raw token",
+      "Verifies authentication with `qovery api organization` (JSON = signed in; the 'access token is invalid or expired' message = re-run auth)",
+      "Confirms an organization name and plan (defaulting to USER_2025, noting FREE/PROFESSIONAL are deprecated) before creating it via `qovery api organization --field name=... --field plan=...`",
+      "Sets the CLI context, warns about the NO_CREDIT_CARD deployment restriction (offers `qovery demo up` as a no-card option), and hands off to qovery-onboard"
+    ]
+  },
+  {
+    "skills": ["qovery-signup"],
+    "query": "Create a new Qovery organization called Acme on the team plan.",
+    "files": [],
+    "expected_behavior": [
+      "Ensures the CLI is installed and the user is authenticated first (runs qovery auth --headless if `qovery api organization` returns the invalid/expired-token error)",
+      "Maps 'team plan' to the current plan value TEAM_2025 and confirms name + plan with the user before creating",
+      "Creates the org with `qovery api organization --field name=Acme --field plan=TEAM_2025` (using the CLI's stored credentials, not a manually supplied token) and captures the returned id",
+      "Runs `qovery context set` so the CLI targets the new organization",
+      "Surfaces the credit-card requirement for managed clusters/deployments and points to qovery-onboard for cluster + environment setup"
+    ]
+  },
+  {
+    "skills": ["qovery-signup"],
+    "query": "How does authentication work — I don't want to paste any API tokens into the chat.",
+    "files": [],
+    "expected_behavior": [
+      "Explains that authentication is delegated to the Qovery CLI's own credential store: after `qovery auth --headless`, every `qovery`/`qovery api` call authenticates internally with no token in the shell or conversation",
+      "Notes that `qovery auth --headless` is interactive (prints a URL the user opens in a browser) and that the agent cannot complete the browser step",
+      "States it will never ask for, echo, or store a raw token, and that if a token is ever needed inline it uses `qovery auth token --print` within a command, per auth.md",
+      "Mentions the CI/non-interactive alternative: setting QOVERY_CLI_ACCESS_TOKEN (or Q_CLI_ACCESS_TOKEN), generated via `qovery token` and stored in a secret manager",
+      "Does not request credentials from the user in the chat at any point"
+    ]
+  }
+]

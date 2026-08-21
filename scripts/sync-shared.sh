@@ -12,7 +12,7 @@ cd "$REPO_ROOT"
 # Each line: SRC | SKILL_LIST (space-separated)
 SYNC_MAP=$(cat <<'EOF'
 console-url-detection.md | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token
-auth.md                  | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token
+auth.md                  | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup
 pricing/aws.md           | qovery-optimize
 pricing/gcp.md           | qovery-optimize
 pricing/azure.md         | qovery-optimize
