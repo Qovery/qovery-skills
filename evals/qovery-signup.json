@@ -7,18 +7,18 @@
       "Checks whether the Qovery CLI is installed (command -v qovery / qovery version) and installs it per the user's OS if missing (brew on macOS, scoop on Windows, release binary on Linux)",
       "Explains that the first login creates the account, and has the user run `qovery auth --headless` (interactive, in Claude Code via `! qovery auth --headless`) to complete OAuth in a browser — never asking for or printing a raw token",
       "Verifies authentication with `qovery api organization` (JSON = signed in; the 'access token is invalid or expired' message = re-run auth)",
-      "Confirms an organization name and plan (defaulting to USER_2025, noting FREE/PROFESSIONAL are deprecated) before creating it via `qovery api organization --field name=... --field plan=...`",
+      "Confirms only the organization name (never asks the user to choose a plan or exposes internal plan names) and creates the org on BUSINESS_2025 by default via `qovery api organization --field name=... --field plan=BUSINESS_2025`",
       "Sets the CLI context, warns about the NO_CREDIT_CARD deployment restriction (offers `qovery demo up` as a no-card option), and hands off to qovery-onboard"
     ]
   },
   {
     "skills": ["qovery-signup"],
-    "query": "Create a new Qovery organization called Acme on the team plan.",
+    "query": "Create a new Qovery organization called Acme.",
     "files": [],
     "expected_behavior": [
       "Ensures the CLI is installed and the user is authenticated first (runs qovery auth --headless if `qovery api organization` returns the invalid/expired-token error)",
-      "Maps 'team plan' to the current plan value TEAM_2025 and confirms name + plan with the user before creating",
-      "Creates the org with `qovery api organization --field name=Acme --field plan=TEAM_2025` (using the CLI's stored credentials, not a manually supplied token) and captures the returned id",
+      "Does NOT ask the user to choose a plan and does not surface internal plan names; defaults to BUSINESS_2025",
+      "Creates the org with `qovery api organization --field name=Acme --field plan=BUSINESS_2025` (using the CLI's stored credentials, not a manually supplied token) and captures the returned id",
       "Runs `qovery context set` so the CLI targets the new organization",
       "Surfaces the credit-card requirement for managed clusters/deployments and points to qovery-onboard for cluster + environment setup"
     ]
@@ -28,9 +28,9 @@
     "query": "Sign me up and set up an org for my company at https://acme.com — we want to run preview environments for our PRs.",
     "files": [],
     "expected_behavior": [
-      "Ensures CLI + auth first, then interviews: confirms the organization name, records the website (https://acme.com) and the use case (PR preview environments), and the plan",
+      "Ensures CLI + auth first, then interviews: confirms the organization name, records the website (https://acme.com) and the use case (PR preview environments) — without asking for a plan (defaults to BUSINESS_2025)",
       "Runs enrich-from-website.sh on acme.com to derive a candidate description, logo_url, and icon_url (with Clearbit/Google-favicon fallbacks), and shows them to the user to confirm before setting anything",
-      "Creates the organization via `qovery api organization --input -` including name, plan, website_url, description, logo_url, and icon_url",
+      "Creates the organization via `qovery api organization --input -` including name, plan (BUSINESS_2025, not asked), website_url, description, logo_url, and icon_url",
       "Configures for the use case without needing billing — e.g. creates a first project (POST organization/{id}/project) named for PR previews — and notes clusters/environments are handled by qovery-onboard",
       "Hands off to qovery-onboard with a brief (org id, use case = PR previews, website, billing status), and mentions qovery-preview as the eventual skill for per-PR environments"
     ]
