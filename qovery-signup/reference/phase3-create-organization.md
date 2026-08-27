@@ -9,22 +9,14 @@ Ask the user (one at a time, plain menus where it helps):
 1. **Organization name** — what to call it (case-insensitive). Usually the company or team name.
 2. **Website** — the company/product URL. Used to auto-fill the description, logo, and icon (§3.3) and stored as `website_url`. Optional but recommended; skip enrichment if they have none.
 3. **Use case** — what they want to do with Qovery: e.g. "deploy a Node.js API + Postgres to AWS", "preview environments for PRs", "run internal tools", "migrate off Heroku". It is recorded as `qovery_usage` in Phase 4 and drives how Phase 5 configures Qovery and what you hand to **qovery-onboard**.
-4. **Plan** — see §3.2. Default individuals to `USER_2025`.
 
-Confirm the name and plan before creating (org creation is a real, billable-tier resource).
+The plan is chosen automatically (§3.2) — **do not ask the user to pick one**. Confirm the organization **name** before creating (org creation is a real, billable-tier resource).
 
-## 3.2 Plans
+## 3.2 Plan — chosen automatically, do not ask
 
-Current plans are the **2025** tiers — `FREE`, `PROFESSIONAL`, and `BUSINESS` are deprecated:
+Always create the organization on **`BUSINESS_2025`**. **Do not ask the user which plan to use, and do not surface plan names** — the tiers are internal (the individual tier isn't customer-selectable and Enterprise pricing is custom), so exposing them in a sign-up flow is confusing and off-brand. Users can change plan later in the Console (**Settings → Billing**); pricing lives at <https://www.qovery.com/pricing>.
 
-| Plan value | For |
-|---|---|
-| `USER_2025` | Individuals / getting started (default) |
-| `TEAM_2025` | Small teams |
-| `BUSINESS_2025` | Growing companies |
-| `ENTERPRISE_2025` | Large orgs (SSO, advanced controls) |
-
-Verify current names/pricing at <https://www.qovery.com/pricing> if unsure.
+(Only deviate from the `BUSINESS_2025` default if the user *explicitly* names a specific plan themselves — never prompt for it.)
 
 ## 3.3 Enrich from the website (description, logo, icon)
 
@@ -46,7 +38,7 @@ There is no `qovery organization` command; use `qovery api`, which reuses the st
 NEW_ORG_ID=$(qovery api organization --input - <<JSON | jq -r '.id'
 {
   "name": "My Org",
-  "plan": "USER_2025",
+  "plan": "BUSINESS_2025",
   "website_url": "https://example.com",
   "description": "One-line company description",
   "logo_url": "https://logo.clearbit.com/example.com",
@@ -57,7 +49,7 @@ JSON
 echo "Created organization: $NEW_ORG_ID"
 ```
 
-For a bare org (no website), the short form is enough: `qovery api organization --field name="My Org" --field plan=USER_2025`.
+For a bare org (no website), the short form is enough: `qovery api organization --field name="My Org" --field plan=BUSINESS_2025`.
 
 Errors: `access token is invalid or expired…` → re-do Phase 2; `400` → check `plan` is a current value and `name` is present; `409` → the name is taken.
 

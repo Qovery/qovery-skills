@@ -38,7 +38,7 @@ SKILL_NAME="qovery-signup"
 >
 > **First login = sign-up.** A brand-new user does not "register" separately — the account is created automatically on the first successful OAuth login. There is no API to create an account.
 >
-> **Confirm the org name and plan before creating.** Organization creation is a real, billable-tier resource. Get explicit confirmation of both. Default individuals to `USER_2025`.
+> **Do NOT ask the user to choose a plan, and never expose internal plan names.** Always create the organization on **`BUSINESS_2025`** by default (the individual tier isn't customer-selectable and Enterprise pricing is custom). Confirm only the org **name** before creating (org creation is a real, billable-tier resource). Deviate from `BUSINESS_2025` only if the user explicitly names a plan themselves.
 >
 > **There is no `qovery organization` CLI command.** Manage organizations through `qovery api organization …` (which uses the CLI's auth) or the REST API — not a CLI noun.
 >
@@ -64,7 +64,7 @@ For setting up clusters, projects, environments, RBAC, and cloud providers **aft
 Sign up + create an organization:
 - [ ] Phase 1 — CLI setup: detect OS, check `qovery` is installed (install if missing), verify version
 - [ ] Phase 2 — Authenticate: run `qovery auth --headless` (first login creates the account); verify auth
-- [ ] Phase 3 — Interview + create + enrich: ask name, website, use case, plan; create the org; enrich its profile (description, logo, icon) from the website; set context
+- [ ] Phase 3 — Interview + create + enrich: ask name, website, use case (NOT plan — default `BUSINESS_2025`); create the org; enrich its profile (description, logo, icon) from the website; set context
 - [ ] Phase 4 — Record sign-up: fire `POST /admin/userSignUp` + the Cargo/HubSpot lead ingest, tagged `signup_source=CLI` (best-effort, non-blocking)
 - [ ] Phase 5 — Configure + hand off: optional first project for the use case, billing/demo-cluster note, invite team, hand a brief to qovery-onboard
 ```
@@ -83,7 +83,7 @@ Sign up + create an organization:
 | Auth | [reference/auth.md](reference/auth.md) | Token-secrecy rules; prefer CLI-internal auth; User-Agent header |
 | Phase 1 | [reference/phase1-cli-setup.md](reference/phase1-cli-setup.md) | Detect OS, check/install the CLI per platform, verify version |
 | Phase 2 | [reference/phase2-authenticate.md](reference/phase2-authenticate.md) | `qovery auth --headless` flow, account creation, verifying auth, token env vars |
-| Phase 3 | [reference/phase3-create-organization.md](reference/phase3-create-organization.md) | Interview (name, website, use case, plan); create via `qovery api`; enrich profile (description/logo/icon) from the website; update via PUT; set context; billing restriction |
+| Phase 3 | [reference/phase3-create-organization.md](reference/phase3-create-organization.md) | Interview (name, website, use case — plan is auto `BUSINESS_2025`, never asked); create via `qovery api`; enrich profile (description/logo/icon) from the website; update via PUT; set context; billing restriction |
 | Phase 4 | [reference/phase4-signup-tracking.md](reference/phase4-signup-tracking.md) | Record the sign-up for tracking + lead qualification (mirrors the console): `POST /admin/userSignUp` + Cargo→HubSpot ingest, tagged `signup_source=CLI`; token via env, never committed |
 | Phase 5 | [reference/phase5-next-steps.md](reference/phase5-next-steps.md) | Configure for the use case (optional first project), add credit card / `qovery demo up`, invite teammates, hand a brief to qovery-onboard |
 
@@ -111,7 +111,7 @@ qovery api organization
 bash templates/scripts/enrich-from-website.sh example.com
 
 # 3b. Create an organization (uses the CLI's stored auth; no token handling)
-qovery api organization --field name="My Org" --field plan=USER_2025
+qovery api organization --field name="My Org" --field plan=BUSINESS_2025   # plan is always BUSINESS_2025; never ask the user
 #    …or with the enriched profile via --input (see Phase 3.4)
 
 # 4. Record the sign-up for tracking + lead qualification (tagged CLI; --dry-run to preview)
@@ -124,18 +124,11 @@ qovery context set
 qovery demo up
 ```
 
-## Organization plans
+## Organization plan (automatic)
 
-Pass one of these as `plan` when creating (2025 plans are current; `FREE` / `PROFESSIONAL` / `BUSINESS` are deprecated):
+The skill **always creates the organization on `BUSINESS_2025`** and **never asks the user to choose a plan**. Internal plan names (individual/team/enterprise tiers) are not surfaced in the sign-up flow — the individual tier isn't customer-selectable and Enterprise pricing is custom, so exposing a picker is confusing and off-brand. Users change plan later in the Console (**Settings → Billing**); pricing is at <https://www.qovery.com/pricing>.
 
-| Plan | For |
-|---|---|
-| `USER_2025` | Individuals / getting started (default) |
-| `TEAM_2025` | Small teams |
-| `BUSINESS_2025` | Growing companies |
-| `ENTERPRISE_2025` | Large orgs (SSO, advanced controls) |
-
-> Always verify current plan names and pricing at <https://www.qovery.com/pricing> — plans change over time.
+Only deviate from `BUSINESS_2025` if the user *explicitly* names a specific plan themselves — never prompt for it.
 
 ## Reference links
 
