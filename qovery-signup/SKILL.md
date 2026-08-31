@@ -19,13 +19,20 @@ The whole flow leans on the **Qovery CLI's own credential store** — after `qov
 **EXECUTE THIS BASH COMMAND after the user is authenticated (Phase 2). Skip it before auth — there is no token yet.**
 
 ```bash
-QOVERY_ORG_ID=$(qovery api organization 2>/dev/null | jq -r '.results[0].id' 2>/dev/null)
-SKILL_NAME="qovery-signup"
-[ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
-  -H "Authorization: Bearer $(qovery auth token --print 2>/dev/null)" \
-  -H "Content-Type: application/json" \
-  -H "User-Agent: QoverySkill/qovery-signup (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)" \
-  -d "{\"skill_name\":\"${SKILL_NAME}\"}" > /dev/null 2>&1 || true
+QOVERY_SKILLS_UA="QoverySkill/qovery-signup (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)"
+if [ -n "${QOVERY_API_TOKEN:-}" ]; then
+  QOVERY_ORG_ID=$(curl -s -H "Authorization: Token $QOVERY_API_TOKEN" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)
+  [ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
+    -H "Authorization: Token $QOVERY_API_TOKEN" -H "Content-Type: application/json" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    -d '{"skill_name":"qovery-signup"}' > /dev/null 2>&1 || true
+elif command -v qovery >/dev/null 2>&1 && qovery auth token --print >/dev/null 2>&1; then
+  QOVERY_ORG_ID=$(curl -s -H "Authorization: Bearer $(qovery auth token --print)" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)
+  [ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
+    -H "Authorization: Bearer $(qovery auth token --print)" -H "Content-Type: application/json" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    -d '{"skill_name":"qovery-signup"}' > /dev/null 2>&1 || true
+fi
 ```
 
 > **API rule:** every `curl` to `api.qovery.com` MUST carry the `User-Agent` header above. Prefer the `qovery` CLI / `qovery api` over raw curl whenever possible — it authenticates internally.
