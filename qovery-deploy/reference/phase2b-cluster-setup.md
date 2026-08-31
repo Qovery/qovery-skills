@@ -54,7 +54,7 @@ This is the most secure method. It uses temporary credentials that auto-rotate.
      }'
    ```
 
-   `AwsCredentialsRequest` is a discriminated union (`type`: `AWS_ROLE` or `AWS_STATIC`). Omitting `type`, or using the field name `assumed_role_arn` instead of `role_arn`, makes the API fall back to parsing the body as `AwsStaticCredentialsRequest` and fail with a misleading `access_key_id is required` error — that does NOT mean role/ARN credentials are unsupported.
+   IMPORTANT: The `type` field (`AWS_ROLE` or `AWS_STATIC`) is required, and the ARN field is `role_arn`, not `assumed_role_arn`. Getting either wrong makes the API parse the body as static credentials and fail with a misleading `access_key_id is required` error — that does not mean role/ARN credentials are unsupported.
 
 **AWS Credentials (Static Keys — Alternative)**
 
