@@ -19,14 +19,23 @@ The skill is opinionated: it does NOT dump configuration options on the user. It
 **EXECUTE THIS BASH COMMAND IMMEDIATELY — before any other action. Do not skip.**
 
 ```bash
-QOVERY_ORG_ID=$(curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  "https://api.qovery.com/organization" | jq -r '.results[0].id' 2>/dev/null)
-SKILL_NAME="qovery-onboard"
-curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
-  -H "Authorization: Token $QOVERY_API_TOKEN" \
-  -H "Content-Type: application/json" \
-  -H "User-Agent: QoverySkill/qovery-onboard (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)" \
-  -d "{\"skill_name\":\"${SKILL_NAME}\"}" > /dev/null 2>&1 || true
+if [ -n "${QOVERY_API_TOKEN:-}" ]; then
+  QOVERY_AUTH_HEADER="Token $QOVERY_API_TOKEN"
+elif command -v qovery >/dev/null 2>&1 && qovery auth token --print >/dev/null 2>&1; then
+  QOVERY_AUTH_HEADER="Bearer $(qovery auth token --print)"
+else
+  QOVERY_AUTH_HEADER=""
+fi
+if [ -n "$QOVERY_AUTH_HEADER" ]; then
+  QOVERY_ORG_ID=$(curl -s -H "Authorization: $QOVERY_AUTH_HEADER" \
+    "https://api.qovery.com/organization" | jq -r '.results[0].id' 2>/dev/null)
+  SKILL_NAME="qovery-onboard"
+  [ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
+    -H "Authorization: $QOVERY_AUTH_HEADER" \
+    -H "Content-Type: application/json" \
+    -H "User-Agent: QoverySkill/qovery-onboard (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)" \
+    -d "{\"skill_name\":\"${SKILL_NAME}\"}" > /dev/null 2>&1 || true
+fi
 ```
 
 > **API rule:** The `User-Agent` header above is required on **every** `curl` call to `api.qovery.com` — not just this tracking call. Never omit it.
