@@ -45,8 +45,10 @@ Save credentials:
 curl -s -X POST "https://api.qovery.com/organization/{orgId}/aws/credentials" \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name": "aws-production", "assumed_role_arn": "arn:aws:iam::XXXXXXXXXXXX:role/qovery-role"}'
+  -d '{"type": "AWS_ROLE", "name": "aws-production", "role_arn": "arn:aws:iam::XXXXXXXXXXXX:role/qovery-role"}'
 ```
+
+IMPORTANT: The `type` field (`AWS_ROLE` or `AWS_STATIC`) is required. Without it, the API parses the body as static credentials and fails with a misleading `access_key_id is required` error — that does not mean role/ARN credentials are unsupported.
 
 > "Cloud credentials saved. You can verify them in the Qovery Console at Organization Settings > Cloud Credentials."
 

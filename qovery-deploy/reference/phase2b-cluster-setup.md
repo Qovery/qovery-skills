@@ -48,10 +48,13 @@ This is the most secure method. It uses temporary credentials that auto-rotate.
      -H "Authorization: Token $QOVERY_API_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{
+       "type": "AWS_ROLE",
        "name": "aws-production",
-       "assumed_role_arn": "arn:aws:iam::123456789012:role/qovery-role"
+       "role_arn": "arn:aws:iam::123456789012:role/qovery-role"
      }'
    ```
+
+   IMPORTANT: The `type` field (`AWS_ROLE` or `AWS_STATIC`) is required, and the ARN field is `role_arn`, not `assumed_role_arn`. Getting either wrong makes the API parse the body as static credentials and fail with a misleading `access_key_id is required` error — that does not mean role/ARN credentials are unsupported.
 
 **AWS Credentials (Static Keys — Alternative)**
 
@@ -66,6 +69,7 @@ If the user cannot use STS Assume Role:
      -H "Authorization: Token $QOVERY_API_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{
+       "type": "AWS_STATIC",
        "name": "aws-production",
        "access_key_id": "AKIA...",
        "secret_access_key": "..."
