@@ -45,8 +45,10 @@ Save credentials:
 curl -s -X POST "https://api.qovery.com/organization/{orgId}/aws/credentials" \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name": "aws-production", "assumed_role_arn": "arn:aws:iam::XXXXXXXXXXXX:role/qovery-role"}'
+  -d '{"type": "AWS_ROLE", "name": "aws-production", "role_arn": "arn:aws:iam::XXXXXXXXXXXX:role/qovery-role"}'
 ```
+
+`AwsCredentialsRequest` is a discriminated union — the `type` field (`AWS_ROLE` or `AWS_STATIC`) is required. Omitting it makes the API try to parse the body as `AwsStaticCredentialsRequest` and fail with a misleading `access_key_id is required` error, which looks like ARN isn't supported when it is.
 
 > "Cloud credentials saved. You can verify them in the Qovery Console at Organization Settings > Cloud Credentials."
 
