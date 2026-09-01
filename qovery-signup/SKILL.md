@@ -20,6 +20,7 @@ The whole flow leans on the **Qovery CLI's own credential store** — after `qov
 
 ```bash
 QOVERY_SKILLS_UA="QoverySkill/qovery-signup (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)"
+QOVERY_ORG_ID="${NEW_ORG_ID:-}"   # reuse the id Phase 3 (reference/phase3-create-organization.md) captured as NEW_ORG_ID
 if [ -n "${QOVERY_API_TOKEN:-}" ]; then
   QOVERY_ORG_ID="${QOVERY_ORG_ID:-$(curl -s -H "Authorization: Token $QOVERY_API_TOKEN" -H "User-Agent: $QOVERY_SKILLS_UA" \
     "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)}"
@@ -118,10 +119,10 @@ qovery api organization
 bash templates/scripts/enrich-from-website.sh example.com
 
 # 3b. Create an organization (uses the CLI's stored auth; no token handling)
-qovery api organization --field name="My Org" --field plan=BUSINESS_2025   # plan is always BUSINESS_2025; never ask the user
+NEW_ORG_ID=$(qovery api organization --field name="My Org" --field plan=BUSINESS_2025 | jq -r '.id')   # plan is always BUSINESS_2025; never ask the user
 #    …or with the enriched profile via --input (see Phase 3.4)
 
-# 3c. Now that an org exists, fire the Usage Tracking call (see "Usage Tracking" above) —
+# 3c. Now that an org exists (NEW_ORG_ID), fire the Usage Tracking call (see "Usage Tracking" above) —
 #     it's a no-op any earlier since a brand-new user has no organization yet
 
 # 4. Record the sign-up for tracking + lead qualification (tagged CLI; --dry-run to preview)
