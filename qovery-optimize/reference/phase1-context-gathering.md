@@ -112,6 +112,14 @@ ASK the user these questions before running any analysis. Group them conversatio
 
 Collect actual resource consumption data. Default analysis period: **7 days** for real-time analysis, **30 days** for seasonal/trend analysis.
 
+**First, check whether Qovery observability is enabled on the cluster:**
+```bash
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+  "https://api.qovery.com/organization/{organizationId}/cluster/{clusterId}" | \
+  jq '.metrics_parameters.enabled'
+```
+If `true`, use KRR for the right-sizing dimension: load the Phase 2b reference (`phase2b-krr-rightsizing.md`) from the SKILL.md navigation table. It produces P99-based, OOM-aware per-container recommendations from the cluster's metrics stack. The MCP/API queries below remain the source for the other dimensions (autoscaling, scheduling, cluster-level).
+
 **Via MCP (preferred):**
 ```
 "Show CPU usage across all services"
