@@ -16,19 +16,20 @@ The whole flow leans on the **Qovery CLI's own credential store** — after `qov
 
 ## Usage Tracking
 
-**EXECUTE THIS BASH COMMAND after the user is authenticated (Phase 2). Skip it before auth — there is no token yet.**
+**EXECUTE THIS BASH COMMAND after the organization is created (Phase 3), not right after auth (Phase 2).** Unlike every other skill in this repo, a brand-new sign-up has **zero organizations** immediately after Phase 2 — `/organization` returns an empty `results` array until Phase 3 creates one, so calling this any earlier is a silent no-op and the event never fires.
 
 ```bash
 QOVERY_SKILLS_UA="QoverySkill/qovery-signup (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)"
+QOVERY_ORG_ID="${NEW_ORG_ID:-}"   # reuse the id Phase 3 (reference/phase3-create-organization.md) captured as NEW_ORG_ID
 if [ -n "${QOVERY_API_TOKEN:-}" ]; then
-  QOVERY_ORG_ID=$(curl -s -H "Authorization: Token $QOVERY_API_TOKEN" -H "User-Agent: $QOVERY_SKILLS_UA" \
-    "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)
+  QOVERY_ORG_ID="${QOVERY_ORG_ID:-$(curl -s -H "Authorization: Token $QOVERY_API_TOKEN" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)}"
   [ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
     -H "Authorization: Token $QOVERY_API_TOKEN" -H "Content-Type: application/json" -H "User-Agent: $QOVERY_SKILLS_UA" \
     -d '{"skill_name":"qovery-signup"}' > /dev/null 2>&1 || true
 elif command -v qovery >/dev/null 2>&1 && qovery auth token --print >/dev/null 2>&1; then
-  QOVERY_ORG_ID=$(curl -s -H "Authorization: Bearer $(qovery auth token --print)" -H "User-Agent: $QOVERY_SKILLS_UA" \
-    "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)
+  QOVERY_ORG_ID="${QOVERY_ORG_ID:-$(curl -s -H "Authorization: Bearer $(qovery auth token --print)" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)}"
   [ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
     -H "Authorization: Bearer $(qovery auth token --print)" -H "Content-Type: application/json" -H "User-Agent: $QOVERY_SKILLS_UA" \
     -d '{"skill_name":"qovery-signup"}' > /dev/null 2>&1 || true
@@ -71,7 +72,7 @@ For setting up clusters, projects, environments, RBAC, and cloud providers **aft
 Sign up + create an organization:
 - [ ] Phase 1 — CLI setup: detect OS, check `qovery` is installed (install if missing), verify version
 - [ ] Phase 2 — Authenticate: run `qovery auth --headless` (first login creates the account); verify auth
-- [ ] Phase 3 — Interview + create + enrich: ask name, website, use case (NOT plan — default `BUSINESS_2025`); create the org; enrich its profile (description, logo, icon) from the website; set context
+- [ ] Phase 3 — Interview + create + enrich: ask name, website, use case (NOT plan — default `BUSINESS_2025`); create the org; enrich its profile (description, logo, icon) from the website; set context; fire the Usage Tracking call now that an org id exists
 - [ ] Phase 4 — Record sign-up: fire `POST /admin/userSignUp` + the Cargo/HubSpot lead ingest, tagged `signup_source=CLI` (best-effort, non-blocking)
 - [ ] Phase 5 — Configure + hand off: optional first project for the use case, billing/demo-cluster note, invite team, hand a brief to qovery-onboard
 ```
@@ -118,8 +119,11 @@ qovery api organization
 bash templates/scripts/enrich-from-website.sh example.com
 
 # 3b. Create an organization (uses the CLI's stored auth; no token handling)
-qovery api organization --field name="My Org" --field plan=BUSINESS_2025   # plan is always BUSINESS_2025; never ask the user
+NEW_ORG_ID=$(qovery api organization --field name="My Org" --field plan=BUSINESS_2025 | jq -r '.id')   # plan is always BUSINESS_2025; never ask the user
 #    …or with the enriched profile via --input (see Phase 3.4)
+
+# 3c. Now that an org exists (NEW_ORG_ID), fire the Usage Tracking call (see "Usage Tracking" above) —
+#     it's a no-op any earlier since a brand-new user has no organization yet
 
 # 4. Record the sign-up for tracking + lead qualification (tagged CLI; --dry-run to preview)
 COMPANY="My Org" USE_CASE="<use case>" SIGNUP_SOURCE="CLI" bash templates/scripts/record-signup.sh
