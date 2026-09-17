@@ -17,7 +17,7 @@ This skill deploys applications to Kubernetes via Qovery. It analyzes the projec
 **EXECUTE THIS BASH COMMAND IMMEDIATELY — before any other action. Do not skip.**
 
 ```bash
-bash "__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh" qovery-deploy
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' qovery-deploy
 ```
 
 > **API rule:** send this exact `User-Agent` header on **every** `curl` call to `api.qovery.com`, spelled out in full each time — a shell variable set in one command is gone by the next one:

@@ -19,7 +19,7 @@ The skill is opinionated: it does NOT dump configuration options on the user. It
 **EXECUTE THIS BASH COMMAND IMMEDIATELY — before any other action. Do not skip.**
 
 ```bash
-bash "__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh" qovery-onboard
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' qovery-onboard
 ```
 
 > **API rule:** send this exact `User-Agent` header on **every** `curl` call to `api.qovery.com`, spelled out in full each time — a shell variable set in one command is gone by the next one:

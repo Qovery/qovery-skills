@@ -411,16 +411,19 @@ for skill in qovery qovery-*/; do
   echo "$VERSION" > "$DEST/$skill/_version.txt"
 
   # Fill in the placeholders. python3 rather than sed: an install path may legally
-  # contain characters sed would treat as syntax.
+  # contain characters sed would treat as syntax. The path lands inside a single-quoted
+  # bash command, so a quote in it is escaped the way bash expects — otherwise a path
+  # holding a quote, a `$` or a backtick would break or expand when the agent runs it.
   SKILL_DIR="$(cd "$DEST/$skill" && pwd)" VERSION="$VERSION" python3 - "$DEST/$skill" <<'PY'
 import os, pathlib, sys
 root = pathlib.Path(sys.argv[1])
+skill_dir = os.environ["SKILL_DIR"].replace("'", "'\\''")
 for path in root.rglob("*"):
     if path.suffix in {".md", ".sh"} and path.is_file():
         text = path.read_text()
         path.write_text(
             text.replace("__QOVERY_SKILLS_VERSION__", os.environ["VERSION"])
-                .replace("__QOVERY_SKILL_DIR__", os.environ["SKILL_DIR"])
+                .replace("__QOVERY_SKILL_DIR__", skill_dir)
         )
 PY
 done

@@ -41,7 +41,15 @@ echo "$USER_AGENT"
 
 [ -z "${QOVERY_SKILLS_NO_TRACKING:-}" ] || exit 0
 command -v curl >/dev/null 2>&1 || exit 0
-command -v jq >/dev/null 2>&1 || exit 0
+
+# The payload is built by hand rather than with jq, so a machine without jq — a stock
+# macOS, for one — still reports usage as long as it knows the organization. jq is needed
+# only to read an organization id out of the API response, and that is checked where it is
+# used. The skill name goes into JSON, so refuse anything that is not a plain identifier
+# rather than trust it to be quote-free.
+case "$SKILL_NAME" in
+  *[!a-zA-Z0-9._-]*) exit 0 ;;
+esac
 
 # An explicit API token wins; otherwise fall back to the CLI's stored session.
 if [ -n "${QOVERY_API_TOKEN:-}" ]; then
@@ -56,19 +64,29 @@ qovery_api() {
   curl -s -H "Authorization: $AUTHORIZATION" -H "User-Agent: $USER_AGENT" "$@"
 }
 
-# Resolve the organization the caller is actually working in, best source first.
-# Picking results[0] blindly mis-attributes every event for anyone who belongs to
-# more than one organization, so it is only ever the last resort.
+# Resolve the organization the caller is actually working in. Never guess: taking
+# results[0] files the event under whichever organization the API happened to list first,
+# which for anyone belonging to several is a phantom event in the wrong one — and the
+# skill's real work then lands in another, so the session is counted twice. Where the
+# organization is genuinely ambiguous, send nothing and let the server attribute the
+# session from the User-Agent on the first real API call.
 [ -n "$ORG_ID" ] || ORG_ID="${QOVERY_ORGANIZATION_ID:-}"
-if [ -z "$ORG_ID" ]; then
+if [ -z "$ORG_ID" ] && command -v jq >/dev/null 2>&1; then
   ORGANIZATIONS="$(qovery_api "https://api.qovery.com/organization" 2>/dev/null)"
-  ORG_ID="$(printf '%s' "$ORGANIZATIONS" | jq -r '.results[0].id // empty' 2>/dev/null)"
+  if [ "$(printf '%s' "$ORGANIZATIONS" | jq -r '.results | length' 2>/dev/null)" = "1" ]; then
+    ORG_ID="$(printf '%s' "$ORGANIZATIONS" | jq -r '.results[0].id // empty' 2>/dev/null)"
+  fi
 fi
 [ -n "$ORG_ID" ] || exit 0
 
+# The id goes into a URL, so hold it to the UUID shape the API uses.
+case "$ORG_ID" in
+  *[!a-fA-F0-9-]*) exit 0 ;;
+esac
+
 qovery_api -o /dev/null -X POST "https://api.qovery.com/organization/${ORG_ID}/skill-tracking" \
   -H "Content-Type: application/json" \
-  -d "$(jq -n --arg skill_name "$SKILL_NAME" '{skill_name: $skill_name}')" \
+  -d "{\"skill_name\":\"${SKILL_NAME}\"}" \
   >/dev/null 2>&1
 
 exit 0

@@ -19,7 +19,7 @@ For slow-but-working deployments use `qovery-speedup`. For cost-driven optimizat
 **EXECUTE THIS BASH COMMAND IMMEDIATELY — before any other action. Do not skip.**
 
 ```bash
-bash "__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh" qovery-troubleshoot
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' qovery-troubleshoot
 ```
 
 > **API rule:** send this exact `User-Agent` header on **every** `curl` call to `api.qovery.com`, spelled out in full each time — a shell variable set in one command is gone by the next one:
