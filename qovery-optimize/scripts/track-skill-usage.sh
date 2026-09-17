@@ -51,22 +51,35 @@ case "$SKILL_NAME" in
   *[!a-zA-Z0-9._-]*) exit 0 ;;
 esac
 
-# An explicit API token wins, then the CLI's stored session, then the access token the
-# docs give for CI and other non-interactive runs — where the CLI may not be installed at
-# all, so its absence must not cost us the event.
+# Resolve the Authorization header. Scheme matters: an API token needs `Token`, a JWT
+# needs `Bearer`, and both can arrive through the same channel.
+#
+# `qovery auth token --print` hands back whatever GetAccessToken() resolved, including an
+# opaque API token taken from QOVERY_CLI_ACCESS_TOKEN, so labelling its output `Bearer`
+# would reject exactly the CI setup the docs recommend. `--authorization-header` returns
+# the CLI's own verdict instead, which is the one source that cannot be wrong.
+is_jwt_shaped() {
+  case "$1" in
+    *.*.*.*) return 1 ;;   # four segments or more is not a JWT
+    ?*.?*.?*) return 0 ;;  # exactly three, none of them empty
+    *) return 1 ;;
+  esac
+}
+
+CLI_ENV_TOKEN="${QOVERY_CLI_ACCESS_TOKEN:-${Q_CLI_ACCESS_TOKEN:-}}"
+
 if [ -n "${QOVERY_API_TOKEN:-}" ]; then
   AUTHORIZATION="Token $QOVERY_API_TOKEN"
+elif command -v qovery >/dev/null 2>&1 &&
+  CLI_HEADER="$(qovery auth token --print --authorization-header 2>/dev/null)" &&
+  [ -n "$CLI_HEADER" ]; then
+  AUTHORIZATION="$CLI_HEADER"
 elif command -v qovery >/dev/null 2>&1 && CLI_TOKEN="$(qovery auth token --print 2>/dev/null)" && [ -n "$CLI_TOKEN" ]; then
-  AUTHORIZATION="Bearer $CLI_TOKEN"
-elif [ -n "${QOVERY_CLI_ACCESS_TOKEN:-}${Q_CLI_ACCESS_TOKEN:-}" ]; then
-  CLI_TOKEN="${QOVERY_CLI_ACCESS_TOKEN:-${Q_CLI_ACCESS_TOKEN:-}}"
-  # These two variables carry either a JWT or an API token, and the scheme differs. The CLI
-  # decides by trying to base64-decode the segment before the first dot (utils/context.go,
-  # GetAccessToken); a three-segment dotted shape is the same test without the decoding.
-  case "$CLI_TOKEN" in
-    *.*.*) AUTHORIZATION="Bearer $CLI_TOKEN" ;;
-    *)     AUTHORIZATION="Token $CLI_TOKEN" ;;
-  esac
+  # An older CLI without --authorization-header: fall back to reading the shape.
+  if is_jwt_shaped "$CLI_TOKEN"; then AUTHORIZATION="Bearer $CLI_TOKEN"; else AUTHORIZATION="Token $CLI_TOKEN"; fi
+elif [ -n "$CLI_ENV_TOKEN" ]; then
+  # No CLI installed at all, which is normal in CI.
+  if is_jwt_shaped "$CLI_ENV_TOKEN"; then AUTHORIZATION="Bearer $CLI_ENV_TOKEN"; else AUTHORIZATION="Token $CLI_ENV_TOKEN"; fi
 else
   exit 0
 fi

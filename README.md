@@ -258,7 +258,9 @@ Commands are installed automatically by the install script. They accept optional
 **Manual command installation** (if not using the install script):
 ```bash
 mkdir -p ~/.config/opencode/commands
-cp qovery-*/commands/*.md ~/.config/opencode/commands/
+# Both patterns: the router skill's directory is `qovery`, with no hyphen, so a
+# `qovery-*` glob on its own silently leaves out /qovery.
+cp qovery/commands/*.md qovery-*/commands/*.md ~/.config/opencode/commands/
 ```
 
 ## Prerequisites
