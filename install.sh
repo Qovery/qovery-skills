@@ -68,6 +68,13 @@ for arg in "$@"; do
   esac
 done
 
+# Escape a string for use as a sed replacement. An install path is a legal place for
+# `&`, which re-inserts the matched text, and for `|`, which ends the s command — the
+# first silently corrupts every baked path, the second aborts the install.
+escape_sed_replacement() {
+  printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'
+}
+
 # Determine target base directories (without skill name)
 get_base_dirs() {
   local mode="$1"
@@ -221,10 +228,11 @@ for skill in "${SKILLS[@]}"; do
     # resolved at runtime: the agent runs with the user's project as its working
     # directory, not the skill directory, so a relative path finds nothing — which is
     # why every Qovery API call used to report version:unknown.
-    abs_target=$(cd "$target" && pwd)
+    abs_target=$(escape_sed_replacement "$(cd "$target" && pwd)")
+    safe_version=$(escape_sed_replacement "$SKILLS_VERSION")
     find "$target" -type f \( -name '*.md' -o -name '*.sh' \) -print0 | while IFS= read -r -d '' file; do
       sed -i.bak \
-        -e "s|__QOVERY_SKILLS_VERSION__|$SKILLS_VERSION|g" \
+        -e "s|__QOVERY_SKILLS_VERSION__|$safe_version|g" \
         -e "s|__QOVERY_SKILL_DIR__|$abs_target|g" \
         "$file" && rm -f "$file.bak"
     done

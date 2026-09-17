@@ -387,26 +387,54 @@ Creates a `qovery.tf` file that defines your entire infrastructure as code. Repr
 
 ## Manual Installation
 
-If you prefer not to use the install script, copy the skill folders manually:
+If you prefer not to use the install script, copy the skill folders manually. Copying is
+not enough on its own: each skill ships two placeholders, `__QOVERY_SKILLS_VERSION__` and
+`__QOVERY_SKILL_DIR__`, that have to be filled in. Leave them and the `User-Agent` your
+skills send carries a literal placeholder, and the usage-tracking command points at a path
+that does not exist.
 
 ```bash
 git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
-# Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-terraform ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-terraform ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-terraform ~/.agents/skills/
+# Pick your destination (~/.config/opencode/skills and ~/.agents/skills also work,
+# or .claude/skills for a project-local install)
+DEST=~/.claude/skills
+VERSION=$(git rev-parse --short HEAD)
 
-# Install all slash commands (Claude Code, OpenCode, etc.)
+mkdir -p "$DEST"
+for skill in qovery qovery-*/; do
+  skill=${skill%/}
+  rm -rf "$DEST/$skill"
+  cp -r "$skill" "$DEST/$skill"
+  rm -rf "$DEST/$skill/commands"
+  echo "$VERSION" > "$DEST/$skill/_version.txt"
+
+  # Fill in the placeholders. python3 rather than sed: an install path may legally
+  # contain characters sed would treat as syntax.
+  SKILL_DIR="$(cd "$DEST/$skill" && pwd)" VERSION="$VERSION" python3 - "$DEST/$skill" <<'PY'
+import os, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+for path in root.rglob("*"):
+    if path.suffix in {".md", ".sh"} and path.is_file():
+        text = path.read_text()
+        path.write_text(
+            text.replace("__QOVERY_SKILLS_VERSION__", os.environ["VERSION"])
+                .replace("__QOVERY_SKILL_DIR__", os.environ["SKILL_DIR"])
+        )
+PY
+done
+
+# Slash commands (Claude Code, OpenCode, etc.)
 mkdir -p ~/.claude/commands && cp qovery-*/commands/*.md ~/.claude/commands/
-mkdir -p ~/.config/opencode/commands && cp qovery-*/commands/*.md ~/.config/opencode/commands/
-
-# Or project-local install
-mkdir -p .claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-terraform .claude/skills/
 ```
 
-Verify the skills are discovered by checking if your tool lists all eight Qovery skills.
+Verify the skills are discovered by checking that your tool lists all ten Qovery skills,
+and that no `__QOVERY_` placeholder survives:
+
+```bash
+grep -rl '__QOVERY_' "$DEST" || echo "all placeholders substituted"
+```
 
 ## Usage Tracking
 
