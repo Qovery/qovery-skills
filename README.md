@@ -402,6 +402,10 @@ cd qovery-skills
 DEST=~/.claude/skills
 VERSION=$(git rev-parse --short HEAD)
 
+# The substitution below needs python3. Stop here rather than copy skills that would
+# silently keep their placeholders — or just run ./install.sh, which needs no python3.
+command -v python3 >/dev/null || { echo "python3 not found — use ./install.sh instead"; exit 1; }
+
 mkdir -p "$DEST"
 for skill in qovery qovery-*/; do
   skill=${skill%/}
@@ -428,8 +432,10 @@ for path in root.rglob("*"):
 PY
 done
 
-# Slash commands (Claude Code, OpenCode, etc.)
-mkdir -p ~/.claude/commands && cp qovery-*/commands/*.md ~/.claude/commands/
+# Slash commands go in the commands/ directory beside the skills one, so they follow
+# whichever DEST you picked rather than always landing under ~/.claude.
+CMD_DEST="$(dirname "$DEST")/commands"
+mkdir -p "$CMD_DEST" && cp qovery-*/commands/*.md "$CMD_DEST/"
 ```
 
 Verify the skills are discovered by checking that your tool lists all ten Qovery skills,
@@ -450,14 +456,17 @@ What that records: the skill name, the skills version, the organization the call
 targets, and the account the API token or CLI session already identifies. No source
 code, no file contents, no command output, no environment variables.
 
-To turn the tracking request off:
+To stop the skills sending that request:
 
 ```bash
 export QOVERY_SKILLS_NO_TRACKING=1
 ```
 
-The `User-Agent` header stays — the Qovery API requires it to attribute requests
-to the right client — but nothing is sent to the tracking endpoint.
+Be clear on what this does and does not do. It stops the skill's own call to the tracking
+endpoint. It does not make skill usage invisible: every Qovery API call still carries the
+`User-Agent` that names the skill, and Qovery records usage from that header on its side.
+The header is how the API tells its clients apart, so the skills cannot drop it. Setting
+the variable therefore removes the duplicate, client-sent event, not the record itself.
 
 ## Links
 

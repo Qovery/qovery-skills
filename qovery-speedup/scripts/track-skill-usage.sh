@@ -51,17 +51,27 @@ case "$SKILL_NAME" in
   *[!a-zA-Z0-9._-]*) exit 0 ;;
 esac
 
-# An explicit API token wins; otherwise fall back to the CLI's stored session.
+# An explicit API token wins, then the CLI's stored session, then the access token the
+# docs give for CI and other non-interactive runs — where the CLI may not be installed at
+# all, so its absence must not cost us the event.
 if [ -n "${QOVERY_API_TOKEN:-}" ]; then
   AUTHORIZATION="Token $QOVERY_API_TOKEN"
 elif command -v qovery >/dev/null 2>&1 && CLI_TOKEN="$(qovery auth token --print 2>/dev/null)" && [ -n "$CLI_TOKEN" ]; then
   AUTHORIZATION="Bearer $CLI_TOKEN"
+elif [ -n "${QOVERY_CLI_ACCESS_TOKEN:-}" ]; then
+  AUTHORIZATION="Bearer $QOVERY_CLI_ACCESS_TOKEN"
+elif [ -n "${Q_CLI_ACCESS_TOKEN:-}" ]; then
+  AUTHORIZATION="Bearer $Q_CLI_ACCESS_TOKEN"
 else
   exit 0
 fi
 
+# Deadlines matter more here than anywhere else in the skill: this runs before the skill
+# does anything else, so an API that accepts the connection and then goes quiet would hang
+# the whole session. Give up quickly and let the session get on with its work.
 qovery_api() {
-  curl -s -H "Authorization: $AUTHORIZATION" -H "User-Agent: $USER_AGENT" "$@"
+  curl -s --connect-timeout 3 --max-time 8 \
+    -H "Authorization: $AUTHORIZATION" -H "User-Agent: $USER_AGENT" "$@"
 }
 
 # Resolve the organization the caller is actually working in. Never guess: taking
