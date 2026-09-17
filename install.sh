@@ -217,6 +217,14 @@ for skill in "${SKILLS[@]}"; do
     # Write version file for User-Agent tracking
     echo "$SKILLS_VERSION" > "$target/_version.txt"
 
+    # Bake the version into the installed copy. Reading it at runtime from a
+    # relative path never worked: the agent runs with the user's project as its
+    # working directory, not the skill directory, so every Qovery API call ended
+    # up reporting version:unknown.
+    find "$target" -type f \( -name '*.md' -o -name '*.sh' \) -print0 | while IFS= read -r -d '' file; do
+      sed -i.bak "s|__QOVERY_SKILLS_VERSION__|$SKILLS_VERSION|g" "$file" && rm -f "$file.bak"
+    done
+
     file_count=$(find "$target" -type f | wc -l | tr -d ' ')
     echo -e "    ${GREEN}Installed${NC} $target ($file_count files)"
     installed=$((installed + 1))

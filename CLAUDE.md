@@ -6,15 +6,19 @@ Eight Agent Skills for the Qovery platform, distributed via `curl https://skill.
 
 ```
 _shared/                   AUTHORING source for boilerplate copied into every skill
-scripts/sync-shared.sh     Copy _shared/* into each skill's reference/
+scripts/sync-shared.sh     Copy _shared/* into each skill, per the sync map
 evals/qovery-<skill>.json  ≥3 representative scenarios per skill
 qovery-<skill>/
   ├── SKILL.md             Navigation/overview, ≤500 lines (Level 1 + 2)
   ├── commands/            Slash commands (Claude Code-specific)
   ├── reference/           Phase files, loaded on demand (Level 3)
+  ├── scripts/             Executables the skill runs in place (never copied out)
   ├── templates/           Files the skill cp's into the user's repo
   └── examples/            Long-form walkthroughs (optional)
 ```
+
+`scripts/` and `templates/` differ by execution intent: a `scripts/` file runs from
+the installed skill directory, a `templates/` file gets copied into the user's repo.
 
 `qovery-deploy/` is the canonical example — when in doubt, mirror its structure.
 
@@ -54,15 +58,15 @@ HOME=$(mktemp -d) ./install.sh --global | tail -3
 
 ### Update boilerplate shared across skills
 
-Common content (Console URL detection, auth flow, pricing) is authored once under `_shared/` and **copied** into each skill's `reference/` — skills are independent dirs at runtime, no cross-references.
+Common content (Console URL detection, auth flow, pricing, the usage-tracking script) is authored once under `_shared/` and **copied** into each skill — skills are independent dirs at runtime, no cross-references.
 
 ```bash
-$EDITOR _shared/console-url-detection.md   # 1. edit source
-./scripts/sync-shared.sh                   # 2. propagate
-git add _shared scripts qovery-*/reference # 3. commit BOTH source + synced copies
+$EDITOR _shared/console-url-detection.md            # 1. edit source
+./scripts/sync-shared.sh                            # 2. propagate
+git add _shared scripts qovery-*/reference qovery-*/scripts  # 3. commit BOTH source + synced copies
 ```
 
-The sync map is at the top of `scripts/sync-shared.sh`. Add an entry there if a new file needs to ship into more skills.
+The sync map is at the top of `scripts/sync-shared.sh`, one line per shared file: `<source-under-_shared> | <destination-under-each-skill> | <skills>`. Add an entry there if a new file needs to ship into more skills.
 
 ### Add a phase to an existing skill
 

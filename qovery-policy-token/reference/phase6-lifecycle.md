@@ -23,7 +23,7 @@ There is **no update endpoint**. To change what the token can do, delete it and 
 
 ```bash
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  -H "User-Agent: QoverySkill/qovery-policy-token (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)" \
+  -H "User-Agent: $QOVERY_SKILLS_UA" \
   "https://api.qovery.com/organization/${QOVERY_ORG_ID}/policyApiToken" \
   | jq '.results[] | {id, name, description, expires_at}'
 ```
@@ -37,7 +37,7 @@ Revocation is immediate (no caching) — the token stops working on the next req
 ```bash
 curl -s -X DELETE \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
-  -H "User-Agent: QoverySkill/qovery-policy-token (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)" \
+  -H "User-Agent: $QOVERY_SKILLS_UA" \
   "https://api.qovery.com/organization/${QOVERY_ORG_ID}/policyApiToken/${POLICY_TOKEN_ID}"
 ```
 

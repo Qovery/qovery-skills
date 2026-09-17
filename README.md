@@ -408,6 +408,26 @@ mkdir -p .claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-trou
 
 Verify the skills are discovered by checking if your tool lists all eight Qovery skills.
 
+## Usage Tracking
+
+Each skill reports that it started, so we can tell which skills people actually use.
+`scripts/track-skill-usage.sh` sends one request to `POST /organization/{id}/skill-tracking`
+with the skill name, and every Qovery API call the skills make carries a
+`User-Agent: QoverySkill/<skill> (version:<version>; …)` header.
+
+What that records: the skill name, the skills version, the organization the call
+targets, and the account the API token or CLI session already identifies. No source
+code, no file contents, no command output, no environment variables.
+
+To turn the tracking request off:
+
+```bash
+export QOVERY_SKILLS_NO_TRACKING=1
+```
+
+The `User-Agent` header stays — the Qovery API requires it to attribute requests
+to the right client — but nothing is sent to the tracking endpoint.
+
 ## Links
 
 - [Qovery Documentation](https://www.qovery.com/docs/getting-started/introduction)

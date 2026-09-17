@@ -14,7 +14,7 @@ This is distinct from Qovery's built-in **native container database** service (`
 
 ```bash
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  -H "User-Agent: QoverySkill/qovery-deploy (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+  -H "User-Agent: $QOVERY_SKILLS_UA" \
   "https://api.qovery.com/organization/{organizationId}/blueprint/catalog" \
   | jq '.blueprints[] | {name, provider, serviceFamily, categories, majorVersions: [.majorVersions[].serviceVersion]}'
 ```
@@ -32,7 +32,7 @@ Fetch and read the blueprint's README before proceeding — it's the module's ow
 
 ```bash
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  -H "User-Agent: QoverySkill/qovery-deploy (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+  -H "User-Agent: $QOVERY_SKILLS_UA" \
   "https://api.qovery.com/organization/{organizationId}/blueprint/catalog/{provider}/{serviceFamily}/{serviceVersion}/readme" \
   | jq -r '.content'
 ```
@@ -45,7 +45,7 @@ Before creating the blueprint, fetch its manifest to learn which variables are r
 
 ```bash
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  -H "User-Agent: QoverySkill/qovery-deploy (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+  -H "User-Agent: $QOVERY_SKILLS_UA" \
   "https://api.qovery.com/organization/{organizationId}/blueprint/catalog/{provider}/{serviceFamily}/{serviceVersion}/manifest?environmentId={environmentId}" \
   | jq '.'
 ```
@@ -62,7 +62,7 @@ The manifest also returns `engine` — the discriminated `terraform` / `opentofu
 curl -s -X POST "https://api.qovery.com/environment/{environmentId}/blueprint?deploy=false" \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: QoverySkill/qovery-deploy (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+  -H "User-Agent: $QOVERY_SKILLS_UA" \
   -d '{
     "name": "my-postgres",
     "tag": "aws/postgres/17/1.0.1",
@@ -118,7 +118,7 @@ If the user already has a blueprint-based service and wants to check for a newer
 
 ```bash
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  -H "User-Agent: QoverySkill/qovery-deploy (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+  -H "User-Agent: $QOVERY_SKILLS_UA" \
   "https://api.qovery.com/blueprint/{blueprintId}/update" | jq '.'
 ```
 
@@ -130,7 +130,7 @@ Preview the update as a dry run first (no persisted changes):
 curl -s -X POST "https://api.qovery.com/blueprint/{blueprintId}/update/preview" \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: QoverySkill/qovery-deploy (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+  -H "User-Agent: $QOVERY_SKILLS_UA" \
   -d '{"variables": {"instance_class": {"value": "db.t3.large"}}, "spec_overrides": null}'
 ```
 
@@ -140,7 +140,7 @@ curl -s -X POST "https://api.qovery.com/blueprint/{blueprintId}/update/preview" 
 curl -s -X PATCH "https://api.qovery.com/blueprint/{blueprintId}" \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: QoverySkill/qovery-deploy (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+  -H "User-Agent: $QOVERY_SKILLS_UA" \
   -d '{
     "name": "my-postgres",
     "tag": "aws/postgres/17/1.1.0",
