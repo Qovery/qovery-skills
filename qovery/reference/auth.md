@@ -32,9 +32,13 @@ Spell the header out in full on every request. Do **not** capture it into a shel
 variable first: each agent shell invocation is its own process, so a variable set in one
 command expands to nothing in the next, and the header silently goes out empty.
 
-`__QOVERY_SKILLS_VERSION__` below is not a variable to expand — `install.sh` replaces it
-with the installed version, so the literal you read here is already correct. Replace
-`<skill-name>` with the skill currently running.
+`__QOVERY_SKILLS_VERSION__` below is not a variable to expand. `install.sh` replaces it
+with the installed version, and the manual installation in the README does the same, so
+in an installed skill the literal you read is already the real version — send it as-is.
+If you still see the placeholder itself, the skill is running straight from a repo
+checkout or a symlinked development install; send it unchanged anyway rather than
+inventing a version, and the server will record the call with no version at all.
+Replace `<skill-name>` with the skill currently running.
 
 ```bash
 -H "User-Agent: QoverySkill/<skill-name> (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)"

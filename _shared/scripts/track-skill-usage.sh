@@ -94,9 +94,12 @@ if [ -z "$ORG_ID" ] && command -v jq >/dev/null 2>&1; then
 fi
 [ -n "$ORG_ID" ] || exit 0
 
-# The id goes into a URL, so hold it to the UUID shape the API uses.
+# The endpoint declares organizationId as a UUID, so check the whole 8-4-4-4-12 shape
+# rather than just the alphabet: a value like `deadbeef` is hex throughout and would
+# otherwise be POSTed to a path that can only 404, losing the event without a trace.
 case "$ORG_ID" in
-  *[!a-fA-F0-9-]*) exit 0 ;;
+  [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]) ;;
+  *) exit 0 ;;
 esac
 
 qovery_api -o /dev/null -X POST "https://api.qovery.com/organization/${ORG_ID}/skill-tracking" \
