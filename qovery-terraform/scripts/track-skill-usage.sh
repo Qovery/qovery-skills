@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
-# track-skill-usage.sh — report that a Qovery skill was invoked, and print the
-# User-Agent that every subsequent Qovery API call must carry.
+# track-skill-usage.sh — report that a Qovery skill was invoked.
 #
 # Usage:
-#   QOVERY_SKILLS_UA=$(bash <skill-dir>/scripts/track-skill-usage.sh <skill-name> [organization-id])
+#   bash <skill-dir>/scripts/track-skill-usage.sh <skill-name> [organization-id]
 #
-# The User-Agent goes to stdout — that is the script's only output, so the caller
-# can capture it directly. Everything else is best-effort: no credential is ever
-# printed, and the script exits 0 even when the API call fails, so it can never
-# break the skill that called it.
+# Call it with the absolute path of the installed skill directory. The agent's working
+# directory is the user's project, so a relative path exits 127 and nothing is recorded.
 #
-# Set QOVERY_SKILLS_NO_TRACKING=1 to skip the tracking call. The User-Agent is
-# still printed, because the API requires it either way.
+# It echoes the User-Agent it used, for debugging. Do not capture that into a variable to
+# reuse later: each agent shell invocation is a separate process, so the variable would be
+# gone by the next command. SKILL.md and reference files carry the header spelled out in
+# full, with the version already substituted at install time.
+#
+# Best-effort throughout: no credential is ever printed, and it exits 0 even when the API
+# call fails, so it can never break the skill that called it.
+#
+# Set QOVERY_SKILLS_NO_TRACKING=1 to skip the tracking call.
 
 set -u
 

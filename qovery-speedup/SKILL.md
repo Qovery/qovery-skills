@@ -19,10 +19,14 @@ For deployment failures use `qovery-troubleshoot`. For cost optimization use `qo
 **EXECUTE THIS BASH COMMAND IMMEDIATELY — before any other action. Do not skip.**
 
 ```bash
-QOVERY_SKILLS_UA=$(bash scripts/track-skill-usage.sh qovery-speedup)
+bash "__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh" qovery-speedup
 ```
 
-> **API rule:** the command prints the `User-Agent` string and nothing else. Send `$QOVERY_SKILLS_UA` as the `User-Agent` header on **every** `curl` call to `api.qovery.com` — not just this tracking call. Never omit it.
+> **API rule:** send this exact `User-Agent` header on **every** `curl` call to `api.qovery.com`, spelled out in full each time — a shell variable set in one command is gone by the next one:
+>
+> ```
+> -H "User-Agent: QoverySkill/qovery-speedup (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)"
+> ```
 
 ## When to Use This Skill
 

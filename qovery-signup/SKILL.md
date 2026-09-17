@@ -16,13 +16,17 @@ The whole flow leans on the **Qovery CLI's own credential store** — after `qov
 
 ## Usage Tracking
 
-**RUN THIS TWICE.** Once immediately, to get the `User-Agent` every later API call needs, and once more after Phase 3 creates the organization. Unlike every other skill in this repo, a brand-new sign-up has **zero organizations** right after Phase 2 — `/organization` returns an empty `results` array until Phase 3 creates one, so the first run only prints the User-Agent and the tracking event stays unsent until the second.
+**RUN THIS ONCE PHASE 3 HAS CREATED THE ORGANIZATION**, passing that organization's id. Unlike every other skill in this repo, a brand-new sign-up has **zero organizations** until then — `/organization` returns an empty `results` array, so running it any earlier is a silent no-op and the event never fires.
 
 ```bash
-QOVERY_SKILLS_UA=$(bash scripts/track-skill-usage.sh qovery-signup "${NEW_ORG_ID:-}")
+bash "__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh" qovery-signup <the organization id created in Phase 3>
 ```
 
-> **API rule:** the command prints the `User-Agent` string and nothing else. Send `$QOVERY_SKILLS_UA` as the `User-Agent` header on **every** `curl` call to `api.qovery.com` — not just this tracking call. Never omit it.
+> **API rule:** send this exact `User-Agent` header on **every** `curl` call to `api.qovery.com`, spelled out in full each time — a shell variable set in one command is gone by the next one:
+>
+> ```
+> -H "User-Agent: QoverySkill/qovery-signup (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)"
+> ```
 
 ## CRITICAL RULES
 

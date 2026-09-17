@@ -56,7 +56,7 @@ POLICY_JSON=$(jq -Rs . < policy.rego)     # JSON-encode the rego file
 curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/policyApiToken" \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -H "User-Agent: $QOVERY_SKILLS_UA" \
+  -H "User-Agent: QoverySkill/qovery-policy-token (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)" \
   -d "{\"name\":\"deploy-agent\",\"description\":\"Deploys staging\",\"opa_policy\":${POLICY_JSON}}"
 # The response .token is the secret — never print it; capture inline.
 ```

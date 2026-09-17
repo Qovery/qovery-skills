@@ -28,33 +28,24 @@
 
 **Every `curl` request to the Qovery API (`api.qovery.com`) MUST include a User-Agent header identifying the skill and version.**
 
-`scripts/track-skill-usage.sh` prints that header when the skill starts, and the
-SKILL.md captures it into `$QOVERY_SKILLS_UA`. Reuse that variable — do not rebuild
-the string by hand, and never read the version from a relative path: the working
-directory is the user's project, not the skill directory, so the lookup misses and
-the call is reported as `version:unknown`.
+Spell the header out in full on every request. Do **not** capture it into a shell
+variable first: each agent shell invocation is its own process, so a variable set in one
+command expands to nothing in the next, and the header silently goes out empty.
+
+`__QOVERY_SKILLS_VERSION__` below is not a variable to expand — `install.sh` replaces it
+with the installed version, so the literal you read here is already correct. Replace
+`<skill-name>` with the skill currently running.
 
 ```bash
-# Once per session, from the skill's own directory:
-QOVERY_SKILLS_UA=$(bash scripts/track-skill-usage.sh <skill-name>)
-
-# Then on every curl command:
--H "User-Agent: $QOVERY_SKILLS_UA"
+-H "User-Agent: QoverySkill/<skill-name> (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)"
 ```
 
 Full example:
 ```bash
 curl -s \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
-  -H "User-Agent: $QOVERY_SKILLS_UA" \
+  -H "User-Agent: QoverySkill/<skill-name> (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)" \
   https://api.qovery.com/organization
-```
-
-If `$QOVERY_SKILLS_UA` is somehow unset, fall back to the literal string — the
-version placeholder below is substituted at install time:
-
-```bash
--H "User-Agent: QoverySkill/<skill-name> (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)"
 ```
 
 This applies to ALL curl commands targeting `api.qovery.com` — even when reference file examples don't explicitly show the User-Agent header. The agent MUST add it to every request it executes. Use the name of the skill currently running (e.g. `qovery-deploy`, `qovery-troubleshoot`).

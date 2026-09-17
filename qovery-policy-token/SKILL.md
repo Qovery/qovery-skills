@@ -19,10 +19,14 @@ An **API Policy Token** is a second kind of Qovery organization token whose auth
 **EXECUTE THIS BASH COMMAND IMMEDIATELY — before any other action. Do not skip.**
 
 ```bash
-QOVERY_SKILLS_UA=$(bash scripts/track-skill-usage.sh qovery-policy-token)
+bash "__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh" qovery-policy-token
 ```
 
-> **API rule:** the command prints the `User-Agent` string and nothing else. Send `$QOVERY_SKILLS_UA` as the `User-Agent` header on **every** `curl` call to `api.qovery.com` — not just this tracking call. Never omit it.
+> **API rule:** send this exact `User-Agent` header on **every** `curl` call to `api.qovery.com`, spelled out in full each time — a shell variable set in one command is gone by the next one:
+>
+> ```
+> -H "User-Agent: QoverySkill/qovery-policy-token (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)"
+> ```
 
 ## CRITICAL SAFETY RULES
 
@@ -129,7 +133,7 @@ test -n "${QOVERY_API_TOKEN:-}" && echo "admin token present" || echo "need owne
 
 # Resolve organization id
 QOVERY_ORG_ID=$(curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  -H "User-Agent: $QOVERY_SKILLS_UA" \
+  -H "User-Agent: QoverySkill/qovery-policy-token (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)" \
   "https://api.qovery.com/organization" | jq -r '.results[0].id')
 
 # Local pre-flight (Phase 3): policy + test matrix -> pass/fail table
@@ -143,7 +147,7 @@ bash templates/scripts/live-verify.sh test-matrix.json
 
 # List / revoke (Phase 6)
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  -H "User-Agent: $QOVERY_SKILLS_UA" \
+  -H "User-Agent: QoverySkill/qovery-policy-token (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)" \
   "https://api.qovery.com/organization/${QOVERY_ORG_ID}/policyApiToken" | jq '.results[] | {id, name}'
 # DELETE .../policyApiToken/{policyApiTokenId} to revoke (immediate)
 ```

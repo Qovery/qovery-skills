@@ -355,7 +355,7 @@ Whenever an infrastructure piece was deployed as a **Blueprint** (Phase 3C) inst
 1. **List the blueprint service's exposed variables** once it's created (and ideally after its first successful deploy, since some values like a generated password or endpoint resolve only post-apply):
    ```bash
    curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-     -H "User-Agent: $QOVERY_SKILLS_UA" \
+     -H "User-Agent: QoverySkill/qovery-deploy (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)" \
      "https://api.qovery.com/environment/{environmentId}/environmentVariable" \
      | jq '.results[] | select(.service_id == "{blueprintServiceId}") | {id, key, scope}'
    ```
@@ -366,7 +366,7 @@ Whenever an infrastructure piece was deployed as a **Blueprint** (Phase 3C) inst
    curl -s -X POST "https://api.qovery.com/application/{appId}/environmentVariable/alias" \
      -H "Authorization: Token $QOVERY_API_TOKEN" \
      -H "Content-Type: application/json" \
-     -H "User-Agent: $QOVERY_SKILLS_UA" \
+     -H "User-Agent: QoverySkill/qovery-deploy (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)" \
      -d '{"key": "DATABASE_URL", "alias_parent_id": "{blueprintEndpointVariableId}"}'
    ```
    If the blueprint doesn't expose one composed connection-string variable (common for Terraform-engine blueprints, which tend to expose host/port/user/password separately), alias each part individually and compose the final URL with **interpolation** (6.5) the same way you would compose a custom-params `DATABASE_URL` from a native database's parts.
