@@ -433,9 +433,10 @@ PY
 done
 
 # Slash commands go in the commands/ directory beside the skills one, so they follow
-# whichever DEST you picked rather than always landing under ~/.claude.
+# whichever DEST you picked rather than always landing under ~/.claude. The glob needs
+# both patterns: the router skill's directory is `qovery`, with no hyphen.
 CMD_DEST="$(dirname "$DEST")/commands"
-mkdir -p "$CMD_DEST" && cp qovery-*/commands/*.md "$CMD_DEST/"
+mkdir -p "$CMD_DEST" && cp qovery/commands/*.md qovery-*/commands/*.md "$CMD_DEST/"
 ```
 
 Verify the skills are discovered by checking that your tool lists all ten Qovery skills,

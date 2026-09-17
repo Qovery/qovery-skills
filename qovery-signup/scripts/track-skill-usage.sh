@@ -58,10 +58,15 @@ if [ -n "${QOVERY_API_TOKEN:-}" ]; then
   AUTHORIZATION="Token $QOVERY_API_TOKEN"
 elif command -v qovery >/dev/null 2>&1 && CLI_TOKEN="$(qovery auth token --print 2>/dev/null)" && [ -n "$CLI_TOKEN" ]; then
   AUTHORIZATION="Bearer $CLI_TOKEN"
-elif [ -n "${QOVERY_CLI_ACCESS_TOKEN:-}" ]; then
-  AUTHORIZATION="Bearer $QOVERY_CLI_ACCESS_TOKEN"
-elif [ -n "${Q_CLI_ACCESS_TOKEN:-}" ]; then
-  AUTHORIZATION="Bearer $Q_CLI_ACCESS_TOKEN"
+elif [ -n "${QOVERY_CLI_ACCESS_TOKEN:-}${Q_CLI_ACCESS_TOKEN:-}" ]; then
+  CLI_TOKEN="${QOVERY_CLI_ACCESS_TOKEN:-${Q_CLI_ACCESS_TOKEN:-}}"
+  # These two variables carry either a JWT or an API token, and the scheme differs. The CLI
+  # decides by trying to base64-decode the segment before the first dot (utils/context.go,
+  # GetAccessToken); a three-segment dotted shape is the same test without the decoding.
+  case "$CLI_TOKEN" in
+    *.*.*) AUTHORIZATION="Bearer $CLI_TOKEN" ;;
+    *)     AUTHORIZATION="Token $CLI_TOKEN" ;;
+  esac
 else
   exit 0
 fi
