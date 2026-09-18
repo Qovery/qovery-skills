@@ -33,5 +33,16 @@
       "Recommends a phased migration (one app at a time, staging first) instead of a big bang",
       "Hands off to qovery-deploy once the platform is set up"
     ]
+  },
+  {
+    "skills": ["qovery-onboard"],
+    "query": "Connect my GitHub organization to Qovery. My Qovery organization ID is 123e4567-e89b-12d3-a456-426614174000 — give me the direct Console link.",
+    "files": [],
+    "expected_behavior": [
+      "Uses the organization ID in the exact Console URL `https://console.qovery.com/organization/123e4567-e89b-12d3-a456-426614174000/settings/git-repository-access`",
+      "Recommends a GitHub organization token and does not recommend installing the deprecated Qovery GitHub App",
+      "Explains the required GitHub token permissions or links to the Git Repository Access documentation",
+      "Does not emit the invalid ID-less route `https://console.qovery.com/organization/settings/git-repository-access`"
+    ]
   }
 ]

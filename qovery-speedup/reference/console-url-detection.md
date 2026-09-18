@@ -5,6 +5,31 @@ When the user provides a Qovery Console URL (from `console.qovery.com` or
 This saves significant back-and-forth — no need to ask which organization,
 project, environment, or service the user means.
 
+## Generating Console links
+
+Never invent a shortened Console route. Resource-scoped routes require their
+parent IDs, including organization settings pages. Resolve every required ID
+from a user-provided Console URL or the API before presenting a deep link. If a
+required ID is unknown, link only to <https://console.qovery.com> and describe
+the navigation path; do not emit a guessed URL or a URL containing a
+placeholder.
+
+Canonical routes:
+
+```text
+Organization Git access  /organization/{orgId}/settings/git-repository-access
+Clusters list            /organization/{orgId}/clusters
+Cluster                  /organization/{orgId}/cluster/{clusterId}
+Project                  /organization/{orgId}/project/{projectId}
+Environment              /organization/{orgId}/project/{projectId}/environment/{envId}
+Service                  /organization/{orgId}/project/{projectId}/environment/{envId}/service/{serviceId}
+```
+
+Replace every placeholder with the verified ID before turning a route into a
+user-facing `https://console.qovery.com/...` link. In particular,
+`/organization/settings/...`, `/clusters/{id}`, `/projects/{id}`, and
+`/environments/{id}` are not valid Console routes.
+
 ## URL format
 
 ```
