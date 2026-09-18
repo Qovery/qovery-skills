@@ -35,5 +35,18 @@
       "Recommends keeping production on MANAGED",
       "Applies the change per database after individual confirmation, not as a single batch action"
     ]
+  },
+  {
+    "skills": ["qovery-optimize"],
+    "query": "Right-size my production cluster — we have Qovery observability enabled, use real metrics",
+    "files": [],
+    "expected_behavior": [
+      "Checks metrics_parameters.enabled via GET /organization/{orgId}/cluster/{clusterId} before choosing the right-sizing method",
+      "Since observability is enabled, loads reference/phase2b-krr-rightsizing.md instead of hand-computing from the metrics API",
+      "Runs 'qovery cluster analysis cost-recommendation' with the Qovery flag set (P99 CPU, OOM-aware memory buffers, --allow-hpa) and only allowlisted --cmd-arg values",
+      "Does not fetch a kubeconfig or install KRR locally: the analysis runs server-side and is read-only",
+      "Maps KRR rows back to Qovery services and applies the Phase 2 guardrails (minimum thresholds, seasonal peaks, growth buffers)",
+      "Tags the recommendations as KRR-based in the Phase 3 report and falls back to Dimension 1 formulas if observability is off and no Prometheus URL is available"
+    ]
   }
 ]

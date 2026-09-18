@@ -1,6 +1,6 @@
 ---
 name: qovery-optimize
-description: Reduces Kubernetes cluster and application costs on Qovery. Analyzes historical resource consumption, factors in the user's business context (seasonal patterns, growth stage, reliability requirements), estimates external resource costs from public cloud pricing, and proposes right-sizing, autoscaling, environment scheduling, spot instances, and database mode changes. Generates a cost report with CSV export and applies changes via CLI+API or Terraform. Use when the user asks to reduce costs, right-size, or optimize Qovery resource spend.
+description: Reduces Kubernetes cluster and application costs on Qovery. Analyzes historical resource consumption, factors in the user's business context (seasonal patterns, growth stage, reliability requirements), estimates external resource costs from public cloud pricing, and proposes right-sizing, autoscaling, environment scheduling, spot instances, and database mode changes. When Qovery observability is enabled on the cluster, right-sizing uses KRR (Kubernetes Resource Recommender) for P99-based, OOM-aware per-container recommendations. Generates a cost report with CSV export and applies changes via CLI+API or Terraform. Use when the user asks to reduce costs, right-size, run KRR, or optimize Qovery resource spend.
 license: MIT
 compatibility: opencode
 metadata:
@@ -60,7 +60,7 @@ For slow deployments use `qovery-speedup`. For deployment failures use `qovery-t
 ```
 Cost Optimization Progress:
 - [ ] Phase 1 — Context gathering (auth, business context, resource metrics)
-- [ ] Phase 2 — Analysis across 7 optimization dimensions
+- [ ] Phase 2 — Analysis across 7 optimization dimensions (right-sizing via KRR when observability is enabled)
 - [ ] Phase 3 — Generate cost report (Markdown + CSV)
 - [ ] Phase 4 — Apply approved changes (CLI+API or Terraform) + USER CONFIRMATION per change
 - [ ] Phase 5 — Set up ongoing monitoring & follow-up
@@ -75,6 +75,7 @@ Cost Optimization Progress:
 | Auth | [reference/auth.md](reference/auth.md) | API token flow |
 | Phase 1 | [reference/phase1-context-gathering.md](reference/phase1-context-gathering.md) | Inventory, business context, resource metrics queries |
 | Phase 2 | [reference/phase2-optimization-dimensions.md](reference/phase2-optimization-dimensions.md) | Right-sizing, autoscaling, DB mode, scheduling, cluster, build, external resources |
+| Phase 2b | [reference/phase2b-krr-rightsizing.md](reference/phase2b-krr-rightsizing.md) | KRR-based right-sizing when Qovery observability is enabled (setup, run, guardrails) |
 | Phase 3 | [reference/phase3-cost-report.md](reference/phase3-cost-report.md) | Report template (Markdown + CSV) |
 | Phase 4 | [reference/phase4-apply-changes.md](reference/phase4-apply-changes.md) | CLI+API + Terraform application paths, with per-change confirmation |
 | Phase 5 | [reference/phase5-monitoring.md](reference/phase5-monitoring.md) | Ongoing dashboards, alert thresholds, follow-up cadence |
@@ -157,11 +158,14 @@ qovery cluster list                  # Cluster overview
 qovery service list                  # Service overview with resource info
 qovery status                        # Current status
 qovery application env list          # Check env var configuration
+qovery cluster analysis cost-recommendation -c <cluster-id>   # Server-side KRR right-sizing (observability required)
+qovery cluster analysis logs -c <cluster-id> -a <analysis-id> # Report of a past analysis
 ```
 
 ## Reference links
 
 - **Qovery Optimization Guide**: <https://www.qovery.com/docs/getting-started/guides/qovery-101/optimize>
+- **KRR (Kubernetes Resource Recommender)**: <https://github.com/robusta-dev/krr>
 - **Deployment Rules (Scheduling)**: <https://www.qovery.com/docs/configuration/deployment-rule>
 - **Kubecost Integration**: <https://www.qovery.com/docs/configuration/integrations/observability/kubecost>
 - **Copilot Optimization Capabilities**: <https://www.qovery.com/docs/copilot/capabilities/optimization>
