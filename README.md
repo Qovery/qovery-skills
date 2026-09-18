@@ -258,7 +258,9 @@ Commands are installed automatically by the install script. They accept optional
 **Manual command installation** (if not using the install script):
 ```bash
 mkdir -p ~/.config/opencode/commands
-cp qovery-*/commands/*.md ~/.config/opencode/commands/
+# Both patterns: the router skill's directory is `qovery`, with no hyphen, so a
+# `qovery-*` glob on its own silently leaves out /qovery.
+cp qovery/commands/*.md qovery-*/commands/*.md ~/.config/opencode/commands/
 ```
 
 ## Prerequisites
@@ -387,26 +389,87 @@ Creates a `qovery.tf` file that defines your entire infrastructure as code. Repr
 
 ## Manual Installation
 
-If you prefer not to use the install script, copy the skill folders manually:
+If you prefer not to use the install script, copy the skill folders manually. Copying is
+not enough on its own: each skill ships two placeholders, `__QOVERY_SKILLS_VERSION__` and
+`__QOVERY_SKILL_DIR__`, that have to be filled in. Leave them and the `User-Agent` your
+skills send carries a literal placeholder, and the usage-tracking command points at a path
+that does not exist.
 
 ```bash
 git clone https://github.com/Qovery/qovery-skills.git
 cd qovery-skills
 
-# Global install (pick the paths for your tools)
-mkdir -p ~/.claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-terraform ~/.claude/skills/
-mkdir -p ~/.config/opencode/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-terraform ~/.config/opencode/skills/
-mkdir -p ~/.agents/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-terraform ~/.agents/skills/
+# Pick your destination (~/.config/opencode/skills and ~/.agents/skills also work,
+# or .claude/skills for a project-local install)
+DEST=~/.claude/skills
+VERSION=$(git rev-parse --short HEAD)
 
-# Install all slash commands (Claude Code, OpenCode, etc.)
-mkdir -p ~/.claude/commands && cp qovery-*/commands/*.md ~/.claude/commands/
-mkdir -p ~/.config/opencode/commands && cp qovery-*/commands/*.md ~/.config/opencode/commands/
+# The substitution below needs python3. Stop here rather than copy skills that would
+# silently keep their placeholders — or just run ./install.sh, which needs no python3.
+command -v python3 >/dev/null || { echo "python3 not found — use ./install.sh instead"; exit 1; }
 
-# Or project-local install
-mkdir -p .claude/skills && cp -r qovery qovery-onboard qovery-deploy qovery-troubleshoot qovery-optimize qovery-speedup qovery-preview qovery-terraform .claude/skills/
+mkdir -p "$DEST"
+for skill in qovery qovery-*/; do
+  skill=${skill%/}
+  rm -rf "$DEST/$skill"
+  cp -r "$skill" "$DEST/$skill"
+  rm -rf "$DEST/$skill/commands"
+  echo "$VERSION" > "$DEST/$skill/_version.txt"
+
+  # Fill in the placeholders. python3 rather than sed: an install path may legally
+  # contain characters sed would treat as syntax. The path lands inside a single-quoted
+  # bash command, so a quote in it is escaped the way bash expects — otherwise a path
+  # holding a quote, a `$` or a backtick would break or expand when the agent runs it.
+  SKILL_DIR="$(cd "$DEST/$skill" && pwd)" VERSION="$VERSION" python3 - "$DEST/$skill" <<'PY'
+import os, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+skill_dir = os.environ["SKILL_DIR"].replace("'", "'\\''")
+for path in root.rglob("*"):
+    if path.suffix in {".md", ".sh"} and path.is_file():
+        text = path.read_text()
+        path.write_text(
+            text.replace("__QOVERY_SKILLS_VERSION__", os.environ["VERSION"])
+                .replace("__QOVERY_SKILL_DIR__", skill_dir)
+        )
+PY
+done
+
+# Slash commands go in the commands/ directory beside the skills one, so they follow
+# whichever DEST you picked rather than always landing under ~/.claude. The glob needs
+# both patterns: the router skill's directory is `qovery`, with no hyphen.
+CMD_DEST="$(dirname "$DEST")/commands"
+mkdir -p "$CMD_DEST" && cp qovery/commands/*.md qovery-*/commands/*.md "$CMD_DEST/"
 ```
 
-Verify the skills are discovered by checking if your tool lists all eight Qovery skills.
+Verify the skills are discovered by checking that your tool lists all ten Qovery skills,
+and that no `__QOVERY_` placeholder survives:
+
+```bash
+grep -rl '__QOVERY_' "$DEST" || echo "all placeholders substituted"
+```
+
+## Usage Tracking
+
+Each skill reports that it started, so we can tell which skills people actually use.
+`scripts/track-skill-usage.sh` sends one request to `POST /organization/{id}/skill-tracking`
+with the skill name, and every Qovery API call the skills make carries a
+`User-Agent: QoverySkill/<skill> (version:<version>; …)` header.
+
+What that records: the skill name, the skills version, the organization the call
+targets, and the account the API token or CLI session already identifies. No source
+code, no file contents, no command output, no environment variables.
+
+To stop the skills sending that request:
+
+```bash
+export QOVERY_SKILLS_NO_TRACKING=1
+```
+
+Be clear on what this does and does not do. It stops the skill's own call to the tracking
+endpoint. It does not make skill usage invisible: every Qovery API call still carries the
+`User-Agent` that names the skill, and Qovery records usage from that header on its side.
+The header is how the API tells its clients apart, so the skills cannot drop it. Setting
+the variable therefore removes the duplicate, client-sent event, not the record itself.
 
 ## Links
 

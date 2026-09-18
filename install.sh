@@ -68,6 +68,21 @@ for arg in "$@"; do
   esac
 done
 
+# Escape a string for use as a sed replacement. An install path is a legal place for
+# `&`, which re-inserts the matched text, and for `|`, which ends the s command — the
+# first silently corrupts every baked path, the second aborts the install.
+escape_sed_replacement() {
+  printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g'
+}
+
+# Escape a string to sit inside single quotes in the bash command we bake into SKILL.md.
+# The baked path ends up in a command the agent runs, so a path segment such as a literal
+# `$HOME`, a backtick or a quote would otherwise be expanded or break the command outright.
+# Single quotes suppress every expansion; the only character needing work is the quote.
+escape_single_quoted() {
+  printf "%s" "$1" | sed -e "s/'/'\\\\''/g"
+}
+
 # Determine target base directories (without skill name)
 get_base_dirs() {
   local mode="$1"
@@ -216,6 +231,21 @@ for skill in "${SKILLS[@]}"; do
 
     # Write version file for User-Agent tracking
     echo "$SKILLS_VERSION" > "$target/_version.txt"
+
+    # Bake the version and this directory into the installed copy. Neither can be
+    # resolved at runtime: the agent runs with the user's project as its working
+    # directory, not the skill directory, so a relative path finds nothing — which is
+    # why every Qovery API call used to report version:unknown.
+    # Two escapings, in order: the value first has to survive bash single quotes at the
+    # destination, then sed has to deposit it there intact.
+    abs_target=$(escape_sed_replacement "$(escape_single_quoted "$(cd "$target" && pwd)")")
+    safe_version=$(escape_sed_replacement "$SKILLS_VERSION")
+    find "$target" -type f \( -name '*.md' -o -name '*.sh' \) -print0 | while IFS= read -r -d '' file; do
+      sed -i.bak \
+        -e "s|__QOVERY_SKILLS_VERSION__|$safe_version|g" \
+        -e "s|__QOVERY_SKILL_DIR__|$abs_target|g" \
+        "$file" && rm -f "$file.bak"
+    done
 
     file_count=$(find "$target" -type f | wc -l | tr -d ' ')
     echo -e "    ${GREEN}Installed${NC} $target ($file_count files)"
