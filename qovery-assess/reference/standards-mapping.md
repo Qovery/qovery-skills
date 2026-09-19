@@ -40,12 +40,12 @@ cluster, with a kubeconfig, using a tool like `kube-bench`.
 list, because a kubeconfig is a standing credential granting full cluster access. So the
 REST API alone observes only the subset of controls Qovery surfaces, listed below.
 
-### Closing the gap: the Qovery MCP Server's cluster-state tool
+### Closing the gap: the Qovery MCP Server's cluster-state tools
 
-**There is a second, better path, and it should be used when available.** The Qovery MCP
-Server exposes a **read-only cluster-state capability** that returns the live state of
-Kubernetes objects — pods, nodes, networking, certificates — either in full or scoped to an
-area. It is a fundamentally different risk profile from a kubeconfig:
+**There is a second path, and it should be used when available — but it sees considerably
+less than its breadth suggests.** The Qovery MCP Server exposes read-only tools returning the
+live state of Kubernetes objects. Its risk profile is fundamentally different from a
+kubeconfig:
 
 | | Kubeconfig | MCP cluster state |
 |---|---|---|
@@ -54,29 +54,58 @@ area. It is a fundamentally different risk profile from a kubeconfig:
 | Audit | Nothing in Qovery | Every query appears in the Qovery audit log |
 
 So the rule is **not** "never look inside the cluster" — it is **never hold a cluster
-credential**. Using the MCP's read-only cluster-state tool is consistent with this skill's
+credential**. Using the MCP's read-only cluster-state tools is consistent with this skill's
 contract; fetching a kubeconfig is not.
 
 **How to use it — discover, do not assume.** Tool names and argument shapes change. At
 assessment time:
 
 1. Enumerate the MCP server's available tools rather than hardcoding a name.
-2. Confirm the connection is **read-only**. The server has a read/write mode
-   (`read_write=true`); this skill requires the default read-only mode. If the session is
-   connected read/write, use only the querying tools and never a tool that deploys,
-   updates, or triggers anything.
+2. **Never call a tool that writes.** At least one tool on this server is an agent-style
+   endpoint whose own description lists deploy, redeploy, stop, restart, delete, scale and
+   environment-variable updates among its actions. Read each description before calling it:
+   a tool advertising write actions is out of contract for this skill however the request is
+   phrased. Prefer the narrow query tools.
 3. Record in the report that in-cluster state was read via the MCP, so the customer can
    reconcile it against their own audit log.
 
-**What it unlocks** — the controls the REST API cannot see:
+#### What the cluster-state tool actually returns
 
-| Area | Controls it makes observable |
-|---|---|
-| Pod security | `privileged`, `hostPath`, `hostNetwork`, `hostPID`, `allowPrivilegeEscalation`, `runAsNonRoot`, dropped capabilities, seccomp profile — i.e. an actual Pod Security Standards position instead of two settings |
-| Network | NetworkPolicy objects present and scoped, or absent entirely |
-| Certificates | Real expiry dates, which `SC-20` could not determine from the REST API |
-| Nodes | Node count, conditions, and actual zone distribution — turning `RL-11` and `DR-05` from "the setting is off" into "replicas are in fact all in one zone" |
-| Workload reality | Running replica counts versus configured ones, restart counts, pending pods |
+Each object comes back in this shape, and nothing more:
+
+```
+{"kind":…, "name":…, "namespace":…, "conditions":[…], "phase":…?, "fallback":…?}
+```
+
+**It returns `.status` only — never `.spec`.** That one fact decides what is observable, and
+it rules out most of what a pod-security review wants.
+
+| Wanted | Available? | Why |
+|---|---|---|
+| NetworkPolicy present or absent | **Yes** | Objects are enumerated by kind/name/namespace even when they carry no status at all |
+| Policy engine installed (Kyverno, Gatekeeper, OPA) | **Yes** | Enumerate `ValidatingWebhookConfiguration`; an empty result means none is installed |
+| PodDisruptionBudget coverage, and `DisruptionAllowed=False` | **Yes** | Exposed as a status condition |
+| Certificate health — issued, Ready, not expired — and `ClusterIssuer` present | **Yes** | Ready condition on `Certificate` and `ClusterIssuer` |
+| Node readiness, memory/disk/PID pressure, Karpenter node drift | **Yes** | `Node`, `NodeClaim` and `NodePool` conditions |
+| Pod phase (`Running`, `Pending`, …) | **Yes** | `phase` fallback field |
+| `privileged`, `hostPath`, `hostNetwork`, `hostPID`, `allowPrivilegeEscalation`, `runAsNonRoot`, dropped capabilities, seccomp | **No** | All live in `.spec`. **A real Pod Security Standards position is not obtainable this way** — say so rather than implying it was checked |
+| Real certificate expiry dates | **No** | `notAfter` is not surfaced, only "up to date and has not expired". `SC-20` still cannot give a date |
+| Node zone distribution | **No** | Labels are not returned, so `topology.kubernetes.io/zone` is unreadable. `RL-11` and `DR-05` remain declared-configuration findings |
+| Replica counts, container restart counts | **No** | Surfaced on neither Deployment nor Pod |
+
+To reach a kind the curated categories do not cover, pass an explicit group/version/kind —
+that is how NetworkPolicy, ValidatingWebhookConfiguration and PodDisruptionBudget above were
+queried.
+
+**Two traps that manufacture false findings:**
+
+- **The `namespace` object filter silently returns nothing.** Narrowing a category to a
+  namespace that demonstrably holds matching objects comes back empty — indistinguishable
+  from "this cluster has none". Filter by `name`, or pass no filter and select on the
+  `namespace` field of the results yourself.
+- **Absence is only evidence once the call shape is proven.** An empty result means "none"
+  *only* after the same query has returned objects somewhere. Enumerate unfiltered first,
+  then narrow.
 
 Treat any findings from this path as a **distinct evidence class** in the report: mark them
 as in-cluster observations, because they are point-in-time runtime state rather than
