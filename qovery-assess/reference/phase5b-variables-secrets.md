@@ -1,0 +1,303 @@
+## Phase 5b: Variables, Secrets & Interpolation (VS checks)
+
+Configuration is where reliability and security meet. A credential in the wrong field is a
+breach waiting for an audience; a hardcoded hostname is an environment clone that silently
+talks to production.
+
+Data sources: `env/<envId>/variables.json`, `env/<envId>/secret-keys.json`,
+`env/<envId>/services.json`.
+
+> **The hard rule, again.** `GET /environment/{envId}/environmentVariable` returns the
+> `value` field. You need it for `VS-01`, `VS-03` and `VS-05`. **Never print a value, never
+> quote one in the report, never paste one into the conversation.** Report the KEY, the
+> SCOPE, and the CLASS of problem. Where a finding needs proof, give a fingerprint —
+> "the same 44-character value appears under 3 keys" — never the value itself.
+
+### Variable types
+
+`variable_type` tells you how a variable is defined. The distribution is itself a finding:
+
+| Type | Meaning | What you want to see |
+|---|---|---|
+| `VALUE` | A literal | Fine for genuine config; a problem when it duplicates another value |
+| `ALIAS` | Points at another variable | Used for service-to-service wiring |
+| `OVERRIDE` | Redefines an inherited variable at a narrower scope | Used sparingly, for real per-service differences |
+| `BUILT_IN` | Qovery-provided (host, port, credentials of a Qovery database) | Should be the source of every internal connection detail |
+| `FILE` | Mounted as a file | Check `mount_path` and `enable_interpolation_in_file` |
+| `EXTERNAL_SECRET` / `FILE_EXTERNAL_SECRET` | Resolved from an external secret manager | The strongest posture — the value never lives in Qovery |
+
+```bash
+for d in raw/env/*/; do
+  jq -r --arg m "$(jq -r .mode "$d/environment.json")" \
+    '.results[]? | [$m, .variable_type, .scope] | @tsv' "$d/variables.json"
+done | sort | uniq -c | sort -rn
+```
+
+---
+
+### VS-01 — No credential-shaped **value** sits in a plain variable
+
+**Severity:** Critical
+
+`SC-08` catches credential-shaped *keys*. This catches the ones whose key looks innocent.
+Match on the value, report only the key:
+
+```bash
+for d in raw/env/*/; do
+  M=$(jq -r .mode "$d/environment.json")
+  jq -r --arg m "$M" '.results[]? | select(.variable_type=="VALUE")
+    | select(.value != null)
+    | select(
+        (.value|test("^(AKIA|ASIA)[0-9A-Z]{16}$"))                              # AWS key ID — see note
+        or (.value|test("^eyJ[A-Za-z0-9_-]{8,}\\."))                            # JWT
+        or (.value|test("-----BEGIN [A-Z ]*PRIVATE KEY-----"))                  # PEM
+        or (.value|test("^(postgres|postgresql|mysql|mongodb|redis|amqp)s?://[^:@/]+:[^@]+@"))  # DSN with password
+        or (.value|test("^gh[pousr]_[A-Za-z0-9]{20,}$"))                        # GitHub token
+        or (.value|test("^xox[abprs]-"))                                        # Slack token
+        or (.value|test("^sk-[A-Za-z0-9]{20,}$"))                               # API key
+      )
+    | [$m, .key, .scope, (.value|length|tostring) + "chars"] | @tsv' "$d/variables.json"
+done | column -t
+```
+
+**An AWS access key ID is not a credential, and must not be reported as one.** `AKIA…` /
+`ASIA…` is the public identifier half of the pair; the secret access key is the material,
+and it is never in this list because it does not match any of these shapes. Report a key-ID
+hit as **Info**, phrased as what it is: "an AWS key ID is configured in a plain variable, so
+the matching secret access key is somewhere in this estate — confirm it is stored as a
+secret". Scoring it Critical contradicts `SC-08`'s own triage table two files away, and one
+false Critical costs more credibility than this check earns. Everything else in the list
+above is material and is Critical.
+
+**Why it matters:** variables are readable by anyone with read access to the environment
+and are shown in plain text in the Console. Secrets are write-only and masked. A live
+credential in the variable list is disclosed to every viewer, every export, and every
+screen-share.
+
+**Recommendation:** move to a secret. Where an external secret manager is already in use,
+prefer `EXTERNAL_SECRET` so the value never lives in Qovery at all.
+
+---
+
+### VS-02 — No secret material in Helm values, job arguments, or entrypoints
+
+**Severity:** Critical
+
+Secrets hide outside the variable list too — Helm `values_override` in particular is a
+common place for a database password to be pasted "just to get it working".
+
+> `values_override` is an **object**, so `tostring` renders it as JSON: `{"db_password":"…"}`.
+> The quote between the key and the colon is why the matcher below allows an optional `"` on
+> both sides of the separator. Without it the most common Helm case — the documented object
+> shape — matches nothing and the check reports `clean`.
+
+**Classify; never print the field.** These fields are exactly where a credential is expected
+to be, so dumping them into the transcript is the one thing this check must not do. Match
+inside `jq` and emit the service name and the match class only:
+
+```bash
+# Helm values_override, job arguments and entrypoints — match classes, never content.
+for d in raw/env/*/; do
+  jq -r '.results[]?
+    | . as $s
+    | (( ($s.values_override | tostring) + " "
+       + (($s.arguments // []) | join(" ")) + " "
+       + ($s.entrypoint // "") )) as $blob
+    | select($blob | length > 2)
+    | [ $s.name, $s.service_type,
+        ([ (if $blob|test("(AKIA|ASIA)[0-9A-Z]{16}")            then "aws-access-key-id" else empty end),
+           (if $blob|test("-----BEGIN [A-Z ]*PRIVATE KEY")      then "private-key"       else empty end),
+           (if $blob|test("eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.") then "jwt"  else empty end),
+           (if $blob|test("gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}") then "github-token"  else empty end),
+           (if $blob|test("xox[abprs]-[A-Za-z0-9-]{10,}")        then "slack-token"      else empty end),
+           (if $blob|test("(postgres|mysql|mongodb|redis|amqp)://[^:@/]+:[^@]+@") then "dsn-with-password" else empty end),
+           (if $blob|test("(?i)(password|passwd|secret|api_?key|token)\"?[[:space:]]*[:=][[:space:]]*\"?[^[:space:]\"]{8,}") then "inline-credential" else empty end)
+         ] | if length==0 then "clean" else join(",") end) ] | @tsv' "$d/services.json"
+done | grep -v $'\tclean$' | column -t -s$'\t'
+```
+
+**Fails when:** any row returns a class other than `clean`. Report the service name and the
+class. If the customer needs to see the value to act on it, that is theirs to look up in the
+Console — this document names the location, never the content.
+
+---
+
+### VS-03 — The same value is not duplicated across keys or services
+
+**Severity:** High
+
+Compare values by **hash**, never by content:
+
+```bash
+# The grouping key is a one-way hash. @base64 would work as a grouping key too, and it is
+# reversible — anyone with the intermediate stream could decode the credential back out.
+HASH=$(command -v sha256sum || command -v shasum)
+for d in raw/env/*/; do
+  N=$(jq -r .name "$d/environment.json")
+  jq -r --arg n "$N" '.results[]? | select(.variable_type=="VALUE") | select(.value != null)
+    | select((.value|length) > 8)
+    | [$n, .key, .scope, (.service_name // "-"), .value] | @tsv' "$d/variables.json"
+done | while IFS=$'\t' read -r env key scope svc value; do
+  h=$(printf '%s' "$value" | $HASH | cut -c1-12)
+  printf '%s\t%s\t%s\t%s\t%s\n' "$env" "$key" "$scope" "$svc" "$h"
+done | awk -F'\t' '{g[$5]=g[$5]" "$2"@"$4"("$1")"; c[$5]++}
+                   END {for(k in c) if(c[k]>1) print c[k]" occurrences:"g[k]}' \
+  | sort -rn | head -20
+```
+
+**Never print the hash column to the customer either** — it is stable across environments,
+so publishing it says "these two values are identical" about data the reader may not be
+entitled to correlate. It exists to group rows in your own terminal.
+
+Every environment feeds one grouping pass, so this reports duplication **within and across**
+environments; the environment name is carried in each occurrence so you can tell which you
+are looking at. Cross-environment duplication is the more serious of the two and gets its
+own treatment — blast radius, per-environment isolation, and the rotation argument — in
+`VS-09`, **Phase 5c**. Run both: this one tells you a value is repeated, `VS-09` tells you
+what a compromise of it would reach.
+
+**Why it matters:** a value defined in eleven places is rotated in nine of them. The other
+two break at 3am, and the failure looks like an application bug.
+
+**Recommendation:** define once at the highest scope that fits, then reference it with an
+`ALIAS`.
+
+---
+
+### VS-04 — Overrides are used instead of re-declaring
+
+**Severity:** Medium
+
+```bash
+# The failure is a key that exists at a broad scope AND is re-declared as a fresh VALUE at
+# a narrower one. Selecting OVERRIDE rows finds the opposite — the case that is already
+# correct — so the two sets have to be compared.
+jq -r '[.results[]? | select(.variable_type=="VALUE")] as $v
+  | ($v | map(select(.scope=="ENVIRONMENT" or .scope=="PROJECT")) | map(.key)) as $parent
+  | $v[] | select(.scope=="APPLICATION" or .scope=="CONTAINER" or .scope=="JOB"
+                  or .scope=="HELM")
+  | select(.key as $k | $parent | index($k))
+  | [.key, .scope, (.service_name // "-"), "REDECLARED"] | @tsv' \
+  raw/env/<envId>/variables.json | sort | column -t
+
+# For contrast, the overrides that were done properly — report the ratio, not just the bad rows.
+jq -r '[.results[]? | select(.variable_type=="OVERRIDE")] | length' raw/env/<envId>/variables.json
+```
+
+**Fails when:** the first query returns rows — a service redefines an inherited key as a
+fresh `VALUE` rather than an `OVERRIDE`. Both work; only the override records that it is a deliberate deviation and keeps
+the link to the parent. A plain redeclaration is indistinguishable from a copy-paste
+mistake, and it silently stops tracking the parent when that changes.
+
+---
+
+### VS-05 — Service-to-service wiring uses built-ins and interpolation, not literals
+
+**Severity:** High
+
+This is the check that decides whether cloning an environment actually works.
+
+```bash
+# Candidate literals — print the value, the environment and its mode:
+for d in raw/env/*/; do
+  M=$(jq -r .mode "$d/environment.json"); E=$(jq -r .name "$d/environment.json" | cut -c1-28)
+  jq -r --arg m "$M" --arg e "$E" '.results[]? | select(.variable_type=="VALUE")
+    | select(.value != null)
+    | select(.value | test("\\.svc\\.cluster\\.local|\\.qovery\\.io|:[0-9]{2,5}/|^https?://"))
+    # Strip userinfo and query string before printing: a URL VALUE can embed
+    # credentials (https://user:pass@host, ?token=...). The host is what this check needs.
+    | [$m, $e, .key, .scope, (.service_name // "-"),
+       (.value | sub("://[^/@]*@"; "://<<REDACTED:userinfo>>@") | sub("\\?.*$"; "?<<query>>") | .[0:60])
+      ] | @tsv' "$d/variables.json"
+done | column -t -s$'\t'
+
+# Clone-safety mechanisms already in use:
+for d in raw/env/*/; do jq -r '.results[]? | select(.variable_type=="ALIAS") | .key' "$d/variables.json"; done | wc -l
+for d in raw/env/*/; do jq -r '.results[]? | select(.value != null) | select(.value|test("\\{\\{")) | .key' "$d/variables.json"; done | wc -l
+```
+
+**The regex produces candidates, not findings — always print the value and classify it.**
+`^https?://` matches every absolute URL, and most organizations legitimately hold third-party
+endpoints (payment, telephony, object storage) as literals. A literal is only a finding when
+the host belongs to *this* organization — another of its own services, a cluster-internal
+name, or a Qovery-generated domain. Compare each host against the service and custom-domain
+inventory from Phase 1 before reporting it; an unclassified dump of URL-shaped values is a
+false finding waiting to happen.
+
+**Zero interpolation is not by itself a failure.** `ALIAS` and `{{interpolation}}` are two
+mechanisms for the same guarantee, and `ALIAS` alone is clone-safe — it is the more common
+choice. Read the two counts together: many aliases and no interpolation is a healthy
+organization that simply never needed to compose a value. Only a low alias count *alongside*
+org-owned literals indicates wiring that will not survive a clone.
+
+**Fails when:** a literal naming an org-owned host or database is set as `VALUE` where
+Qovery exposes it as a `BUILT_IN`.
+
+**Weight `PREVIEW` and cloned environments highest.** A literal defined at `ENVIRONMENT`
+scope in a blueprint is copied into every environment cloned from it, so one variable can
+appear in every open pull request — each preview silently addressing the shared parent
+instead of its own clone. Count the environments a single literal reaches and report that
+number; it is what turns a one-line variable into the finding's real severity.
+
+**Why it matters:** a hardcoded host survives a clone and points the new environment at the
+old one. In the best case the preview environment reads production's database; in the worst
+case it writes to it. It is also why `TP-06` staging parity drifts — the literals get
+updated in one environment and not the other.
+
+**Grade the blast radius, do not flatten it.** A frontend URL pointing previews at the shared
+development API is a correctness and confidence problem; a database host or credential
+pointing them at production is a data-integrity one. Both are `VS-05`, and saying which is
+which is what makes the finding actionable.
+
+**Recommendation:** `ALIAS` the built-in (`QOVERY_...HOST`, `..._PORT`, `..._USERNAME`) and,
+where a full URL must be assembled, compose it with `{{interpolation}}` so every clone
+rewires itself.
+
+---
+
+### VS-06 — Variables sit at the highest scope that fits
+
+**Severity:** Medium
+
+```bash
+jq -r '.results[]? | [.key, .scope] | @tsv' raw/env/<envId>/variables.json \
+  | sort | awk -F'\t' '{k[$1]=k[$1]" "$2; c[$1]++} END{for(x in c) if(c[x]>1) print c[x], x, k[x]}' \
+  | sort -rn | head -15
+```
+
+**Fails when:** the same key is declared separately on many services instead of once at
+`ENVIRONMENT` or `PROJECT` scope. Pairs with `VS-03`; report them together.
+
+---
+
+### VS-07 — An external secret manager is used where the obligation requires it
+
+**Severity:** Medium (High under a compliance obligation)
+
+```bash
+jq -r '.results[]? | select(.variable_type=="EXTERNAL_SECRET" or .variable_type=="FILE_EXTERNAL_SECRET")
+  | [.key, .scope, (.owned_by // "-")] | @tsv' raw/env/<envId>/variables.json raw/env/<envId>/secret-keys.json
+jq -r '.results[]? | .owned_by' raw/env/<envId>/secret-keys.json 2>/dev/null | sort | uniq -c
+```
+
+**Why it matters:** `owned_by` names the system of record — `Qovery`, `Doppler`, a vault. An
+organization under SOC 2 or financial-services supervision is usually expected to hold
+secrets in one auditable place with rotation and access logging. Storing them in Qovery is
+supported and safe; storing them in *two* places without a system of record is the finding.
+
+---
+
+### VS-08 — File-mounted variables are deliberate
+
+**Severity:** Medium
+
+```bash
+jq -r '.results[]? | select(.variable_type=="FILE" or .variable_type=="FILE_EXTERNAL_SECRET")
+  | [.key, .mount_path, (.enable_interpolation_in_file|tostring), .scope] | @tsv' \
+  raw/env/<envId>/variables.json | column -t
+```
+
+**Check:** that `mount_path` does not land inside a directory the application also writes,
+and that `enable_interpolation_in_file` is on where the file contains `{{...}}` — a template
+mounted without interpolation ships the literal braces to the application, which usually
+fails in a confusing way at runtime rather than at deploy time.

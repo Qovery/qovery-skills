@@ -11,8 +11,9 @@ cd "$REPO_ROOT"
 # Mapping: <source-under-_shared>  =>  <skill1> <skill2> ...
 # Each line: SRC | SKILL_LIST (space-separated)
 SYNC_MAP=$(cat <<'EOF'
-console-url-detection.md | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token
+console-url-detection.md | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-assess
 auth.md                  | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup
+auth-readonly.md         | qovery-assess
 pricing/aws.md           | qovery-optimize
 pricing/gcp.md           | qovery-optimize
 pricing/azure.md         | qovery-optimize

@@ -77,6 +77,7 @@ Analyze the user's message and route to the appropriate specialized skill. **Aut
 | Terraformize existing setup, convert to IaC | `qovery-terraform` | "terraformize", "convert to terraform", "export as IaC", "terraform manifests", "infrastructure as code" |
 | Scoped/least-privilege API token, OPA/Rego policy token | `qovery-policy-token` | "restricted token", "scoped token", "least-privilege token", "policy token", "OPA/Rego token", "token that can only deploy / never delete", "token for an AI agent" |
 | New to Qovery, no account yet, sign up, create organization | `qovery-signup` | "sign up", "create an account", "install the CLI and log in", "create a new organization", "get started from scratch" |
+| Audit / review the whole setup, production-readiness, gap analysis (read-only) | `qovery-assess` | "assess my organization", "audit my Qovery setup", "are we production-ready?", "gap analysis", "best-practice review", "is my whole org production-ready?" |
 
 ### Remote Development Environments (RDEs)
 
@@ -105,7 +106,8 @@ If the intent is unclear, present options:
 > 4. **Speed up** slow deployments and builds
 > 5. **Preview** — create a temporary environment for a PR
 > 6. **Onboard** — get started with Qovery from scratch
-> 7. **Quick operation** — list, status, stop, restart, logs (handled here)
+> 7. **Assess** — read-only audit of the whole organization with a gap-analysis report
+> 8. **Quick operation** — list, status, stop, restart, logs (handled here)
 >
 > Or just describe what you need and I'll figure out the right approach.
 
@@ -335,6 +337,7 @@ Quick reference for all specialized skills. When routing, tell the user which sk
 | `qovery-terraform` | Generate Terraform manifests from existing Qovery setup | "Terraformize my setup" |
 | `qovery-policy-token` | Create and verify a scoped, least-privilege API Policy Token (OPA/Rego) | "Restricted token that can only deploy" |
 | `qovery-signup` | Sign up, install/auth the CLI, and create your first organization | "I'm new to Qovery, help me sign up" |
+| `qovery-assess` | Read-only audit of the whole organization + shareable gap analysis report | "Assess my Qovery setup" |
 
 ---
 
