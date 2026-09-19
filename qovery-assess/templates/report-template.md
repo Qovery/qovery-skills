@@ -36,10 +36,10 @@ finding(s) remain unresolved — see {{finding_ids}}.}}
 | # | ID | Severity | Compliance | Risk | Impact if unaddressed | Effort |
 |---|---|---|---|---|---|---|
 | 1 | {{id}} | {{severity}} | {{badges, or —}} | {{risk}} | {{impact}} | {{S/M/L}} |
-| 2 | | | | | |
-| 3 | | | | | |
-| 4 | | | | | |
-| 5 | | | | | |
+| 2 | | | | | | |
+| 3 | | | | | | |
+| 4 | | | | | | |
+| 5 | | | | | | |
 
 ### What is already strong
 
@@ -281,7 +281,10 @@ stays scannable; in Markdown, one table per domain under its own heading.
 Per domain, summarise counts in the header line, then list every check:
 
 ```
-CL · Cluster foundation — 16 checks · 11 pass · 2 partial · 2 fail · 1 unknown
+CL · Cluster foundation — 17 checks · 10 pass · 2 partial · 2 fail · 1 unknown · 1 n/a · 1 observation
+
+Print every non-zero category. Omitting n/a and observation makes the counts fail to sum
+to the check total, which is the first thing a careful reader checks.
 ```
 
 | ID | Control | Result | Evidence / note |

@@ -26,15 +26,17 @@ for d in "$DIR"/raw/env/*/; do
   # missing endpoints, marking a valid empty snapshot incomplete.
   [ -d "$d" ] || continue
   for f in environment.json variables.json secret-keys.json services.json; do
-    [ -f "$d/$f" ] || { UNREADABLE="$UNREADABLE $(basename "$d")/$f(missing)"; continue; }
+    [ -f "$d/$f" ] || { UNREADABLE="${UNREADABLE}$(basename "$d")/$f (missing)\n"; continue; }
     jq -e '._unreadable // false' "$d/$f" >/dev/null 2>&1 && \
-      UNREADABLE="$UNREADABLE $(basename "$d")/$f(status $(jq -r '._status // "?"' "$d/$f"))"
+      UNREADABLE="${UNREADABLE}$(basename "$d")/$f (status $(jq -r '._status // "?"' "$d/$f"))\n"
   done
 done
 if [ -n "$UNREADABLE" ]; then
   echo "!!! UNREADABLE INPUTS — the surface below is INCOMPLETE. Report these as UNKNOWN,"
   echo "!!! not as an absence of dependencies:"
-  for u in $UNREADABLE; do echo "      $u"; done
+  # One record per line: a status string contains a space, so word-splitting an
+  # unquoted expansion would break each diagnostic across several lines.
+  printf '%b' "$UNREADABLE" | while IFS= read -r u; do [ -n "$u" ] && echo "      $u"; done
   echo
 fi
 

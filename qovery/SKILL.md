@@ -77,7 +77,7 @@ Analyze the user's message and route to the appropriate specialized skill. **Aut
 | Terraformize existing setup, convert to IaC | `qovery-terraform` | "terraformize", "convert to terraform", "export as IaC", "terraform manifests", "infrastructure as code" |
 | Scoped/least-privilege API token, OPA/Rego policy token | `qovery-policy-token` | "restricted token", "scoped token", "least-privilege token", "policy token", "OPA/Rego token", "token that can only deploy / never delete", "token for an AI agent" |
 | New to Qovery, no account yet, sign up, create organization | `qovery-signup` | "sign up", "create an account", "install the CLI and log in", "create a new organization", "get started from scratch" |
-| Audit / review the whole setup, production-readiness, gap analysis (read-only) | `qovery-assess` | "assess my organization", "audit my Qovery setup", "are we production-ready?", "gap analysis", "best-practice review", "health check my clusters" |
+| Audit / review the whole setup, production-readiness, gap analysis (read-only) | `qovery-assess` | "assess my organization", "audit my Qovery setup", "are we production-ready?", "gap analysis", "best-practice review", "is my whole org production-ready?" |
 
 ### Remote Development Environments (RDEs)
 

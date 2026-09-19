@@ -26,8 +26,12 @@ development.
 | Cost Efficiency | 47/100 | 1 | Three dev environments running 24/7 |
 | **Overall** | **66/100** | **Level 2 — Managed** | It works; resilience depends on nothing going wrong |
 
-**Coverage:** 88 checks defined, 74 evaluated, 8 not applicable, 6 could not be
-determined.
+**Coverage:** 147 checks defined, 118 evaluated (71 pass, 22 partial, 25 fail), 9
+observations, 11 not applicable, 9 could not be determined.
+
+**The level is capped, not computed.** Three unresolved Critical findings hold the maturity
+level at 2 regardless of the arithmetic; the pillar scores above are what will move once
+they are closed. A publicly reachable Kubernetes API server is not a rounding error.
 
 ### Top risks
 

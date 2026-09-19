@@ -19,8 +19,10 @@ Two halves. `CE-01`–`CE-06` are structural and readable from configuration alo
 **Severity:** Medium — evidence as in `TP-07`. Report once, in whichever pillar the team
 will act on.
 
-A weekday 08:00–19:00 window runs 55 of 168 hours: roughly two thirds of that cluster's
-compute, with no production impact. Check whether a schedule exists but is **inactive** —
+A weekday 08:00–19:00 window runs 55 of the week's 168 hours, so scheduling removes the
+other 113 — **about two thirds of that cluster's running time**, with no production impact.
+State the saved share, not the running share; the two are easy to transpose and a customer
+will check this one. Check whether a schedule exists but is **inactive** —
 `start_time`/`stop_time` populated with `auto_stop: false` means someone configured the
 intent and never switched it on.
 

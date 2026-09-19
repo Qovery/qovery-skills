@@ -40,7 +40,7 @@ redeploy, not a restart, not a "harmless" tag.
 | Secrets | Report secret **keys** and their scope. NEVER report a secret value, token, password, connection string, or credential — in the document, in a log line, or in the conversation. |
 | Logs & events | Fetched through the redacting collector only. Variable `value` fields and log bodies are read for detection and reported as classes and counts, never as content. |
 | Terraform | Never run `terraform apply`. `plan` is also unnecessary here. |
-| Third-party systems | Only Phase 6f talks to anything other than Qovery, only read-only, and only after the user opts in. **Never** use a platform credential found in the estate — a readable one is finding `VS-01`, not an opportunity. |
+| Third-party systems | Two phases reach outside Qovery, and only these two. **Phase 1b** fetches the organization's own public trust, privacy and sub-processor pages — unauthenticated reads of documents the company publishes. **Phase 6f** queries an observability platform, read-only and only after the user opts in. Nothing else does. **Never** use a platform credential found in the estate — a readable one is finding `VS-01`, not an opportunity. |
 
 If the user asks mid-assessment to fix something, do not fix it inside this skill.
 Finish the assessment, then offer to hand off to `qovery-optimize`,

@@ -6,7 +6,9 @@ a customer runs Datadog, New Relic, Grafana or CloudWatch instead, those checks 
 UNKNOWN even though the data plainly exists.
 
 This phase closes that gap. **It is optional, it is opt-in, and it is the only part of this
-skill that talks to a system other than Qovery.** Skip it entirely and the assessment is
+skill that authenticates against a system other than Qovery.** (Phase 1b also reaches
+outside, to fetch the company's own public trust and privacy pages — unauthenticated, no
+credential involved.) Skip this phase entirely and the assessment is
 still complete — the six checks stay UNKNOWN with a reason, which is the honest default.
 
 Run `templates/scripts/detect-observability-access.sh` first. Which platform to ask about

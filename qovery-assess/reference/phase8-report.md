@@ -13,7 +13,7 @@ findings; the example rows in the template show both shapes.
 
 ```bash
 mkdir -p qovery-assessment
-cp templates/report-template.md qovery-assessment/qovery-assessment-{{org-slug}}.md
+cp templates/report-template.md qovery-assessment/qovery-assessment-{{organization_name}}.md
 head -n 1 templates/findings.csv > qovery-assessment/findings.csv   # header only — the
                                                                      # template's rows are examples
 ```
@@ -207,7 +207,7 @@ Keep it factual and specific to their findings. No superlatives.
 
 Produce three artifacts, and say where each one is:
 
-1. `qovery-assessment/qovery-assessment-{{org-slug}}.md` — the shareable document.
+1. `qovery-assessment/qovery-assessment-{{organization_name}}.md` — the shareable document.
 2. `qovery-assessment/findings.csv` — every finding, for import into a tracker.
 3. `qovery-assessment/raw/` — the snapshot the findings were derived from.
 

@@ -98,7 +98,7 @@ Synthesize one row per environment. This is a **report section**, not a check �
 |---|---|
 | Compromise of… | The environment |
 | Directly exposes | Its own datastores, credentials, and the vendors it can reach |
-| Reaches production because… | The specific mechanism — a shared credential (`VS-09`), a shared cluster with no NetworkPolicy (`TP-05`), a job writing across environments (`BP-07`). **Name the mechanism, or leave the cell empty** |
+| Reaches production because… | The specific mechanism — a shared credential (`VS-09`), a shared cluster (`TP-05`, which fails on `cluster_id` sharing between production and a non-production environment — the absence of a NetworkPolicy is a separate question this skill cannot read from the API), a job writing across environments (`BP-07`). **Name the mechanism, or leave the cell empty** |
 
 **The asymmetry is the finding.** Compare the number of vendors holding a secret in each
 environment. A non-production environment carrying the same vendor credential surface as

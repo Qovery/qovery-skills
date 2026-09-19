@@ -119,7 +119,11 @@ overall = 0.30 × Reliability
         + 0.10 × CostEfficiency
 ```
 
-Round to the nearest integer. If an entire pillar is `UNKNOWN` (no readable data),
+**Truncate, do not round.** 74.9 is a Level 2 score, and rounding it to 75 promotes the
+organization into "Defined" on a tenth of a point — exactly the flattery the "never round up
+to a nicer band" rule exists to prevent. Report the truncated integer, and keep one decimal
+in the findings CSV so a reassessment can show movement inside a band. If an entire pillar
+is `UNKNOWN` (no readable data),
 redistribute its weight proportionally across the remaining pillars and say so
 explicitly in the report.
 
@@ -267,7 +271,7 @@ unresolved-Critical rule would cap the level at 2 regardless.
 
 ## Presenting the score honestly
 
-- **Always disclose coverage:** "135 checks defined, 96 evaluated, 14 not applicable, 25
+- **Always disclose coverage:** "147 checks defined, 96 evaluated, 14 not applicable, 25
   unknown." A score computed over 40% of the checks is a different claim from one
   computed over 95%.
 - **Never round up to a nicer band.** A 74 is Level 2, not Level 3.

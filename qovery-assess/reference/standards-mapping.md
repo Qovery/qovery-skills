@@ -101,10 +101,12 @@ queried.
 
 **Two traps that manufacture false findings:**
 
-- **The `namespace` object filter silently returns nothing.** Narrowing a category to a
-  namespace that demonstrably holds matching objects comes back empty — indistinguishable
-  from "this cluster has none". Filter by `name`, or pass no filter and select on the
-  `namespace` field of the results yourself.
+- **The `namespace` object filter returned nothing in testing.** Narrowing a category to a
+  namespace that demonstrably held matching objects came back empty — indistinguishable from
+  "this cluster has none". The tool documents `object_filter` as supported, so treat this as
+  a behaviour to verify at assessment time rather than a rule: run one query with the filter
+  and one without, and if they disagree, trust the unfiltered one. Filtering by `name`, or
+  selecting on the `namespace` field of the unfiltered results, avoids the question.
 - **Absence is only evidence once the call shape is proven.** An empty result means "none"
   *only* after the same query has returned objects somewhere. Enumerate unfiltered first,
   then narrow.

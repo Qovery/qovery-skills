@@ -123,7 +123,9 @@ detail to `qovery-speedup` rather than solving it here.
 
 ```bash
 for f in raw/service/*/runtime-logs.json; do
-  jq -r '.results[]? // (if type=="array" then .[] else . end) | .message // ""' "$f" 2>/dev/null
+  # `.results[]?` suppresses the type error on a bare array but still produces nothing, and
+  # `//` never sees the alternative because no error propagates. Branch on the type first.
+  jq -r 'if type=="array" then .[] else (.results[]? // empty) end | .message // ""' "$f" 2>/dev/null
 done | grep -oiE 'panic:|fatal error|segmentation fault|OutOfMemoryError|java\.lang\.[A-Za-z]*Exception|Traceback \(most recent call last\)|UnhandledPromiseRejection|SIGSEGV|SIGKILL|exit status [1-9]' \
   | sort | uniq -c | sort -rn | head -15
 ```

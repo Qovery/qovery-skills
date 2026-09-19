@@ -8,6 +8,12 @@ Only report a BP finding when the full combination is present. A single-replica 
 `RL-01`; a single-replica *message broker on the production critical path* is `BP-02`, and
 it is a different conversation.
 
+> Every query below uses `.results[]?`. An endpoint that failed is stored as
+> `{"_unreadable":true,...}`, and `.results[]` on it aborts jq mid-loop, so one unreadable
+> environment would silently truncate the sweep for every environment after it. The `?` keeps
+> the loop running; check the collect log for MISS lines and report those environments as
+> UNKNOWN rather than as clean.
+
 Data sources: `env/<envId>/services.json`, `service/<id>/advanced-settings.json`,
 `service/<id>/backups.json`, `env/<envId>/variables.json`.
 
@@ -20,7 +26,7 @@ Data sources: `env/<envId>/services.json`, `service/<id>/advanced-settings.json`
 ```bash
 for d in raw/env/*/; do
   [ "$(jq -r .mode "$d/environment.json")" = "PRODUCTION" ] || continue
-  jq -r '.results[] | select(.service_type=="CONTAINER" or .service_type=="APPLICATION")
+  jq -r '.results[]? | select(.service_type=="CONTAINER" or .service_type=="APPLICATION")
     | select(.min_running_instances == 1)
     | select(((.storage // []) | length) > 0)
     | [.name, "replicas=\(.min_running_instances)",
@@ -63,7 +69,7 @@ one-line fix, `BP-01` needs an architecture change.
 ```bash
 for d in raw/env/*/; do
   [ "$(jq -r .mode "$d/environment.json")" = "PRODUCTION" ] || continue
-  jq -r '.results[] | select(.name | test("(?i)rabbit|kafka|nats|redis|memcach|pulsar|activemq|mqtt|queue|broker|celery|sidekiq|elastic|opensearch"))
+  jq -r '.results[]? | select(.name | test("(?i)rabbit|kafka|nats|redis|memcach|pulsar|activemq|mqtt|queue|broker|celery|sidekiq|elastic|opensearch"))
     | [.service_type, .name, "min=\(.min_running_instances // "-")",
        "max=\(.max_running_instances // "-")"] | @tsv' "$d/services.json"
 done | column -t
@@ -95,7 +101,7 @@ failure.
 **Severity:** Critical
 
 ```bash
-jq -r '.results[] | select(.service_type=="DATABASE")
+jq -r '.results[]? | select(.service_type=="DATABASE")
   | [.name, .mode, .type, .version, (.instance_type // "-"),
      "storage=\(.storage // "-")GB", "encrypted=\(.disk_encrypted)"] | @tsv' \
   raw/env/<prodEnvId>/services.json | column -t
@@ -122,7 +128,7 @@ The compound case: no redundancy *and* no recovery path.
 ```bash
 for d in raw/env/*/; do
   [ "$(jq -r .mode "$d/environment.json")" = "PRODUCTION" ] || continue
-  jq -r '.results[] | select(.service_type=="DATABASE" or ((.storage // []) | length) > 0)
+  jq -r '.results[]? | select(.service_type=="DATABASE" or ((.storage // []) | length) > 0)
     | [.id, .name, .service_type, (.mode // "-"), (.min_running_instances // "-")] | @tsv' "$d/services.json"
 done | while IFS=$'\t' read -r id name stype mode reps; do
   B=$(jq -r 'if ._unreadable then "none" else (.results | length | tostring) end' \
@@ -143,7 +149,7 @@ anything else.
 
 ```bash
 # Schedule and duration bound, per cron job.
-jq -r '.results[] | select(.service_type=="JOB" and .job_type=="CRON")
+jq -r '.results[]? | select(.service_type=="JOB" and .job_type=="CRON")
   | [.name, (.schedule.cronjob.scheduled_at // "-"),
      "maxdur=\(.max_duration_seconds // "unset")",
      "restarts=\(.max_nb_restart // "-")"] | @tsv' raw/env/<envId>/services.json | column -t
@@ -191,7 +197,7 @@ own — report it beside this one rather than raising it separately.
 ```bash
 for d in raw/env/*/; do
   [ "$(jq -r .mode "$d/environment.json")" = "PRODUCTION" ] || continue
-  jq -r '.results[] | select(.name | test("(?i)metabase|superset|redash|pgadmin|phpmyadmin|adminer|grafana|kibana|airflow|jupyter|retool|mongo-express"))
+  jq -r '.results[]? | select(.name | test("(?i)metabase|superset|redash|pgadmin|phpmyadmin|adminer|grafana|kibana|airflow|jupyter|retool|mongo-express"))
     | .name as $n | [$n, ((.ports // []) | map(select(.publicly_accessible==true) | tostring) | length | tostring)] | @tsv' "$d/services.json"
 done | column -t
 ```
@@ -213,7 +219,7 @@ read-only, auditable database access.
 
 ```bash
 # Collect production datastore hostnames, then look for them elsewhere.
-jq -r '.results[] | select(.service_type=="DATABASE") | .host // empty' \
+jq -r '.results[]? | select(.service_type=="DATABASE") | .host // empty' \
   raw/env/<prodEnvId>/services.json > /tmp/prod-hosts.txt
 for d in raw/env/*/; do
   M=$(jq -r .mode "$d/environment.json"); N=$(jq -r .name "$d/environment.json")
@@ -241,7 +247,7 @@ prevented.
 
 ```bash
 for d in raw/env/*/; do
-  jq -r '.results[] | select(.service_type=="CONTAINER" or .service_type=="APPLICATION")
+  jq -r '.results[]? | select(.service_type=="CONTAINER" or .service_type=="APPLICATION")
     | [.cpu, .memory] | @tsv' "$d/services.json"
 done | sort | uniq -c | sort -rn | head
 ```

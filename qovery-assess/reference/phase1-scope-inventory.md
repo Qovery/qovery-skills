@@ -117,14 +117,17 @@ qovery-assessment/
 │   ├── current-cost.json          projects.json           environments.json
 │   ├── services.json              clusters.json           cluster-status.json
 │   ├── cloud-credentials.json     pending-invitations.json
+│   ├── events.ndjson              one redacted audit event per line — the OP phase reads this
 │   ├── default/{application,cluster,container,job,helm,terraform}-advanced-settings.json
 │   ├── cluster/<clusterId>/{advanced-settings,routing-table,cloud-provider-info,
 │   │                        deployment-history,analyses}.json
 │   ├── project/<projectId>/{environments,overview,deployment-rules}.json
 │   ├── env/<envId>/{environment,statuses,services,deployment-stages,deployment-rule,
 │   │                variables,secret-keys,deployment-history}.json
+│   ├── env/<envId>/deployment-logs/<executionId>.json   redacted deployment logs (LG phase)
 │   └── service/<serviceId>/{advanced-settings,deployment-restriction,custom-domains,
 │                            backups,git-webhook-status,commits}.json
+│                           (+ runtime-logs.json when WITH_RUNTIME_LOGS=1, redacted)
 └── collect.log
 ```
 
@@ -151,7 +154,7 @@ that every later phase indexes into:
 
 ```bash
 jq -r '.results[] | [.cluster_id, .project_name, .environment_name, .service_type, .name] | @tsv' \
-  qovery-assessment/raw/services.json | sort | column -t
+  raw/services.json | sort | column -t
 ```
 
 Produce a single in-memory model per service:
