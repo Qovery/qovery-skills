@@ -39,6 +39,7 @@ redeploy, not a restart, not a "harmless" tag.
 | Secrets | Report secret **keys** and their scope. NEVER report a secret value, token, password, connection string, or credential — in the document, in a log line, or in the conversation. |
 | Logs & events | Fetched through the redacting collector only. Variable `value` fields and log bodies are read for detection and reported as classes and counts, never as content. |
 | Terraform | Never run `terraform apply`. `plan` is also unnecessary here. |
+| Third-party systems | Only Phase 6f talks to anything other than Qovery, only read-only, and only after the user opts in. **Never** use a platform credential found in the estate — a readable one is finding `VS-01`, not an opportunity. |
 
 If the user asks mid-assessment to fix something, do not fix it inside this skill.
 Finish the assessment, then offer to hand off to `qovery-optimize`,
@@ -111,6 +112,7 @@ Qovery Assessment Progress:
 - [ ] Phase 6c — Change origin & governance: Terraform vs Console (OP)
 - [ ] Phase 6d — Cost efficiency & measured waste (CE)
 - [ ] Phase 6e — Disaster recovery & continuity (DR)
+- [ ] Phase 6f — *Optional, opt-in:* measured data from an external observability platform
 - [ ] Phase 7  — Score each pillar and assign a maturity level
 - [ ] Phase 8  — Write the customer-facing gap analysis + findings CSV
 - [ ] Phase 8b — If a previous snapshot exists, diff it and report the delta per pillar
@@ -138,6 +140,7 @@ Qovery Assessment Progress:
 | Phase 6c | [reference/phase6c-change-origin.md](reference/phase6c-change-origin.md) | OP-01..OP-06 — Terraform vs Console, shell access, external resources |
 | Phase 6d | [reference/phase6d-cost-efficiency.md](reference/phase6d-cost-efficiency.md) | CE-01..CE-11 — scheduling, measured CPU/memory/storage waste, spot capacity |
 | Phase 6e | [reference/phase6e-disaster-recovery.md](reference/phase6e-disaster-recovery.md) | DR-01..DR-06 — RPO/RTO, backups, tested restore, rebuild, runbook |
+| Phase 6f | [reference/phase6f-external-metrics.md](reference/phase6f-external-metrics.md) | *Optional.* Resolves CE-03/07/08/09/11 and RL-14 from Datadog, New Relic, Grafana or CloudWatch. Opt-in, never using a credential found in the estate |
 | Phase 7 | [reference/phase7-scoring.md](reference/phase7-scoring.md) | Deterministic scoring formula, pillar weights, maturity bands |
 | Phase 8 | [reference/phase8-report.md](reference/phase8-report.md) | How to assemble and write the deliverable |
 
@@ -149,6 +152,8 @@ Qovery Assessment Progress:
 | [templates/scripts/compare-snapshots.sh](templates/scripts/compare-snapshots.sh) | **Run it** when a previous snapshot exists. Diffs two snapshots — config drift, closed findings, regressions, change attribution. Local files only, no API calls. |
 | [templates/scripts/cross-env-secrets.sh](templates/scripts/cross-env-secrets.sh) | **Run it** for `VS-09`. Groups plain variables by a truncated hash to find credentials shared between environments. Prints no value. Local files only. |
 | [templates/scripts/dependency-surface.sh](templates/scripts/dependency-surface.sh) | **Run it** for the dependency map. Enumerates third-party vendors from key names only. Local files only. |
+| [templates/scripts/detect-observability-access.sh](templates/scripts/detect-observability-access.sh) | **Run it** before Phase 6f. Reports which local CLIs are already authenticated against the customer's observability platform. Reads no credential. |
+| [templates/scripts/service-graph.sh](templates/scripts/service-graph.sh) | **Run it** before drawing the architecture diagram. Resolves Qovery built-in host variables to service names and reports whether edges are attributable per service. Local files only. |
 | [templates/report-template.md](templates/report-template.md) | **Read & copy**, then fill every `{{placeholder}}`. The customer-facing deliverable. |
 | [templates/findings.csv](templates/findings.csv) | **Read & copy** the header, then append one row per finding. |
 | [examples/executive-summary-excerpt.md](examples/executive-summary-excerpt.md) | Tone and density reference for the executive summary (fictional data). |

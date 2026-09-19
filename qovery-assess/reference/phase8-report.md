@@ -63,15 +63,49 @@ detail, so the document is useful to someone who reads only the first page.
    right thing.
 4. **Findings by pillar** — Reliability, Security, Performance, Delivery, Cost. Each
    finding: ID, severity, what was found, evidence, impact, recommendation, effort.
-5. **External dependencies & blast radius** — the third-party surface grouped by layer,
+5. **Architecture diagram** — one figure showing how the environment actually fits
+   together. Include it for any environment with more than a handful of services; skip it
+   where a sentence does the job. Rules below.
+6. **External dependencies & blast radius** — the third-party surface grouped by layer,
    and one row per environment saying what a compromise of it would reach and *by what
    mechanism*. Include it whenever the organization runs more than one environment or
    depends on third parties for anything on the data path; skip it for a single-environment
    setup with no external processors, where it would be an empty table. Method and the
    rules for writing it are in **Phase 5c**.
-6. **Remediation roadmap** — Now / Next / Later.
-7. **Where Qovery helps** — see below.
-8. **Appendix** — every control that was run, the unknowns, limitations, and the scoring method.
+7. **Remediation roadmap** — Now / Next / Later.
+8. **Where Qovery helps** — see below.
+9. **Appendix** — every control that was run, the unknowns, limitations, and the scoring method.
+
+### The architecture diagram
+
+Run `templates/scripts/service-graph.sh <snapshotDir> <environment>`. It resolves Qovery
+`BUILT_IN` host variables to service names and reports which aliases reference them, which is
+where the edges come from.
+
+**Draw the mechanism, not the inventory.** A box per service is a list with rectangles. Draw
+the path the product's actual work takes — how a request or a call enters, what it passes
+through, where it lands — and leave out the sidecars, the cron jobs and the internal tooling
+unless the argument turns on them. If the top finding is structural, the same figure should
+show it: the shared cluster with no boundary, the datastore facing the internet, the credential
+crossing a tier. One figure carrying both the architecture and the central finding is worth
+more than two carrying one each.
+
+**Hand-author inline SVG.** No libraries and no runtime. Use `currentColor` for strokes and
+text so it reads in light and dark, reserve one literal colour for the element that carries
+the finding, set a `viewBox` and let CSS scale it, and put the figure in the same
+`overflow-x` container as the tables so it survives a phone. Give the `<svg>` `role="img"`
+and an `aria-label` that states the same claim as the caption. Label every arrow — `calls`,
+`transcribes`, `read / write` — an unlabelled arrow only says "related somehow".
+
+**Caption what it proves, and what it does not.** This is the part that is easy to skip and
+expensive to get wrong. Service existence, public exposure and datastore wiring are read
+directly from configuration. Service-to-service arrows usually are not: aliases declared at
+`ENVIRONMENT` or `PROJECT` scope are visible to every service in the environment, so they
+establish that *something* in the environment calls a target, not which caller. Only
+`SERVICE`-scoped variables attribute an edge to one service, and many organizations have
+none. Say which kind you had, and present an unattributed arrow as a question for the team
+rather than a proven call. A diagram that overstates its own evidence undermines every
+number beside it.
 
 **Where the blast-radius section earns its place:** the rest of the report is a list of
 independent findings, and a reader can rank them individually. This section is the only

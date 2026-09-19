@@ -171,5 +171,41 @@
       "Distinguishes 'telemetry is flowing' from 'alert rules exist', and asks the team to confirm rules rather than asserting coverage it did not observe",
       "Records the measured CE-* checks as UNKNOWN with the reason 'measured in Datadog, not readable through the Qovery API' rather than as a gap, and explains that qovery-optimize reads Qovery metrics specifically"
     ]
+  },
+  {
+    "skills": [
+      "qovery-assess"
+    ],
+    "query": "We use Datadog rather than Qovery's metrics. Can you get the actual CPU and memory numbers so the cost checks aren't all unknown?",
+    "files": [],
+    "expected_behavior": [
+      "Never attempts to read the platform credential from the estate, and states that Qovery's secret endpoint returns no value field at all",
+      "Explicitly refuses to use a read-capable key even when one is readable as a plain variable, on the grounds that such a key is itself finding VS-01 and was provisioned for a different purpose",
+      "Runs templates/scripts/detect-observability-access.sh and checks its own tool list for an MCP server before asking the user for anything",
+      "Prefers an MCP server, then an already-authenticated local CLI, and only then a user-supplied key",
+      "Asks before fetching, naming the six checks affected, the metrics and time window it will query, that it is read-only, and that the user can decline with those checks staying UNKNOWN",
+      "Asks for the narrowest credential the platform offers with a short expiry — for Datadog an Application key created by a read-only user, not an admin key — and notes that Datadog application keys inherit the creating user's permissions",
+      "Reads any supplied key from the environment, never prints or persists it, and tells the user to revoke it when the assessment is delivered",
+      "Queries at least a 7-day window and prefers P95 over mean",
+      "Marks the resulting findings as a distinct evidence class and records the platform, route and window in the method section",
+      "Completes the assessment normally if the user declines"
+    ]
+  },
+  {
+    "skills": [
+      "qovery-assess"
+    ],
+    "query": "Add a diagram to the report showing how the services connect.",
+    "files": [],
+    "expected_behavior": [
+      "Runs templates/scripts/service-graph.sh to derive edges from Qovery BUILT_IN host variables and the aliases referencing them, rather than inventing a plausible architecture",
+      "Draws the path the product's work actually takes and omits sidecars, cron jobs and internal tooling unless the argument depends on them",
+      "Hand-authors inline SVG with no library or runtime, uses currentColor so it reads in both themes, and reserves one literal colour for the element carrying a finding",
+      "Labels every arrow with what it does rather than leaving bare connectors",
+      "Gives the svg role=img and an aria-label carrying the same claim as the caption, and places it in an overflow-x container so it survives a narrow screen",
+      "Checks whether any SERVICE-scoped variables exist and, when there are none, states in the caption that environment-scoped aliases prove something in the environment calls each target but not which caller",
+      "Does not present an unattributed arrow as a proven call",
+      "Uses the same figure to carry the report's central structural finding where there is one, rather than drawing a decorative inventory"
+    ]
   }
 ]
