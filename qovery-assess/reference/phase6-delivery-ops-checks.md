@@ -64,26 +64,44 @@ from Git (`service_type: APPLICATION`, and `JOB`/`HELM`/`TERRAFORM` with a Git s
 only to a monorepo you already know about. Determine it from the data:
 
 ```bash
-# Which services are Git-built, and do any share a repository?
+# Distinct services sharing one repository WITHIN one environment.
 for d in raw/env/*/; do
-  jq -r '.results[]? | select(.git_repository != null)
-    | [.name, .git_repository.url, (.git_repository.root_path // "/")] | @tsv' "$d/services.json"
-done | sort | awk -F'\t' '{c[$2]++; n[$2]=n[$2]" "$1} END {for (r in c) if (c[r]>1) print c[r]" services share "r":"n[r]}'
+  E=$(jq -r '.name' "$d/environment.json")
+  jq -r --arg e "$E" '.results[]? | select(.git_repository != null)
+    | [$e, .git_repository.url, .name] | @tsv' "$d/services.json"
+done | sort -u | awk -F'\t' '{k=$1"\t"$2; c[k]++; n[k]=n[k]" "$3}
+  END {for (k in c) if (c[k]>1) {split(k,a,"\t"); print c[k]" in "a[1]": "a[2]n[k]}}'
 ```
 
+**Scope the grouping to one environment, and de-duplicate service names.** The same service
+deployed to `development` and `production` legitimately points at the same repository. Group
+by repository alone and every ordinary two-environment service is reported as a monorepo —
+a false finding, and usually the majority of the output. Only two distinct services in the
+*same* environment sharing a repository are a monorepo.
+
 `N/A` only when **no** service is Git-built (an organization deploying pre-built images
-only). With Git-built services present, read the restrictions:
+only). For each repository the query above returns, read the restrictions of every service
+sharing it:
 
 ```bash
 jq -r '.results[]? | [.mode, .type, .value] | @tsv' raw/service/<id>/deployment-restriction.json
 ```
 
-**Fails when:** several services share one Git repository and none define path
-restrictions.
+**Fails when:** two or more services in one environment share a repository and the set of
+restrictions does not separate them — no restrictions at all, or overlapping paths that
+still rebuild every service on a common commit.
 
-**Why it matters:** without restrictions, a README change redeploys all fourteen
-services. That is wasted build minutes, unnecessary rollout risk, and a team that stops
-trusting the deploy notification channel.
+**Read the restrictions as a set, not per service.** A correct split is complementary: one
+service `EXCLUDE`s the paths its sibling owns while the sibling `MATCH`es exactly those
+paths. Judging either service alone would mislabel that — the `EXCLUDE` side looks like it
+has "some restriction", the `MATCH` side like it is narrowly scoped, and neither tells you
+whether the repository is actually partitioned. Quote the pair as evidence.
+
+**Why it matters:** without restrictions, a README change redeploys every service in the
+repository. That is wasted build minutes, unnecessary rollout risk, and a team that stops
+trusting the deploy notification channel. Where the organization already runs a correct
+split somewhere, cite it — remediation lands better as "do what `<service>` already does"
+than as a generic recommendation.
 
 ---
 

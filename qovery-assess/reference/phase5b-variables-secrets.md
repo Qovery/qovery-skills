@@ -140,31 +140,56 @@ mistake, and it silently stops tracking the parent when that changes.
 This is the check that decides whether cloning an environment actually works.
 
 ```bash
-# Literal internal hosts, cluster DNS, or Qovery domains hardcoded as VALUE:
+# Candidate literals — print the value, the environment and its mode:
 for d in raw/env/*/; do
-  M=$(jq -r .mode "$d/environment.json")
-  jq -r --arg m "$M" '.results[]? | select(.variable_type=="VALUE") | select(.value != null)
+  M=$(jq -r .mode "$d/environment.json"); E=$(jq -r .name "$d/environment.json" | cut -c1-28)
+  jq -r --arg m "$M" --arg e "$E" '.results[]? | select(.variable_type=="VALUE")
+    | select(.value != null)
     | select(.value | test("\\.svc\\.cluster\\.local|\\.qovery\\.io|:[0-9]{2,5}/|^https?://"))
-    | [$m, .key, .scope, (.service_name // "-")] | @tsv' "$d/variables.json"
-done | column -t
+    | [$m, $e, .key, .scope, (.service_name // "-"), (.value|.[0:60])] | @tsv' "$d/variables.json"
+done | column -t -s$'\t'
 
-# How much interpolation is actually in use:
-for d in raw/env/*/; do
-  jq -r '.results[]? | select(.value != null) | select(.value|test("\\{\\{"))
-    | .key' "$d/variables.json"
-done | wc -l
+# Clone-safety mechanisms already in use:
+for d in raw/env/*/; do jq -r '.results[]? | select(.variable_type=="ALIAS") | .key' "$d/variables.json"; done | wc -l
+for d in raw/env/*/; do jq -r '.results[]? | select(.value != null) | select(.value|test("\\{\\{")) | .key' "$d/variables.json"; done | wc -l
 ```
 
-**Fails when:** internal URLs, hostnames, or database connection details are written as
-literals while Qovery exposes them as `BUILT_IN` variables.
+**The regex produces candidates, not findings — always print the value and classify it.**
+`^https?://` matches every absolute URL, and most organizations legitimately hold third-party
+endpoints (payment, telephony, object storage) as literals. A literal is only a finding when
+the host belongs to *this* organization — another of its own services, a cluster-internal
+name, or a Qovery-generated domain. Compare each host against the service and custom-domain
+inventory from Phase 1 before reporting it; an unclassified dump of URL-shaped values is a
+false finding waiting to happen.
+
+**Zero interpolation is not by itself a failure.** `ALIAS` and `{{interpolation}}` are two
+mechanisms for the same guarantee, and `ALIAS` alone is clone-safe — it is the more common
+choice. Read the two counts together: many aliases and no interpolation is a healthy
+organization that simply never needed to compose a value. Only a low alias count *alongside*
+org-owned literals indicates wiring that will not survive a clone.
+
+**Fails when:** a literal naming an org-owned host or database is set as `VALUE` where
+Qovery exposes it as a `BUILT_IN`.
+
+**Weight `PREVIEW` and cloned environments highest.** A literal defined at `ENVIRONMENT`
+scope in a blueprint is copied into every environment cloned from it, so one variable can
+appear in every open pull request — each preview silently addressing the shared parent
+instead of its own clone. Count the environments a single literal reaches and report that
+number; it is what turns a one-line variable into the finding's real severity.
 
 **Why it matters:** a hardcoded host survives a clone and points the new environment at the
 old one. In the best case the preview environment reads production's database; in the worst
 case it writes to it. It is also why `TP-06` staging parity drifts — the literals get
 updated in one environment and not the other.
 
-**Recommendation:** `ALIAS` the built-in (`QOVERY_...HOST`, `..._PORT`, `..._USERNAME`) and
-compose full URLs with `{{interpolation}}` so every clone rewires itself.
+**Grade the blast radius, do not flatten it.** A frontend URL pointing previews at the shared
+development API is a correctness and confidence problem; a database host or credential
+pointing them at production is a data-integrity one. Both are `VS-05`, and saying which is
+which is what makes the finding actionable.
+
+**Recommendation:** `ALIAS` the built-in (`QOVERY_...HOST`, `..._PORT`, `..._USERNAME`) and,
+where a full URL must be assembled, compose it with `{{interpolation}}` so every clone
+rewires itself.
 
 ---
 
