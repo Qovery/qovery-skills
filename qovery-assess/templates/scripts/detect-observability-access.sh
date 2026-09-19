@@ -26,7 +26,16 @@ report() { printf '  %-12s %-22s %s\n' "$1" "$2" "$3"; found=1; }
 echo "=== local CLI tooling ==="
 
 if [ "$WANT" = "all" ] || [ "$WANT" = "datadog" ]; then
-  have dog        && report datadog    "dog (datadogpy)"     "$(dog --help >/dev/null 2>&1 && echo 'present — needs DD_API_KEY + DD_APP_KEY in its own config' || echo present)"
+  # `dog` is a common name for unrelated tools, and exiting 0 on --help proves only that
+  # something with that name is installed. Look for datadogpy's own vocabulary before
+  # claiming Datadog tooling.
+  if have dog; then
+    if dog --help 2>&1 | grep -qiE 'datadog|metric[[:space:]]+post|monitor[[:space:]]+show'; then
+      report datadog "dog (datadogpy)" "present — needs DD_API_KEY + DD_APP_KEY in its own config"
+    else
+      report datadog "dog (unverified)" "a binary named 'dog' exists but does not look like datadogpy — ignore it"
+    fi
+  fi
   have datadog-ci && report datadog    "datadog-ci"          "present — CI-oriented, limited query support"
 fi
 
@@ -43,7 +52,13 @@ fi
 if [ "$WANT" = "all" ] || [ "$WANT" = "cloudwatch" ]; then
   if have aws; then
     if acct=$(aws sts get-caller-identity --query Account --output text 2>/dev/null); then
-      report cloudwatch "aws CLI" "AUTHENTICATED as account $acct — 'aws cloudwatch get-metric-statistics'"
+      # sts:GetCallerIdentity is granted to almost every principal and proves identity, not
+      # CloudWatch permission. Probe the API that will actually be used.
+      if aws cloudwatch list-metrics --max-items 1 >/dev/null 2>&1; then
+        report cloudwatch "aws CLI" "AUTHENTICATED as account $acct, cloudwatch:ListMetrics allowed"
+      else
+        report cloudwatch "aws CLI" "identity OK (account $acct) but CloudWatch access UNVERIFIED — ListMetrics denied or unavailable"
+      fi
     else
       report cloudwatch "aws CLI" "present but not authenticated"
     fi
@@ -62,6 +77,14 @@ for v in DD_APP_KEY DATADOG_APP_KEY NEW_RELIC_API_KEY NR_API_KEY GRAFANA_API_KEY
          PROMETHEUS_URL DYNATRACE_API_TOKEN HONEYCOMB_API_KEY; do
   if [ -n "${!v:-}" ]; then printf '  %-24s set (value not read)\n' "$v"; found=1; fi
 done
+
+# Datadog needs BOTH keys. An application key on its own authenticates nothing, and
+# reporting it as available sends the agent down a route that will 403.
+if [ -n "${DD_APP_KEY:-}${DATADOG_APP_KEY:-}" ] && [ -z "${DD_API_KEY:-}${DATADOG_API_KEY:-}" ]; then
+  echo "  NOTE: a Datadog APPLICATION key is set but no API key (DD_API_KEY). Datadog"
+  echo "        requires both — treat Datadog access as NOT available until the user"
+  echo "        supplies the API key as well."
+fi
 
 echo
 if [ "$found" = "0" ]; then

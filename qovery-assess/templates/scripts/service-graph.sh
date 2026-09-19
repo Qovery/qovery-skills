@@ -68,15 +68,21 @@ for d in "$DIR"/raw/env/*/; do
     | $aliases[]
     | . as $a
     | ($builtins[] | select(.key == $a.aliased_variable.key)) as $t
-    | "   \($a.scope)-scope   \($a.key)  ->  \($t.svc)  [\($t.typ)]  via \(if ($a.aliased_variable.key|test("_EXTERNAL$")) then "public URL" else "cluster-internal DNS" end)"
+    | "   \(if $a.scope == "SERVICE" then "\($a.service_name // "?") " else "\($a.scope)-scope " end)  \($a.key)  ->  \($t.svc)  [\($t.typ)]  via \(if ($a.aliased_variable.key|test("_EXTERNAL$")) then "public URL" else "cluster-internal DNS" end)"
     ' "$d/variables.json" 2>/dev/null | sort -u
 
   echo "-- edge attribution --"
-  n=$(jq -r '[.results[]? | select(.scope=="SERVICE")] | length' "$d/variables.json")
+  # Only a SERVICE-scoped ALIAS that resolves to a QOVERY_*_HOST built-in attributes an edge
+  # to one caller. A SERVICE-scoped VALUE or BUILT_IN is just a per-service setting and says
+  # nothing about who calls whom, so counting those claimed attribution that does not exist.
+  n=$(jq -r '[.results[]? | select(.scope=="SERVICE")
+              | select(.variable_type=="ALIAS")
+              | select((.aliased_variable.key // "") | test("^QOVERY_.*_HOST(_INTERNAL|_EXTERNAL)?$"))]
+             | length' "$d/variables.json")
   if [ "${n:-0}" -gt 0 ]; then
-    echo "   $n SERVICE-scoped variables — per-service edges ARE derivable; attribute them."
+    echo "   $n SERVICE-scoped host aliases — per-service edges ARE derivable; attribute them."
   else
-    echo "   0 SERVICE-scoped variables — edges are environment-wide."
+    echo "   0 SERVICE-scoped host aliases — edges are environment-wide."
     echo "   Draw the shape, and caption it: these prove that something in the environment"
     echo "   calls each target, NOT which caller. Do not present an arrow as a proven call."
   fi

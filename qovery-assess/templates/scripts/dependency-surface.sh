@@ -22,6 +22,9 @@ NOISE='^(QOVERY|VITE|NEXT|NODE|PORT|LOG|ENVIRONMENT|API|RAW|ADMIN|INTERNAL|DASHB
 # An unreadable endpoint must never render as "no vendors" — that reads like a clean result.
 UNREADABLE=""
 for d in "$DIR"/raw/env/*/; do
+  # With no environments the glob stays literal and every check below would report four
+  # missing endpoints, marking a valid empty snapshot incomplete.
+  [ -d "$d" ] || continue
   for f in environment.json variables.json secret-keys.json services.json; do
     [ -f "$d/$f" ] || { UNREADABLE="$UNREADABLE $(basename "$d")/$f(missing)"; continue; }
     jq -e '._unreadable // false' "$d/$f" >/dev/null 2>&1 && \
@@ -37,6 +40,7 @@ fi
 
 echo "=== vendor prefixes per environment (key names only) ==="
 for d in "$DIR"/raw/env/*/; do
+  [ -d "$d" ] || continue
   [ -f "$d/environment.json" ] || continue
   jq -e '._unreadable // false' "$d/environment.json" >/dev/null 2>&1 && continue
   E=$(jq -r '.name // "?"' "$d/environment.json")
@@ -54,6 +58,7 @@ echo "=== vendors holding a SECRET, by environment ==="
 echo "(a vendor with a secret in a non-production environment is a vendor that"
 echo " non-production can reach — this is the privilege-asymmetry question)"
 for d in "$DIR"/raw/env/*/; do
+  [ -d "$d" ] || continue
   [ -f "$d/secret-keys.json" ] || continue
   E=$(jq -r .name "$d/environment.json")
   N=$(jq -r '[.results[]?]|length' "$d/secret-keys.json")
@@ -66,8 +71,9 @@ done
 echo
 echo "=== in-cluster third-party workloads (Helm / container services) ==="
 for d in "$DIR"/raw/env/*/; do
+  [ -d "$d" ] || continue
   [ -f "$d/services.json" ] || continue
   E=$(jq -r .name "$d/environment.json")
   jq -r --arg e "$E" '.results[]? | select(.service_type=="HELM" or .service_type=="CONTAINER")
     | [$e, .service_type, .name] | @tsv' "$d/services.json"
-done | column -t -s$'\t'
+done | { command -v column >/dev/null 2>&1 && column -t -s$'\t' || cat; }

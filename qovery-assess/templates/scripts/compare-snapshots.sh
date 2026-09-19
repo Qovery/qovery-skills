@@ -22,8 +22,21 @@ command -v jq >/dev/null 2>&1 || { echo "ERROR: jq required" >&2; exit 1; }
 
 hr(){ printf '\n%s\n' "── $1 ${2:-}"; }
 # tsv_diff <label> <file-relative-path> <jq-program>
+# An unreadable endpoint is stored as {"_unreadable":true,...}. Its missing `.results`
+# reads as empty in every program below, so comparing it silently reports "unchanged" when
+# both sides failed, and a full set of removals when only the newer one did. Neither is a
+# fact about the customer's configuration.
+readable() { [ -f "$1" ] && ! jq -e '._unreadable // false' "$1" >/dev/null 2>&1; }
+
 tsv_diff() {
   local label="$1" rel="$2" prog="$3" a b
+  if ! readable "$OLD/raw/$rel" || ! readable "$NEW/raw/$rel"; then
+    local which="both snapshots"
+    readable "$OLD/raw/$rel" && which="the newer snapshot"
+    readable "$NEW/raw/$rel" && which="the older snapshot"
+    printf '  %-34s UNKNOWN (unreadable in %s)\n' "$label" "$which"
+    return
+  fi
   a=$(mktemp); b=$(mktemp)
   jq -r "$prog" "$OLD/raw/$rel" 2>/dev/null | sort > "$a"
   jq -r "$prog" "$NEW/raw/$rel" 2>/dev/null | sort > "$b"
@@ -148,15 +161,33 @@ for edir in "$NEW"/raw/env/*/; do
   done
 done
 
-hr "Change attribution" "(from the newer snapshot's audit events)"
+hr "Change attribution" "(events between the two snapshots)"
 if [ -f "$NEW/raw/events.ndjson" ]; then
-  echo "  origin of config changes in the newer window:"
-  jq -r 'select(.event_type=="CREATE" or .event_type=="UPDATE" or .event_type=="DELETE") | .origin' \
-    "$NEW/raw/events.ndjson" 2>/dev/null | sort | uniq -c | sort -rn | sed 's/^/    /'
+  # The newer snapshot retains five pages of history, most of which predates the older
+  # snapshot. Attributing all of it to this interval credits the delta with changes that
+  # were already reflected in the earlier assessment. Cut at the older snapshot's newest
+  # event; with no older event stream, say so rather than implying a window.
+  SINCE=""
+  if [ -f "$OLD/raw/events.ndjson" ]; then
+    SINCE=$(jq -r '.timestamp // empty' "$OLD/raw/events.ndjson" 2>/dev/null | sort | tail -1)
+  fi
+  if [ -n "$SINCE" ]; then
+    echo "  window: events after $SINCE"
+  else
+    echo "  window: UNKNOWN — the older snapshot has no event stream, so the counts below"
+    echo "  cover everything the newer snapshot retained, not the interval between runs."
+  fi
+  jq -r --arg since "$SINCE" '
+      select(($since == "") or ((.timestamp // "") > $since))
+      | select(.event_type=="CREATE" or .event_type=="UPDATE" or .event_type=="DELETE")' \
+    "$NEW/raw/events.ndjson" 2>/dev/null > /tmp/.cmp-events.$$
+  echo "  origin of config changes:"
+  jq -r '.origin' /tmp/.cmp-events.$$ 2>/dev/null | sort | uniq -c | sort -rn | sed 's/^/    /'
   echo "  most-changed targets:"
   jq -r 'select(.event_type=="UPDATE" or .event_type=="DELETE")
-    | [(.target_type//"-"), (.target_name//"-")] | @tsv' "$NEW/raw/events.ndjson" 2>/dev/null \
+    | [(.target_type//"-"), (.target_name//"-")] | @tsv' /tmp/.cmp-events.$$ 2>/dev/null \
     | sort | uniq -c | sort -rn | head -8 | sed 's/^/    /'
+  rm -f /tmp/.cmp-events.$$
 else
   echo "  no events.ndjson in the newer snapshot"
 fi

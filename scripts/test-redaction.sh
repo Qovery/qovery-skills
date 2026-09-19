@@ -55,6 +55,12 @@ leaks "JSON password field"    '{"password": "hunter2hunter2"}'                 
 leaks "JSON api key field"     '{"Api_Key":"abcdef1234567890"}'                        'abcdef1234567890'
 leaks "escaped JSON password"  '{"change":"{\"password\":\"hunter2hunter2\"}"}'        'hunter2hunter2'
 leaks "event change value"     '{"key":"DB_PASSWORD","value":"sup3rS3cretValue"}'      'sup3rS3cretValue' redact_events
+leaks "escaped single-line PEM" '{"log":"-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAsecret\n-----END RSA PRIVATE KEY-----"}' 'MIIEowIBAAKCAQEAsecret'
+
+echo
+echo "A single-line PEM must not open a range that swallows the rest of the stream:"
+keeps "line after an escaped PEM survives" '{"log":"-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAsecret\n-----END RSA PRIVATE KEY-----"}
+{"log":"deployment finished"}' 'deployment finished' 
 
 echo
 echo "Negative cases — these must survive, or findings lose their evidence:"

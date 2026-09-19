@@ -161,9 +161,16 @@ api_get() {
 # value ever lands on disk or in the agent's context. The markers left behind are what the
 # LG-06 check counts — detection and redaction in a single pass.
 redact_log() {
-  # A PEM block spans lines, so the body and END marker must go too — replacing only the
-  # BEGIN marker leaves the key material in the snapshot. This range runs first.
-  sed -E '/-----BEGIN [A-Z ]*PRIVATE KEY-----/,/-----END [A-Z ]*PRIVATE KEY-----/c\
+  # PEM, in both shapes it arrives in, and ORDER MATTERS.
+  #
+  # Inside JSON a whole key is one line, newlines escaped as \n. Handing that to the range
+  # below is destructive: sed looks for the END marker starting at the NEXT line, so a
+  # single-line key opens a range that never closes and everything to EOF is replaced by one
+  # marker — the response is emptied, api_get_redacted still records 2xx as OK, and the
+  # assessment silently loses its log and audit evidence. So collapse the single-line form
+  # first; only genuinely multi-line blocks reach the range.
+  sed -E 's/-----BEGIN [A-Z ]*PRIVATE KEY-----.*-----END [A-Z ]*PRIVATE KEY-----/<<REDACTED:private-key>>/g' \
+  | sed -E '/-----BEGIN [A-Z ]*PRIVATE KEY-----/,/-----END [A-Z ]*PRIVATE KEY-----/c\
 <<REDACTED:private-key>>' \
   | sed -E \
     -e 's/(AKIA|ASIA)[0-9A-Z]{16}/<<REDACTED:aws-access-key-id>>/g' \
@@ -205,7 +212,10 @@ api_get_redacted() {
   hdr="$(mktemp)"
   refresh_auth
   mkdir -p "$(dirname "$dest")"
-  curl -sS -D "$hdr" -X GET \
+  # -f: on a 4xx/5xx curl emits no body. Without it a transient 5xx body is streamed into
+  # the pipe and the retry's body is appended after it, producing invalid JSON that the 2xx
+  # status then records as OK.
+  curl -fsS -D "$hdr" -X GET \
     --connect-timeout 10 --max-time 120 --retry 2 --retry-connrefused \
     -H "$AUTH_HEADER" \
     -H "User-Agent: $UA" "${API}${path}" 2>>"$LOG" \
@@ -230,7 +240,7 @@ api_get_stripped() {
   hdr="$(mktemp)"
   refresh_auth
   mkdir -p "$(dirname "$dest")"
-  curl -sS -D "$hdr" -X GET \
+  curl -fsS -D "$hdr" -X GET \
     --connect-timeout 10 --max-time 60 --retry 2 --retry-connrefused \
     -H "$AUTH_HEADER" \
     -H "User-Agent: $UA" "${API}${path}" 2>>"$LOG" \

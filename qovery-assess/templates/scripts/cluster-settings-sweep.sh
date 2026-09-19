@@ -63,9 +63,15 @@ emit() {
                elif (type=="array") then (if length==0 then "<empty>" else join(",") end)
                elif (type=="string") then (if length==0 then "<unset>" else . end)
                else tostring end] | @tsv' "$F")
-    uniqn=$(printf '%s' "$vals" | tr '\t' '\n' | sort -u | wc -l | tr -d ' ')
+    # A provider-specific setting is absent on the providers it does not apply to, and an
+    # absent value is not a disagreement. Compare only the clusters where the setting exists,
+    # or every AWS/GCP estate reports its whole aws.* block as divergent.
+    present=$(printf '%s' "$vals" | tr '\t' '\n' | grep -v '^—$' | sort -u)
+    uniqn=$(printf '%s' "$present" | grep -c . | tr -d ' ')
     flag=""
-    [ "$uniqn" -gt 1 ] && flag="   <<< DIVERGES between clusters"
+    [ "${uniqn:-0}" -gt 1 ] && flag="   <<< DIVERGES between clusters"
+    printf '%s' "$vals" | tr '\t' '\n' | grep -q '^—$' && [ "${uniqn:-0}" -ge 1 ] \
+      && flag="$flag   (— = not applicable on that provider)"
     printf '%-52s %-34s %s%s\n' "$key" "$label [$check]" "$(printf '%s' "$vals" | tr '\t' '|')" "$flag"
   done
   echo
@@ -77,7 +83,12 @@ emit "SECURITY-RELEVANT" "$KEYS_SECURITY"
 emit "RELIABILITY-RELEVANT" "$KEYS_RELIABILITY"
 
 echo "=== coverage ==="
-tot=$(jq -r '.results[0].advanced_settings | keys | length' "$F")
+tot=$(jq -r '(.results[0].advanced_settings // {}) | keys | length' "$F")
+if [ "${tot:-0}" -eq 0 ]; then
+  echo "  No cluster advanced settings were readable — the organization has no clusters, or"
+  echo "  the payload did not carry them. Report the CL settings checks as UNKNOWN."
+  exit 0
+fi
 echo "  $tot advanced settings exist on a cluster; this sweep surfaces the subset above."
 echo "  The remainder are tuning knobs (resource requests for bundled components, Envoy"
 echo "  timeouts, EFS modes). Read them only when a finding already points at one —"
