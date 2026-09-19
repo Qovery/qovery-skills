@@ -85,6 +85,16 @@ window is 55" — and leave currency to `qovery-optimize` and the customer's own
 
 ## Measured waste (requires `CL-08` observability)
 
+> **`GET /clusters/{id}/analysis` returns the analysis *metadata* — id, status, timestamps —
+> not the P95 and peak figures these checks need, and `GET /cluster/{id}/metrics` returned
+> an empty `metrics` string for every query shape tested. So `CE-03`, `CE-07`, `CE-08`,
+> `CE-09` and `CE-11` resolve to **UNKNOWN by default**, excluded from scoring and disclosed
+> in the coverage line. They become answerable in exactly two ways: the customer runs
+> `qovery-optimize`, which reads the analysis result server-side, or Phase 6f reads the
+> figures from an external observability platform the customer already has. Never estimate
+> the numbers from instance types or request settings — an invented waste figure is the
+> fastest way to lose a cost conversation.
+
 First confirm metrics are available:
 
 ```bash

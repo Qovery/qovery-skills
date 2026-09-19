@@ -31,6 +31,23 @@ done | column -t
 **The shape:** one replica **+** a persistent volume **+** production **+** something
 depends on it synchronously.
 
+**The query establishes the first three. It cannot establish the fourth**, and the fourth
+is what makes this Critical rather than Medium. A single-replica volume-backed service that
+nothing calls synchronously — a batch worker draining a queue, a log shipper — is a
+recovery-time problem, not an availability one. Confirm the dependency before reporting:
+
+```bash
+# Who references this service? A host alias pointing at it is evidence of a caller.
+bash templates/scripts/service-graph.sh . <environmentName>
+```
+
+If the graph shows a caller, or the team confirms one, report Critical and name the caller
+in the finding. If nothing references it and the team cannot name a synchronous dependant,
+report it as **High** with the shape stated and the dependency question left open. Never
+issue the Critical on the shape alone: it is the most alarming finding in the anti-pattern
+family, and one that turns out to be a nightly batch job costs more credibility than the
+finding was worth.
+
 **Why it matters:** an RWO volume binds the pod to one node and one availability zone. This
 is not fixable by raising the replica count — the second replica cannot mount the volume.
 It is a structural single point of failure that needs a managed service, an RWX volume, or

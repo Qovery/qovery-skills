@@ -66,12 +66,15 @@ only to a monorepo you already know about. Determine it from the data:
 
 ```bash
 # Distinct services sharing one repository WITHIN one environment.
+# Key on the environment ID, not its name: two projects can each hold a `production`, and
+# grouping by name merges them — one service in each then reads as a monorepo of two.
 for d in raw/env/*/; do
+  ID=$(basename "${d%/}")
   E=$(jq -r '.name' "$d/environment.json")
-  jq -r --arg e "$E" '.results[]? | select(.git_repository != null)
-    | [$e, .git_repository.url, .name] | @tsv' "$d/services.json"
-done | sort -u | awk -F'\t' '{k=$1"\t"$2; c[k]++; n[k]=n[k]" "$3}
-  END {for (k in c) if (c[k]>1) {split(k,a,"\t"); print c[k]" in "a[1]": "a[2]n[k]}}'
+  jq -r --arg id "$ID" --arg e "$E" '.results[]? | select(.git_repository != null)
+    | [$id, $e, .git_repository.url, .name] | @tsv' "$d/services.json"
+done | sort -u | awk -F'\t' '{k=$1"\t"$3; c[k]++; n[k]=n[k]" "$4; env[k]=$2}
+  END {for (k in c) if (c[k]>1) {split(k,a,"\t"); print c[k]" in "env[k]": "a[2]n[k]}}'
 ```
 
 **Scope the grouping to one environment, and de-duplicate service names.** The same service
@@ -137,7 +140,21 @@ jq -r '.results[] | select(.enabled == false or (.alert_receiver_ids | length) =
 **Check for an external alerting platform before failing this.** Zero Qovery alert rules
 does not mean nobody is paged. Run the detection in `CL-08`: an APM or monitoring agent
 deployed cluster-wide, with its API key held as a secret, is where alerting almost certainly
-lives. Score the check on that basis and name the platform.
+lives.
+
+**An agent is not a pass.** It proves telemetry is flowing; it says nothing about whether a
+rule exists, what it fires on, or who receives it — and this is a Critical check in
+production, so passing it on inference is the expensive direction to be wrong in. The
+resolution rule:
+
+| Evidence | Result |
+|---|---|
+| Qovery alert rules exist, enabled, with receivers | **PASS** |
+| No Qovery rules, and no third-party agent | **FAIL** |
+| No Qovery rules, but an agent is deployed on the cluster with its key held as a secret | **UNKNOWN**, not PASS. Name the platform, and put "confirm alert rules and their receivers in \<platform\>" in the report. One screenshot or one sentence from the team closes it |
+
+An `UNKNOWN` here is excluded from scoring, so it neither rewards nor punishes the
+organization for a setup this skill cannot see — which is the honest position.
 
 Two things it does **not** cover, which stay findings on their own merits:
 

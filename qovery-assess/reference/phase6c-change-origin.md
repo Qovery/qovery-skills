@@ -181,7 +181,7 @@ next person cloning an environment knows what does not come with it.
 **Severity:** Medium
 
 ```bash
-jq -r 'select(.event_type | test("FAILED"))
+jq -r 'select((.event_type // "") | type == "string" and test("FAILED"))
   | [.timestamp[0:10], .event_type, (.environment_name // "-"), (.target_name // "-"),
      (.origin // "-")] | @tsv' raw/events.ndjson | sort | uniq -c | sort -rn | head -20
 ```

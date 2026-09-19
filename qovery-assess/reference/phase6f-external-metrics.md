@@ -79,6 +79,28 @@ the current one in the platform's own documentation rather than reciting a menu 
 
 ---
 
+### 6f.3b What a validated external measurement does to the score
+
+A figure read from the customer's own observability platform is **evidence**, and it
+resolves the check it answers. `CE-03`, `CE-07`, `CE-08`, `CE-09`, `CE-11` and `RL-14` are
+`UNKNOWN` by default because Qovery's metrics endpoint returns nothing; a P95 from Datadog
+or CloudWatch is a better answer than that endpoint would have given, not a worse one.
+
+So when a measurement is obtained and validated:
+
+1. The check moves from `UNKNOWN` to `PASS`, `PARTIAL` or `FAIL` on the measured value, and
+   **enters scoring** like any other resolved check. Update the coverage line: the
+   `UNKNOWN` count drops.
+2. Record it as a distinct evidence class in the findings table — `measured (Datadog, 30d
+   P95)` rather than a bare number — so a reader can tell it apart from a
+   configuration-derived result and reproduce it.
+3. If the platform was read but the metric was absent or the window too short to be
+   meaningful, the check stays `UNKNOWN`. A measurement you cannot defend is worse than an
+   admitted gap.
+
+The method section must name the platform, the window, and the statistic, or the number is
+not reproducible and should not be in the document.
+
 ### 6f.4 Handling the credential
 
 If a key is supplied, it is under the same rules as the Qovery token, and one more:

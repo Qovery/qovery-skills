@@ -143,8 +143,14 @@ for f in raw/service/*/runtime-logs.json; do
   SVC=$(basename "$(dirname "$f")")
   N=$(jq -r '[.results[]? | select((.message // "") | test("(?i)\\b(error|exception|failed|fatal)\\b"))] | length' "$f" 2>/dev/null)
   T=$(jq -r '[.results[]?] | length' "$f" 2>/dev/null)
-  [ "${T:-0}" -gt 0 ] && echo "$SVC	$N/$T"
-done | sort -t/ -k1 -rn | head -15
+  # Emit the ratio as a number so the sort is actually by ratio. `sort -t/ -k1 -rn` on
+  # "SVC<TAB>N/T" sorts on a field that begins with the service name, which is 0 to a
+  # numeric sort — every row ties and the order falls back to reverse whole-line, so the
+  # "outliers" at the top were alphabetical.
+  if [ "${T:-0}" -gt 0 ]; then
+    awk -v s="$SVC" -v n="${N:-0}" -v t="$T" 'BEGIN {printf "%.4f\t%s\t%s/%s\n", n/t, s, n, t}'
+  fi
+done | sort -rn -k1,1 | head -15 | cut -f2-
 ```
 
 Report services whose sampled error ratio is a visible outlier. This is a **signal for the

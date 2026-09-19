@@ -12,7 +12,7 @@
       "Never calls GET /database/{id}/masterCredentials or the cluster kubeconfig endpoint",
       "Asks the four Phase 1.3 scoping questions (critical environments, availability target, compliance, audience) and proceeds with stated assumptions if unanswered",
       "Presents the inventory (clusters, projects, environments by mode, service counts) for confirmation before analysing",
-      "Runs the CL, TP, RL, SC, DL and CE checks and reports findings grouped by check with named affected services, not one finding per service",
+      "Runs all twelve check families (CP, CL, TP, RL, BP, SC, VS, DL, LG, OP, CE, DR) — skipping BP, VS, LG, OP or DR is a failure, not an abbreviation and reports findings grouped by check with named affected services, not one finding per service",
       "Computes pillar scores with the Phase 7 formula (partial credit, severity weights 10/6/3/1/0) and discloses coverage counts including UNKNOWN checks",
       "Writes qovery-assessment/qovery-assessment-<org>.md from templates/report-template.md plus a findings CSV, and ends by offering hand-off skills rather than applying any change"
     ]
@@ -25,10 +25,10 @@
     "files": [],
     "expected_behavior": [
       "Loads reference/phase4-reliability-checks.md and checks min_running_instances on every production application and container (RL-01)",
-      "Flags min_running_instances < 2 as Critical for production and explains that a single replica has no zero-downtime deploy path, not just no redundancy",
+      "Flags min_running_instances < 2 as Critical for production and explains that a single replica has no zero-downtime deploy path, not just no redundancy — but checks the documented exceptions first (a service bound to an RWO volume, which BP-01 covers and where a second replica cannot mount the disk, and a singleton that holds a leader election) and reports those as BP-01 rather than as an RL-01 replica gap",
       "Explains why 3 replicas beat 2 (a lost replica costs 33% of capacity instead of 50%, and survives a single-AZ event with zone spread)",
       "Checks pod anti-affinity (RL-10) and topology_spread.zone (RL-11) in the service advanced settings, noting that a replica count without anti-affinity can still share one node",
-      "Checks the cluster's min_running_nodes against the 3-node recommendation (CL-06) and flags the shared prod/dev cluster under CL-05 / TP-05",
+      "Checks the cluster's min_running_nodes against the 3-node recommendation (CL-06), and raises CL-05 / TP-05 only after establishing from the environment modes that production shares the cluster with a DEVELOPMENT or PREVIEW environment — if every environment on it is PRODUCTION or STAGING, says so instead of assuming the mix",
       "Checks readiness and liveness probes separately (RL-04, RL-05, RL-06) rather than treating 'health check configured' as a single pass",
       "Does not modify any service to fix what it finds"
     ]
@@ -40,7 +40,7 @@
     "query": "Security review of our Qovery org please — we're going through SOC 2 and the auditor wants evidence.",
     "files": [],
     "expected_behavior": [
-      "Loads reference/phase5-security-checks.md and raises the severity of retention, encryption, SSO, and network-restriction checks by one level because a compliance obligation was stated (Phase 1.3)",
+      "Loads reference/phase1b-compliance-profile.md before the security phase, builds the compliance profile from the stated SOC 2 obligation, and promotes exactly the checks the Phase 1b lens table names for that profile — not every check carrying a SOC 2 badge, and not network-restriction checks unless the profile's own lens table lists them",
       "Checks every database for accessibility: PUBLIC (SC-01) across all environments, not only production, and leads with it if any are found",
       "Checks k8s.api.allowed_public_access_cidrs for 0.0.0.0/0 or an empty list (SC-03) and aws.eks.ec2.metadata_imds for 'optional' (SC-13)",
       "Scans environment variable KEYS for credential-shaped names stored as variables rather than secrets (SC-08), and never prints a secret value",

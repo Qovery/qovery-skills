@@ -4,7 +4,8 @@ This phase answers: **does this organization have a real path to production?**
 A team with only a production environment ships untested changes. A team whose
 staging has diverged from production tests something that does not exist.
 
-Data sources: `environments.json`, `projects.json`, `clusters.json`,
+Data sources: `env/<envId>/statuses.json` (per-service state; ids and states only, no
+names — join to `services.json` on `id`), `environments.json`, `projects.json`, `clusters.json`,
 `env/<envId>/environment.json`, `env/<envId>/deployment-rule.json`,
 `env/<envId>/services.json`.
 
@@ -92,13 +93,29 @@ customer will act on.
 Compare the two environments service by service:
 
 ```bash
-jq -r '.results[] | [.service_type, .name] | @tsv' raw/env/<prodEnvId>/services.json | sort > /tmp/prod.txt
-jq -r '.results[] | [.service_type, .name] | @tsv' raw/env/<stagingEnvId>/services.json | sort > /tmp/stg.txt
+# Type and name alone cannot show an engine, version or topology mismatch — the three
+# things the failure rule below turns on. Carry those fields into the comparison.
+PARITY='.results[]
+  | [ .service_type, .name,
+      (.mode // "-"),                                  # database CONTAINER vs MANAGED
+      ((.type // "-") + ":" + (.version // "-")),      # engine and version
+      ("min=" + ((.min_running_instances // "-")|tostring)),
+      ("cpu=" + ((.cpu // "-")|tostring) + " mem=" + ((.memory // "-")|tostring)),
+      ("storage=" + ((.storage // "-")|tostring))
+    ] | @tsv'
+jq -r "$PARITY" raw/env/<prodEnvId>/services.json    | sort > /tmp/prod.txt
+jq -r "$PARITY" raw/env/<stagingEnvId>/services.json | sort > /tmp/stg.txt
 diff /tmp/prod.txt /tmp/stg.txt
 ```
 
+Resource sizes legitimately differ between tiers, so do not report `cpu=`/`mem=` gaps as
+parity failures on their own — they are there to show *how far* staging is from production
+when something else already diverges. `mode`, engine, version and replica floor are the ones
+that change behaviour.
+
 **Fails when:** staging is missing services present in production, runs a different
-database engine or major version, or uses a different deployment topology.
+database engine or major version, a different database `mode` (container in staging,
+managed in production), or a different replica topology.
 
 **Why it matters:** parity gaps are where "it worked in staging" incidents are born.
 The most damaging version: staging on a container database, production on a managed
@@ -164,7 +181,10 @@ for d in raw/env/*/; do
 done | sort -k2 | column -t
 # and their states — DELETE_ERROR is the one that matters:
 for d in raw/env/*/; do
-  jq -r 'select(.mode=="PREVIEW") | .name' "$d/environment.json" 2>/dev/null >/dev/null &&
+  # `jq 'select(...)'` exits 0 with no output when nothing matches, so using it as an && gate
+  # lets every environment through and the state breakdown below counts non-preview
+  # environments too. Test the output, not the exit status.
+  [ "$(jq -r '.mode // ""' "$d/environment.json" 2>/dev/null)" = "PREVIEW" ] || continue
   jq -r '.environment.state // empty' "$d/statuses.json" 2>/dev/null
 done | sort | uniq -c
 ```

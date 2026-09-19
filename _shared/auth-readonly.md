@@ -11,8 +11,11 @@
 
 - NEVER run `qovery auth token --print` (or `qovery auth token --json`) as a standalone command — the output dumps the token into the conversation. `--json` emits the raw access token too, so always pipe it through `jq` to extract only the field you need. Use `--print` **inline** within curl commands so the token flows through the shell but is never visible:
   ```bash
-  # CORRECT — token is inline, never shown:
-  curl -s -H "Authorization: Bearer $(qovery auth token --print)" https://api.qovery.com/...
+  # CORRECT — token is inline, never shown. The User-Agent is REQUIRED on every request
+  # to api.qovery.com, including the examples in this file:
+  curl -s -H "Authorization: Bearer $(qovery auth token --print)" \
+       -H "User-Agent: QoverySkill/auth (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+       https://api.qovery.com/...
   # CORRECT — check auth without printing the token (jq extracts one field only):
   qovery auth token --json 2>/dev/null | jq -r '.token_type'
 
@@ -85,11 +88,13 @@ If the CLI is authenticated, let the CLI state its own scheme rather than assumi
 ```bash
 # PREFERRED — the CLI emits the complete header value, scheme included:
 curl -s -H "Authorization: $(qovery auth token --print --authorization-header)" \
+  -H "User-Agent: QoverySkill/auth (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
   https://api.qovery.com/organization
 
 # Fallback for a CLI without that flag — read the scheme instead of hardcoding it:
 QOVERY_SCHEME=$(qovery auth token --json 2>/dev/null | jq -r '.token_type // "Bearer"')
 curl -s -H "Authorization: ${QOVERY_SCHEME} $(qovery auth token --print)" \
+  -H "User-Agent: QoverySkill/auth (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
   https://api.qovery.com/organization
 ```
 

@@ -49,8 +49,30 @@ jq -r '.results[] | [.cluster_id, .next_k8s_available_version // "up to date"] |
 jq -r '.results[] | [.name, .cloud_provider, .region, .kubernetes, .version] | @tsv' raw/clusters.json
 ```
 
-**Fails when:** `next_k8s_available_version` is set and the cluster is several minor
-versions behind it, or the provider has announced end-of-support for the running version.
+**Fails when**, using the minor-version distance between `version` and
+`next_k8s_available_version`:
+
+| Distance | Result |
+|---|---|
+| 0 (`next_k8s_available_version` unset or equal) | **PASS** |
+| 1 minor version | **PASS** — one release behind is normal operating practice |
+| 2 minor versions | **PARTIAL**, Medium. An upgrade should be scheduled |
+| 3 or more | **FAIL**, High. Most providers support three or four minor versions, so this is at or past the edge of the window |
+| running version is past the provider's published end-of-support date | **FAIL**, Critical, whatever the distance |
+
+```bash
+# Minor-version distance, computed rather than eyeballed.
+jq -r '.results[] | select(.next_k8s_available_version != null)
+  | [.cluster_id, .version, .next_k8s_available_version,
+     (((.next_k8s_available_version | split(".")[1] | tonumber)
+       - (.version | split(".")[1] | tonumber)) | tostring)] | @tsv' \
+  raw/cluster-status.json | column -t
+```
+
+Record the distance in the finding, so a reassessment can see it move. The end-of-support
+row is the one input this cannot compute: check the provider's support matrix at assessment
+time and **cite the URL and the date you read it** — that date is what keeps the document
+honest when it is read weeks later.
 
 Do **not** hardcode a "latest" version into the report. Quote the version found and the
 `next_k8s_available_version` the API returned; where end-of-support matters, check the
@@ -182,7 +204,10 @@ for d in raw/env/*/; do
   C=$(jq -r '.cluster_id' "$d/environment.json")
   jq -r --arg e "$E" --arg m "$M" --arg c "$C" '.results[]?
     | select(.service_type=="HELM" or .service_type=="CONTAINER")
-    | select(.name|test("datadog|newrelic|new-relic|grafana|dynatrace|splunk|honeycomb|elastic|signoz|otel|collector";"i"))
+    # Anchored on a word boundary: an unanchored substring match credits any service whose
+    # name merely CONTAINS a platform word — `hotel` matches `otel`, `elasticsearch-api`
+    # matches `elastic`, and a plain application then certifies its own cluster as observed.
+    | select(.name|test("(^|[^a-z0-9])(datadog|newrelic|new-relic|grafana|dynatrace|splunk|honeycomb|signoz|otel|opentelemetry|fluent-?bit|elastic-agent|apm-server)([^a-z0-9]|$)";"i"))
     | [$e,$m,$c[0:8],"agent",.name] | @tsv' "$d/services.json"
   jq -r --arg e "$E" --arg m "$M" --arg c "$C" '.results[]?.key
     | select(test("^(DD_|DATADOG|NEW_?RELIC|OTEL_|SENTRY|GRAFANA|DYNATRACE|SPLUNK|HONEYCOMB|SIGNOZ)";"i"))

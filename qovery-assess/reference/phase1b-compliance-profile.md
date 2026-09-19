@@ -124,7 +124,16 @@ jq -r '.results[] | select(.service_type=="DATABASE") | [.name, .mode, .type] | 
 
 Compare cluster regions and managed-database locations with the privacy policy's residency
 statement and the sub-processor list. **Fails when** a policy says "data is stored in the
-EU" and a cluster, a database, a registry, or a log destination sits elsewhere.
+EU" and a cluster, a database, or a container registry sits elsewhere.
+
+**Log destinations are not in the snapshot.** Qovery's own log storage follows the cluster,
+so it is covered by the cluster region above — but a third-party destination (a Datadog or
+New Relic site, an S3 bucket a Fluent Bit chart writes to) is configured inside the agent's
+own values and is not exposed by any endpoint this skill reads. Where `CL-08` detected such
+an agent, raise it as an **`UNKNOWN` with a named question** — "confirm which region
+`<platform>` stores these logs in" — rather than a residency failure or a silent pass. A
+US-region APM ingesting EU production logs is a real residency finding, and it is one only
+the customer can confirm.
 
 Also check the sub-processor list against what is actually deployed: an observability or
 error-tracking vendor receiving production data, deployed as a Helm chart but absent from
@@ -162,6 +171,13 @@ how these are evidenced in the current report period."* Raise the question; do n
 verdict.
 
 ---
+
+> **CP-04 promotes only the checks the 1b.2 lens tables name.** A badge is a *mapping* —
+> it tells the reader which control a framework examines — and a finding can carry a badge
+> for a framework whose lens does not promote it. Promoting on badge intersection instead
+> would make the lens tables decorative and the score non-reproducible, because two
+> assessors would badge slightly different sets. `phase7-scoring.md` states the same rule;
+> if the two ever disagree, the lens tables win.
 
 ### CP-04 — Findings that contradict a public claim are escalated
 
