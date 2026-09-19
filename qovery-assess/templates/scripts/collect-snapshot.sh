@@ -59,6 +59,14 @@ if [ -z "$ORG_ID" ]; then
   exit 1
 fi
 
+# The organization ID is interpolated into every request path. Anything carrying `/`, `?`,
+# `#` or `&` would silently rewrite the URL and send a request this script never intended,
+# so it is validated against the UUID contract before the first call.
+case "$ORG_ID" in
+  [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]) ;;
+  *) echo "ERROR: '$ORG_ID' is not a Qovery organization UUID." >&2; exit 1 ;;
+esac
+
 for bin in curl jq; do
   command -v "$bin" >/dev/null 2>&1 || { echo "ERROR: '$bin' is required" >&2; exit 1; }
 done

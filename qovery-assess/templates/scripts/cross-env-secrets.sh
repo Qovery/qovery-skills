@@ -99,7 +99,9 @@ for d in sorted(glob.glob(os.path.join(root, "raw/env/*/"))):
     except Exception:
         unreadable.append(env_id); continue
     if varsdoc.get("_unreadable") or env.get("_unreadable"):
-        unreadable.append(env.get("name", env_id)); continue
+        # Record the ID too: two projects can hold environments with the same display
+        # name, and the report has to say which one was omitted.
+        unreadable.append("%s (%s)" % (env.get("name", "?"), env_id)); continue
     vs = varsdoc.get("results", [])
     for v in vs:
         val = v.get("value")
