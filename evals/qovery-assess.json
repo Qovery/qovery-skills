@@ -207,5 +207,23 @@
       "Does not present an unattributed arrow as a proven call",
       "Uses the same figure to carry the report's central structural finding where there is one, rather than drawing a decorative inventory"
     ]
+  },
+  {
+    "skills": [
+      "qovery-assess"
+    ],
+    "query": "Do you look at the cluster advanced settings? We've tuned a few things there.",
+    "files": [],
+    "expected_behavior": [
+      "Runs templates/scripts/cluster-settings-sweep.sh rather than reading only the handful of settings named by individual checks",
+      "Reports that a cluster carries roughly 120 advanced settings and that the named checks read about twenty, instead of implying full coverage",
+      "For CL-12, determines which ingress is actually deployed from k8s.remove_nginx and k8s.use_api_gateway before scoring, and does not cite nginx replica counts on a cluster where nginx has been removed",
+      "Checks aws.eks.encrypt_secrets_kms_key_arn for SC-23 and explains that Kubernetes Secrets are base64-encoded in etcd without it, while stating that it does not substitute for VS-01, VS-09 or SC-14",
+      "Checks allow_service_ram_overcommit for CL-17, distinguishes memory overcommit from CPU overcommit on the grounds that memory is not compressible, and correlates it with any OOMKilled evidence in LG-02",
+      "Treats a single-replica metrics-server as a finding only where autoscaling is actually relied on, and does not report overcommit as a finding on a non-production cluster",
+      "Uses divergence between the customer's own clusters as the signal rather than diffing against a hardcoded table of vendor defaults",
+      "Feeds aws.eks.enable_pod_identity_addon into SC-12, object_storage.enable_logging into SC-19, and the ALB scheme and source ranges into SC-04 rather than raising them as separate findings",
+      "Does not paste all 120 settings into the customer report"
+    ]
   }
 ]

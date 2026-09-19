@@ -107,6 +107,23 @@ Then list the public services back to the team and ask which are **meant** to be
 public. Internal APIs, admin dashboards, metrics endpoints, queue consumers, and
 background workers with a public port are the finding.
 
+**Check the load balancer as well as the service.** A service can be private while the
+load balancer in front of it is not:
+
+```bash
+jq -r '.results[] | [.name,
+  "scheme=" + (.advanced_settings["aws.eks.alb_controller.load_balancer_scheme"] // "-"),
+  "source_ranges=" + (if ((.advanced_settings["aws.eks.alb_controller.load_balancer_source_ranges"] // [])|length) == 0
+                      then "EMPTY (any source)" else
+                      ((.advanced_settings["aws.eks.alb_controller.load_balancer_source_ranges"])|join(",")) end)
+  ] | @tsv' raw/clusters.json | column -t -s$'\t'
+```
+
+An `internet-facing` scheme with an empty source range means anything routed through that
+load balancer is reachable from any address. That is the right configuration for a public
+product and the wrong one for an internal tool, so read it against which services sit behind
+it rather than reporting the setting on its own.
+
 **Why it matters:** every public port is an entry point. Internal services typically
 have weaker authentication precisely because they were never meant to be reachable.
 
@@ -286,6 +303,18 @@ each service to what it actually needs.
 
 ---
 
+
+**`aws.eks.enable_pod_identity_addon` is the platform-side half of this.** When false,
+workloads reach cloud APIs through the node's instance role, so every pod on a node shares
+whatever that role grants — the opposite of per-service scoping:
+
+```bash
+jq -r '.results[] | [.name, "pod_identity=" + (.advanced_settings["aws.eks.enable_pod_identity_addon"]|tostring)] | @tsv' raw/clusters.json
+```
+
+That settles the platform capability. Whether individual services then use a dedicated
+identity still needs the team, so the check can move from UNKNOWN to a partial rather than
+staying unanswerable.
 ### SC-13 — Instance metadata service is hardened (AWS)
 
 **Severity:** High
@@ -397,6 +426,17 @@ which answers "who changed this, and when" during an incident review.
 
 ---
 
+
+**Object-storage access logging belongs in this finding too.** For most platforms the object
+store holds the largest volume of customer data, and `object_storage.enable_logging: false`
+means there is no record of who read it:
+
+```bash
+jq -r '.results[] | [.name, "object_storage_logging=" + (.advanced_settings["object_storage.enable_logging"]|tostring)] | @tsv' raw/clusters.json
+```
+
+Report it beside the VPC flow-log gap rather than as a separate finding — they answer the
+same question, "can we reconstruct who accessed what", at two different layers.
 ### SC-20 — Custom domains present valid certificates
 
 **Severity:** Medium
@@ -468,3 +508,43 @@ jq '."cloud_provider.container_registry.tags"' raw/cluster/<clusterId>/advanced-
 **Observation:** annotation and label groups propagate ownership, cost-centre, and
 compliance metadata onto Kubernetes and cloud objects. Without them, cloud cost
 allocation and incident routing are manual.
+
+---
+
+### SC-23 — Kubernetes Secrets are encrypted with a customer-managed key
+
+**Severity:** High (Critical where health, financial or regulated data is processed)
+
+```bash
+jq -r '.results[] | [.name, .cloud_provider,
+  "kms_key=" + (if ((.advanced_settings["aws.eks.encrypt_secrets_kms_key_arn"] // "")|length) == 0
+                then "UNSET" else "set" end),
+  "pod_identity=" + (.advanced_settings["aws.eks.enable_pod_identity_addon"]|tostring),
+  "object_storage_logging=" + (.advanced_settings["object_storage.enable_logging"]|tostring),
+  "production=" + (.production|tostring)] | @tsv' raw/clusters.json | column -t -s$'\t'
+```
+
+**Fails when:** `aws.eks.encrypt_secrets_kms_key_arn` is unset on a production cluster.
+
+**What this actually changes.** Kubernetes Secrets live in etcd. Without envelope encryption
+they are stored base64-encoded — which is an encoding, not encryption — protected only by
+whatever the managed control plane does by default. Setting a customer-managed KMS key adds a
+second layer the cloud provider cannot read on its own, and gives the customer a revocation
+point and a key-usage audit trail they control. It is a named control in the CIS Kubernetes
+Benchmark and one of the first things a health-data or financial auditor asks about, because
+it is the difference between "the provider encrypts our data" and "we hold the key".
+
+**Say precisely what is and is not covered.** This protects Secrets at rest in etcd. It does
+nothing for a credential pasted into a plain variable (`VS-01`), nothing for one shared
+between environments (`VS-09`), and nothing for a database's own disk encryption (`SC-14`).
+An organization can hold this control and still have every problem those checks find —
+report it alongside them, never as a substitute.
+
+**Two adjacent settings surface in the same query, and belong to other checks:**
+
+- `aws.eks.enable_pod_identity_addon` — when false, workloads reach cloud APIs through the
+  node's role rather than a per-service identity. That is the evidence `SC-12` needs; without
+  it `SC-12` stays UNKNOWN by default, which is how it has usually been reported.
+- `object_storage.enable_logging` — when false there is no access record for the object
+  store, which for most platforms holds the largest volume of customer data. Feed it into
+  `SC-19` beside the VPC flow-log finding rather than raising it separately.

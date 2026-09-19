@@ -281,14 +281,29 @@ every time a node is replaced.
 
 **Severity:** High
 
+**Read the ingress that is actually deployed.** A cluster can run nginx, the Envoy-based
+API Gateway, or both, and the nginx settings stay populated after nginx is removed. Citing
+`nginx.hpa.min_number_instances` on a cluster with `k8s.remove_nginx: true` reports on a
+component that is not there — and would pass a cluster whose real gateway runs one replica.
+
 ```bash
-jq '{min: ."nginx.hpa.min_number_instances", max: ."nginx.hpa.max_number_instances",
-     cpu_threshold: ."nginx.hpa.cpu_utilization_percentage_threshold",
-     cpu_limit: ."nginx.vcpu.limit_in_milli_cpu", mem_limit: ."nginx.memory.limit_in_mib"}' \
-  raw/cluster/<clusterId>/advanced-settings.json
+jq -r '.results[] | . as $c | .advanced_settings as $a
+  | ($a["k8s.remove_nginx"] // false) as $nonginx
+  | ($a["k8s.use_api_gateway"] // false) as $gw
+  | [ $c.name,
+      (if $nonginx then "nginx REMOVED" else "nginx present" end),
+      (if $gw then "api-gateway ON" else "api-gateway off" end),
+      "nginx.min=" + ($a["nginx.hpa.min_number_instances"]|tostring),
+      "envoy.min=" + ($a["envoy.hpa.min_number_instances"]|tostring),
+      "envoy.controller=" + ($a["envoy.gateway_controller.replicas"]|tostring),
+      "SCORE ON -> " + (if $nonginx or $gw then "envoy" else "nginx" end)
+    ] | @tsv' raw/clusters.json | column -t -s$'\t'
 ```
 
-**Fails when:** `nginx.hpa.min_number_instances < 2` on a production cluster.
+**Fails when:** the minimum replica count of the ingress **in use** is below 2 on a
+production cluster — `envoy.hpa.min_number_instances` and `envoy.gateway_controller.replicas`
+where the API Gateway is on, `nginx.hpa.min_number_instances` where nginx still serves.
+Where both are deployed, both must hold.
 
 **Why it matters:** every public request crosses the ingress controller. One replica
 means a single pod restart drops all inbound traffic — the most common cause of a
@@ -301,14 +316,22 @@ means a single pod restart drops all inbound traffic — the most common cause o
 **Severity:** Info
 
 ```bash
-jq -s '.[0] as $cur | .[1] as $def
-  | $cur | to_entries | map(select(.value != $def[.key])) | from_entries' \
-  raw/cluster/<clusterId>/advanced-settings.json raw/default/cluster-advanced-settings.json
+bash templates/scripts/cluster-settings-sweep.sh <snapshotDir>
 ```
 
-List every setting that diverges from the Qovery default. Each divergence should have
-a reason someone on the team can state. Undocumented drift is how clusters become
-un-reproducible.
+A cluster carries roughly 120 advanced settings and the named checks read about twenty of
+them. The sweep prints the subset that decides reliability or security outcomes, per cluster,
+so none of them stays invisible merely because no check happens to name it — and it flags any
+setting where the customer's own clusters **disagree**.
+
+**Divergence between a customer's clusters is the signal worth chasing, not divergence from a
+default.** Vendor defaults move between releases, so a hardcoded defaults table produces
+confident wrong findings; two production clusters that disagree on a security setting is a
+finding whatever the default happens to be. Where they diverge, ask which one is intended —
+usually one was configured deliberately and the other was never revisited.
+
+Report the sweep as an observation and let the named checks carry the verdicts. Do not paste
+all 120 settings into a customer document: that is noise wearing the costume of thoroughness.
 
 ---
 
@@ -354,3 +377,38 @@ configuration never rolled out.
 
 **Why it matters:** a cluster whose last infrastructure change failed is running a
 configuration nobody reviewed.
+
+---
+
+### CL-17 — Overcommit and control-plane redundancy are deliberate
+
+**Severity:** High (Critical on a production cluster running latency-sensitive workloads)
+
+```bash
+jq -r '.results[] | [.name,
+  "cpu_overcommit=" + (.advanced_settings["allow_service_cpu_overcommit"]|tostring),
+  "ram_overcommit=" + (.advanced_settings["allow_service_ram_overcommit"]|tostring),
+  "metrics_server_replicas=" + (.advanced_settings["aws.metrics_server.replicas"]|tostring),
+  "loki_mode=" + (.advanced_settings["loki.deployment_mode"] // "-"),
+  "production=" + (.production|tostring)] | @tsv' raw/clusters.json | column -t -s$'\t'
+```
+
+**Fails when:** `allow_service_ram_overcommit` is true on a production cluster, or
+`aws.metrics_server.replicas` is 1 where autoscaling is relied on.
+
+**Memory overcommit and CPU overcommit are not the same risk.** CPU is compressible — a pod
+exceeding its request is throttled, which costs latency. Memory is not: a node whose pods
+collectively exceed real memory kills something, and the kernel chooses, not the scheduler.
+Permitting RAM overcommit on a production cluster trades an explicit scheduling failure,
+which is visible and fixable, for an OOM kill under load, which lands on whichever pod
+happened to allocate last. Correlate with `LG-02` — if the logs already show `OOMKilled`,
+this setting is the mechanism.
+
+**metrics-server is the dependency nobody lists.** Every HPA reads from it. A single replica
+means a node event stops all autoscaling until it reschedules, and because nothing errors the
+symptom arrives a day later as "the platform did not scale during the spike". On a cluster
+where `RL-02` shows real autoscaling ranges, a single-replica metrics-server is the thing
+that quietly disarms them.
+
+**Do not report either as a finding on a non-production cluster** — overcommit is a
+legitimate way to pack a development cluster, and that is usually the intent.

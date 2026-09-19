@@ -128,11 +128,11 @@ Qovery Assessment Progress:
 | Phase 1 | [reference/phase1-scope-inventory.md](reference/phase1-scope-inventory.md) | Scoping questions, GET-only allowlist, snapshot collection |
 | Phase 1b | [reference/phase1b-compliance-profile.md](reference/phase1b-compliance-profile.md) | CP-01..CP-04 — public compliance claims, severity lens, badge mapping |
 | Standards | [reference/standards-mapping.md](reference/standards-mapping.md) | Maps checks to CIS Kubernetes Benchmark, Pod Security Standards, NSA/CISA and NIST SP 800-190 — with the coverage caveat |
-| Phase 2 | [reference/phase2-cluster-checks.md](reference/phase2-cluster-checks.md) | CL-01..CL-16 — cluster health, sizing, version, observability, retention |
+| Phase 2 | [reference/phase2-cluster-checks.md](reference/phase2-cluster-checks.md) | CL-01..CL-17 — cluster health, sizing, version, observability, retention, advanced-settings sweep, overcommit |
 | Phase 3 | [reference/phase3-environment-topology.md](reference/phase3-environment-topology.md) | TP-01..TP-11 — tier presence, mode hygiene, isolation, parity |
 | Phase 4 | [reference/phase4-reliability-checks.md](reference/phase4-reliability-checks.md) | RL-01..RL-22 — replicas, probes, anti-affinity, rollout, databases |
 | Phase 4b | [reference/phase4b-bad-practices.md](reference/phase4b-bad-practices.md) | BP-01..BP-08 — singleton brokers, DB without replica/backup, cron overlap, env bleed |
-| Phase 5 | [reference/phase5-security-checks.md](reference/phase5-security-checks.md) | SC-01..SC-22 — exposure, K8s API, ingress, RBAC, SSO, IMDS, audit logging |
+| Phase 5 | [reference/phase5-security-checks.md](reference/phase5-security-checks.md) | SC-01..SC-23 — exposure, K8s API, ingress, RBAC, SSO, IMDS, audit logging, Secrets encryption |
 | Phase 5b | [reference/phase5b-variables-secrets.md](reference/phase5b-variables-secrets.md) | VS-01..VS-08 — secret values, aliases, overrides, interpolation, scope |
 | Phase 5c | [reference/phase5c-dependencies-blast-radius.md](reference/phase5c-dependencies-blast-radius.md) | VS-09 — third-party dependency surface, credentials shared across environments, blast-radius table |
 | Phase 6 | [reference/phase6-delivery-ops-checks.md](reference/phase6-delivery-ops-checks.md) | DL-01..DL-12 — stages, alerting, IaC, image tags, webhooks |
@@ -154,6 +154,7 @@ Qovery Assessment Progress:
 | [templates/scripts/dependency-surface.sh](templates/scripts/dependency-surface.sh) | **Run it** for the dependency map. Enumerates third-party vendors from key names only. Local files only. |
 | [templates/scripts/detect-observability-access.sh](templates/scripts/detect-observability-access.sh) | **Run it** before Phase 6f. Reports which local CLIs are already authenticated against the customer's observability platform. Reads no credential. |
 | [templates/scripts/service-graph.sh](templates/scripts/service-graph.sh) | **Run it** before drawing the architecture diagram. Resolves Qovery built-in host variables to service names and reports whether edges are attributable per service. Local files only. |
+| [templates/scripts/cluster-settings-sweep.sh](templates/scripts/cluster-settings-sweep.sh) | **Run it** for `CL-13`. Surfaces the ~25 of ~120 cluster advanced settings that carry weight, and flags where the customer's own clusters diverge. Local files only. |
 | [templates/report-template.md](templates/report-template.md) | **Read & copy**, then fill every `{{placeholder}}`. The customer-facing deliverable. |
 | [templates/findings.csv](templates/findings.csv) | **Read & copy** the header, then append one row per finding. |
 | [examples/executive-summary-excerpt.md](examples/executive-summary-excerpt.md) | Tone and density reference for the executive summary (fictional data). |
@@ -166,18 +167,18 @@ track remediation across reassessments.
 | Prefix | Family | Phase | Count |
 |---|---|---|---|
 | `CP-` | Compliance profile | 1b | 4 |
-| `CL-` | Cluster foundation | 2 | 16 |
+| `CL-` | Cluster foundation | 2 | 17 |
 | `TP-` | Topology & environments | 3 | 11 |
 | `RL-` | Reliability & resilience | 4 | 22 |
 | `BP-` | Anti-patterns | 4b | 8 |
-| `SC-` | Security & data protection | 5 | 22 |
+| `SC-` | Security & data protection | 5 | 23 |
 | `VS-` | Variables & secrets | 5b, 5c | 9 |
 | `DL-` | Delivery & operations | 6 | 12 |
 | `LG-` | Logs, correlation & timing | 6b | 10 |
 | `OP-` | Change origin & governance | 6c | 6 |
 | `CE-` | Cost efficiency | 6d | 11 |
 | `DR-` | Disaster recovery | 6e | 6 |
-| | **Total** | | **137** |
+| | **Total** | | **139** |
 
 Each check resolves to exactly one of:
 
