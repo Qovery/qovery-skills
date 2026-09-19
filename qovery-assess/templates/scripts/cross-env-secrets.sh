@@ -30,7 +30,8 @@ IDENTIFIER = (
     "_SID", "_ID", "_IDS", "_URL", "_URI", "_HOST", "_ENDPOINT", "_REGION",
     "_VERSION", "_NAME", "_POOL", "_RELEASE", "_PHONE", "_PHONE_NUMBER",
     "_BUCKET", "_ACCOUNT", "_PROJECT", "_DOMAIN", "_PORT", "_ARN", "_ZONE",
-    "_TRUNK", "_ADDRESS", "_BUNDLE", "_VOICE", "_MODEL", "_TIMEOUT", "_LOCALE",
+    "_TRUNK", "_ADDRESS", "_ADDRESSES", "_BUNDLE", "_VOICE", "_MODEL", "_TIMEOUT",
+    "_LOCALE", "_SELECTOR", "_CLASS_ID", "_INVESTOR_ID", "_CHAIN", "_NETWORK", "_USERNAME",
 )
 # Keys are often suffixed with a region or tier — LIVEKIT_URL_EU, TWILIO_TRUNK_SID_US.
 # Strip those before testing the real suffix, or every one is misread as a credential.
@@ -49,6 +50,24 @@ def canon(key):
             k = k[:-1]; changed = True
         k = k.rstrip("_")
     return k
+def is_public_identifier(val):
+    """Values that are public by construction, whatever the key is called.
+
+    On-chain addresses are the common false positive in fintech estates: an ERC-20
+    contract address is 0x + 40 hex, it is published on a block explorer, and keys like
+    LINK_TOKEN_ADDRESS or CHAINLINK_TOKEN_POOL_ADDRESSES read as credentials to a
+    name-based filter. Reporting them as shared secrets destroys trust in the real ones.
+    """
+    v = val.strip()
+    if re.fullmatch(r"0x[0-9a-fA-F]{40}", v):          # EVM address
+        return True
+    if re.fullmatch(r"0x[0-9a-fA-F]{64}", v):          # tx / block hash
+        return True
+    if re.fullmatch(r"[0-9]{15,25}", v):               # chain selector / numeric id
+        return True
+    return False
+
+
 def url_carries_a_secret(val):
     """A URL is not a credential — unless it embeds one."""
     return bool(re.search(r"://[^/@\s]*:[^/@\s]*@", val)      # user:pass@host
@@ -76,6 +95,8 @@ for d in sorted(glob.glob(os.path.join(root, "raw/env/*/"))):
         # Numeric-only values are usually ports, sizes or timeouts — but a long digit string
         # can be a PIN or numeric token, so only skip the short ones.
         if val.replace(".", "").replace("-", "").replace(" ", "").isdigit() and len(val) < 20:
+            continue
+        if is_public_identifier(val):
             continue
         # Group by environment ID, not display name: two projects can hold environments with
         # the same name, and keying on the name would silently merge or hide their credentials.
