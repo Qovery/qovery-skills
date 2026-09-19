@@ -1,0 +1,241 @@
+## Phase 6: Delivery & Operations (DL checks)
+
+Reliability is not only how the system is configured — it is how changes reach it and
+how fast anyone finds out when something breaks. This phase covers the delivery
+pipeline, the feedback loop, and the waste.
+
+Cost efficiency moved to its own phase file (`phase6d-cost-efficiency.md`); anti-patterns
+to `phase4b-bad-practices.md`.
+
+Data sources: `env/<envId>/deployment-stages.json`, `env/<envId>/deployment-history.json`,
+`service/<id>/deployment-restriction.json`, `webhooks.json`, `alert-receivers.json`,
+`alert-rules.json`, `current-cost.json`, `environments.json`, `clusters.json`.
+
+---
+
+## Delivery (DL)
+
+### DL-01 — Deployment stages order the pipeline correctly
+
+**Severity:** High
+
+```bash
+jq -r '.results[] | [.deployment_order, .name, (.services | length)] | @tsv' \
+  raw/env/<envId>/deployment-stages.json | sort -n
+```
+
+**Fails when:** every service sits in a single default stage in an environment where
+ordering matters — migrations, databases, and backing services must be ready before the
+applications that depend on them.
+
+**Why it matters:** without stages, Qovery deploys in parallel. An application can start
+against a database that has not finished its migration, fail its health check, and roll
+back a deploy that was actually fine. It also costs time: correctly staged pipelines
+parallelise everything *within* a stage.
+
+**Recommendation:** stage 1 datastores, stage 2 migration jobs, stage 3 backend
+services, stage 4 frontends.
+
+---
+
+### DL-02 — Auto-deploy is deliberate per tier
+
+**Severity:** Medium
+
+```bash
+jq -r '.results[] | [.name, .auto_deploy, .auto_preview] | @tsv' raw/env/<envId>/services.json
+```
+
+**Expected pattern:** `auto_deploy: true` in development and staging so the team gets
+fast feedback; production gated behind an explicit action or a protected branch.
+
+**Fails when:** the pattern is inverted (production auto-deploys from a shared branch
+while staging is manual), or `auto_deploy` is inconsistent across services in the same
+environment so a deploy leaves the environment half-updated.
+
+---
+
+### DL-03 — Monorepo services have deployment restrictions
+
+**Severity:** Medium
+
+**Applicability — check this before skipping it.** The check applies to any service built
+from Git (`service_type: APPLICATION`, and `JOB`/`HELM`/`TERRAFORM` with a Git source), not
+only to a monorepo you already know about. Determine it from the data:
+
+```bash
+# Which services are Git-built, and do any share a repository?
+for d in raw/env/*/; do
+  jq -r '.results[]? | select(.git_repository != null)
+    | [.name, .git_repository.url, (.git_repository.root_path // "/")] | @tsv' "$d/services.json"
+done | sort | awk -F'\t' '{c[$2]++; n[$2]=n[$2]" "$1} END {for (r in c) if (c[r]>1) print c[r]" services share "r":"n[r]}'
+```
+
+`N/A` only when **no** service is Git-built (an organization deploying pre-built images
+only). With Git-built services present, read the restrictions:
+
+```bash
+jq -r '.results[]? | [.mode, .type, .value] | @tsv' raw/service/<id>/deployment-restriction.json
+```
+
+**Fails when:** several services share one Git repository and none define path
+restrictions.
+
+**Why it matters:** without restrictions, a README change redeploys all fourteen
+services. That is wasted build minutes, unnecessary rollout risk, and a team that stops
+trusting the deploy notification channel.
+
+---
+
+### DL-04 — Deploy notifications reach the team
+
+**Severity:** Medium
+
+```bash
+jq -r '.results[] | [.kind, .target_url, .enabled, (.events | join(",")),
+  (.environment_types_filter // [] | join(","))] | @tsv' raw/webhooks.json
+```
+
+**Fails when:** no webhook exists, or all webhooks are disabled, or production
+deployment failures are not routed anywhere.
+
+---
+
+### DL-05 — Alerting exists and covers production
+
+**Severity:** Critical
+
+```bash
+jq -r '.results[] | [.name, .type, .enabled] | @tsv' raw/alert-receivers.json
+jq -r '.results[] | [.name, .severity, .enabled, .source, .state,
+  (.alert_receiver_ids | length)] | @tsv' raw/alert-rules.json
+
+# Rules that will never notify anyone:
+jq -r '.results[] | select(.enabled == false or (.alert_receiver_ids | length) == 0)
+  | [.name, .severity, .enabled, (.alert_receiver_ids | length)] | @tsv' raw/alert-rules.json
+```
+
+**Fails when:** there are no alert receivers, no alert rules, or rules that are
+disabled or have an empty `alert_receiver_ids` — a rule with no receiver fires into
+nothing, which is indistinguishable from having no rule at all.
+
+**Why it matters:** this is the difference between a four-minute incident and a
+four-hour one. Every other reliability control in this report assumes somebody finds out.
+An organization with perfect replica counts and no alerting is still operating blind.
+
+**Also flag** `source: GHOST` rules — they exist in Prometheus but were deleted from
+Qovery, so nobody owns or maintains them.
+
+---
+
+### DL-06 — Deployment duration is not a tax on shipping
+
+**Severity:** Medium
+
+```bash
+jq -r '.results[] | [.status, .total_duration] | @tsv' raw/env/<envId>/deployment-history.json | head -20
+```
+
+**Fails when:** median production deploy duration is long enough that the team batches
+changes. Pairs with `RL-22` (failure rate).
+
+**Recommendation:** route to `qovery-speedup`, which separates build, scheduling, image
+pull, startup, and health-check time and says which part is the customer's and which is
+Qovery's.
+
+---
+
+### DL-07 — Configuration is reproducible
+
+**Severity:** Medium
+
+**Assess:** is this setup managed through the Console only, or is there
+infrastructure-as-code? Check for `.tf` files in the customer's repositories and for
+Terraform services in the inventory (`service_type: TERRAFORM`).
+
+**Why it matters:** a Console-only setup cannot be code-reviewed, diffed, or rebuilt
+after a mistake. It also means this assessment's findings must be fixed by hand, in
+every environment, without a record.
+
+**Recommendation:** `qovery-terraform` generates provider manifests from the live setup
+and imports existing resources into state — no rebuild required.
+
+---
+
+### DL-08 — Environment variables are scoped, not duplicated
+
+**Severity:** Medium
+
+```bash
+jq -r '.results[] | [.key, .scope, .variable_type] | @tsv' raw/env/<envId>/variables.json \
+  | sort | awk '{print $1}' | uniq -c | sort -rn | head -20
+```
+
+**Fails when:** the same key is defined separately on many services instead of once at
+environment or project scope, or aliases and overrides are used where a single scoped
+variable would do.
+
+---
+
+### DL-09 — Service-to-service configuration uses Qovery's built-in variables
+
+**Severity:** Info
+
+**Observation:** hardcoded hostnames and URLs between services break when an
+environment is cloned — which is exactly what preview environments do. Qovery's built-in
+variables and aliases keep a cloned environment internally consistent.
+
+---
+
+### DL-10 — Cluster and workload ownership is documented
+
+**Severity:** Info
+
+Who owns each cluster, each environment, and each production service? If the answer
+lives in one person's head, that is a finding worth writing down even though no API
+returns it.
+
+---
+
+### DL-11 — Container images come from a controlled registry
+
+**Severity:** Medium
+
+```bash
+jq -r '.results[] | [.name, .kind, .url] | @tsv' raw/container-registries.json
+jq -r '.results[] | select(.service_type == "CONTAINER") | [.name, .image_name, .tag] | @tsv' \
+  raw/env/<envId>/services.json
+```
+
+**Fails when:** production containers use a mutable tag (`latest`, `main`, `staging`) —
+the running image cannot be identified, a restart can silently change the version, and a
+rollback has nothing to roll back to.
+
+---
+
+### DL-12 — Helm and Terraform sources are pinned
+
+**Severity:** Medium
+
+```bash
+jq '{source: .source, values_override: (.values_override | keys?)}' raw/service/<helmId>/service.json
+```
+
+**Fails when:** a Helm chart tracks a floating version or a Git branch rather than a
+pinned chart version or commit.
+
+---
+
+## Hand-off map
+
+Every finding in this assessment should point at what comes next. Use this mapping in
+the report's "Where Qovery helps" section:
+
+| Finding cluster | Next step |
+|---|---|
+| `RL-14`, `CE-02`, `CE-03` — sizing and elasticity | `qovery-optimize` (KRR-based, uses real consumption) |
+| `RL-22`, `DL-06` — slow or failing pipeline | `qovery-speedup`, then `qovery-troubleshoot` for a specific failure |
+| `DL-07` — no infrastructure-as-code | `qovery-terraform` |
+| `SC-17` — broad API tokens | `qovery-policy-token` |
+| `TP-03`, `TP-09` — no isolated developer environments | `qovery-preview` |
+| `CL-08` — no observability | Enable Qovery observability, then re-run this assessment |

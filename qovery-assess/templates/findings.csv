@@ -1,0 +1,5 @@
+check_id,pillar,severity,severity_promoted_by,compliance_badges,result,title,scope_type,affected_count,applicable_count,affected_names,evidence,impact,recommendation,effort,horizon
+RL-01,Reliability,Critical,,"",FAIL,Production services run a single replica,service,4,12,"api-gateway;billing-worker","min_running_instances=1","No HA; every node drain is a full outage","Set min_running_instances to 2 (3 on the revenue path)",S,Now
+LG-06,Security,Critical,DORA,"GDPR Art. 32(1)(a);SOC 2 CC6.1;ISO A.8.15",FAIL,Credentials appear in runtime logs,service,2,31,"service-billing;connector-x","3x <<REDACTED:dsn-credentials>> markers","Credential disclosed to everyone with log access; must be rotated","Remove the log statement and rotate the affected credential",S,Now
+SC-01,Security,Critical,,"GDPR Art. 32(1)(b);PCI 1.3",PASS,No database is publicly accessible,service,0,6,"","accessibility=PRIVATE on all databases","","",,
+DR-03,Reliability,Critical,DORA,"ISO A.8.13;SOC 2 A1.3",UNKNOWN,Restore has never been timed,organization,,,"","team could not confirm a restore test","Backups are a hypothesis until restored","Run a timed restore drill against a clone",M,Next
