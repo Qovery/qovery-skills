@@ -174,10 +174,11 @@ Set up deployment rules to auto-stop non-production environments:
 > "I'm setting up deployment rules to automatically stop your dev and staging environments outside business hours. This will save approximately 60-70% on non-production infrastructure costs."
 
 Guide through Console: Project Settings > Deployment Rules. If both IDs are
-known, construct the canonical route
-`/organization/{orgId}/project/{projId}/deployment-rules`, replace both IDs,
+known, replace them in
+`https://console.qovery.com/organization/{orgId}/project/{projId}/deployment-rules`
 and include the completed link. Otherwise use <https://console.qovery.com> and
-give the UI navigation path. Then explain the deployment rule configuration:
+give the UI navigation path. Never present the URL template itself to the user.
+Then explain the deployment rule configuration:
 
 ```
 Rule 1 (highest priority): prod-* → Never stop
