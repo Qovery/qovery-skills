@@ -154,6 +154,36 @@ jq -r '.results[] | [.key, .scope, .variable_type] | @tsv' raw/env/<envId>/varia
   | grep -iE 'password|secret|token|api_?key|private_?key|credential|passwd|dsn|connection_?string|access_?key'
 ```
 
+**Join against the secret list, or the finding has no denominator.** The command above only
+reads `variables.json`. A key matching the pattern is a finding *because it is not in the
+secret store* — so compare the two:
+
+```bash
+for d in raw/env/*/; do
+  E=$(jq -r .name "$d/environment.json")
+  jq -r '.results[]?.key' "$d/secret-keys.json" 2>/dev/null | sort > /tmp/sec.$$
+  jq -r '.results[]? | select(.variable_type=="VALUE") | select(.value != null)
+     | select((.value|length) >= 16)
+     | select((.value|test("^https?://"))|not)
+     | select(.key|test("password|secret|token|api_?key|private_?key|credential|access_?key";"i"))
+     | .key' "$d/variables.json" | sort | while read -r k; do
+       grep -qx "$k" /tmp/sec.$$ && echo "$E	$k	also-a-secret" || echo "$E	$k	PLAIN-ONLY"
+     done; rm -f /tmp/sec.$$
+done | column -t
+```
+
+Only `PLAIN-ONLY` rows are findings. **Report both numbers** — "163 stored correctly, 21
+are not" is a materially different statement from "21 credentials exposed", and the first
+is the one that is true. The length filter drops placeholders; a 3-character
+`*_SECRET` is not a live credential.
+
+**There is no `is_secret` field on a variable.** `/variables` returns non-secret variables
+only, and `/environment/{id}/secret` returns secret **keys** with no values. A credential
+appearing in `variables.json` *with a readable value* is itself the evidence — do not invent
+a flag to test.
+
+
+
 **Fails when:** a key matching that pattern appears in the environment-variable list
 rather than the secret list.
 

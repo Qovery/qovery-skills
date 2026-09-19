@@ -108,6 +108,10 @@ done | awk -F'\t' '{h[$5]=h[$5]" "$2"@"$4; c[$5]++} END {for(k in c) if(c[k]>1) 
 
 The base64 is a grouping key only — **do not print column 5**, and do not decode it.
 
+This groups by key and service and **drops the environment**, so it finds duplication
+*within* a tier and misses the case that matters most — the same credential in production
+and in staging. That is `VS-09`, in **Phase 5c**; run both.
+
 **Why it matters:** a value defined in eleven places is rotated in nine of them. The other
 two break at 3am, and the failure looks like an application bug.
 

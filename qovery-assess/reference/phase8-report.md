@@ -62,9 +62,22 @@ detail, so the document is useful to someone who reads only the first page.
    right thing.
 4. **Findings by pillar** — Reliability, Security, Performance, Delivery, Cost. Each
    finding: ID, severity, what was found, evidence, impact, recommendation, effort.
-5. **Remediation roadmap** — Now / Next / Later.
-6. **Where Qovery helps** — see below.
-7. **Appendix** — every control that was run, the unknowns, limitations, and the scoring method.
+5. **External dependencies & blast radius** — the third-party surface grouped by layer,
+   and one row per environment saying what a compromise of it would reach and *by what
+   mechanism*. Include it whenever the organization runs more than one environment or
+   depends on third parties for anything on the data path; skip it for a single-environment
+   setup with no external processors, where it would be an empty table. Method and the
+   rules for writing it are in **Phase 5c**.
+6. **Remediation roadmap** — Now / Next / Later.
+7. **Where Qovery helps** — see below.
+8. **Appendix** — every control that was run, the unknowns, limitations, and the scoring method.
+
+**Where the blast-radius section earns its place:** the rest of the report is a list of
+independent findings, and a reader can rank them individually. This section is the only
+one that says how they *combine* — that a public database in staging and a shared
+credential and a shared cluster are not three Medium problems but one Critical one. Order
+the findings so the combination is visible, and say explicitly which single fix breaks the
+chain.
 
 ### Show every control, not just the failures
 

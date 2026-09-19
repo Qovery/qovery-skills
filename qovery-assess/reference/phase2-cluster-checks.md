@@ -169,6 +169,28 @@ jq -r '.results[] | [.name,
   raw/clusters.json | column -t
 ```
 
+**Credit an external solution when one is deployed.** Qovery's own metrics stack being off
+is not the same as the estate being unmonitored, and reporting it that way is a false
+finding. Look for a third-party platform before scoring:
+
+```bash
+# in-cluster agents
+for d in raw/env/*/; do jq -r '.results[]? | select(.service_type=="HELM" or .service_type=="CONTAINER")
+  | .name' "$d/services.json"; done | sort -u
+# and the variables that wire them up
+for d in raw/env/*/; do jq -r '.results[]?.key' "$d/variables.json" "$d/secret-keys.json" 2>/dev/null; done \
+  | grep -iE 'DD_|DATADOG|NEW_?RELIC|OTEL|SENTRY|GRAFANA|DYNATRACE|SPLUNK|HONEYCOMB|ELASTIC|SIGNOZ' | sort -u
+```
+
+An agent deployed on the cluster plus its API key held as a secret is **coverage** — score
+the check accordingly and name the platform in the evidence. What the missing Qovery-native
+stack actually costs is narrower and worth stating precisely: `qovery-optimize` and the
+measured `CE-*` checks read Qovery's metrics, not the third party's, so those stay UNKNOWN
+with the reason "measured in <platform>, not readable through the Qovery API" rather than
+"not measured".
+
+
+
 **Fails when:** `metrics_parameters.enabled` is `false` or absent on a production cluster.
 
 **Read the nested configuration too — it carries three findings the top-level flag hides:**

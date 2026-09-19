@@ -133,6 +133,23 @@ jq -r '.results[] | select(.enabled == false or (.alert_receiver_ids | length) =
   | [.name, .severity, .enabled, (.alert_receiver_ids | length)] | @tsv' raw/alert-rules.json
 ```
 
+**Check for an external alerting platform before failing this.** Zero Qovery alert rules
+does not mean nobody is paged. Run the detection in `CL-08`: an APM or monitoring agent
+deployed cluster-wide, with its API key held as a secret, is where alerting almost certainly
+lives. Score the check on that basis and name the platform.
+
+Two things it does **not** cover, which stay findings on their own merits:
+
+- **Deployment notifications (`DL-04`).** An APM agent does not see Qovery deploy outcomes.
+  A failed production deploy visible only in the Console is a real gap even on a
+  well-monitored estate.
+- **Whether rules actually exist.** A deployed agent proves telemetry is flowing, not that
+  anyone configured an alert on it. Say which of the two you verified, and put "confirm
+  alert rules exist in <platform>" in the report rather than asserting coverage you did not
+  see.
+
+
+
 **Fails when:** there are no alert receivers, no alert rules, or rules that are
 disabled or have an empty `alert_receiver_ids` — a rule with no receiver fires into
 nothing, which is indistinguishable from having no rule at all.

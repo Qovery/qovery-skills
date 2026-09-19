@@ -105,6 +105,7 @@ Qovery Assessment Progress:
 - [ ] Phase 4b — Anti-pattern detection (BP)
 - [ ] Phase 5  — Security & data protection (SC)
 - [ ] Phase 5b — Variables, secrets & interpolation (VS)
+- [ ] Phase 5c — External dependencies, shared credentials & blast radius (VS-09)
 - [ ] Phase 6  — Delivery & operations (DL)
 - [ ] Phase 6b — Log analysis, correlation, startup/shutdown timing (LG)
 - [ ] Phase 6c — Change origin & governance: Terraform vs Console (OP)
@@ -131,6 +132,7 @@ Qovery Assessment Progress:
 | Phase 4b | [reference/phase4b-bad-practices.md](reference/phase4b-bad-practices.md) | BP-01..BP-08 — singleton brokers, DB without replica/backup, cron overlap, env bleed |
 | Phase 5 | [reference/phase5-security-checks.md](reference/phase5-security-checks.md) | SC-01..SC-22 — exposure, K8s API, ingress, RBAC, SSO, IMDS, audit logging |
 | Phase 5b | [reference/phase5b-variables-secrets.md](reference/phase5b-variables-secrets.md) | VS-01..VS-08 — secret values, aliases, overrides, interpolation, scope |
+| Phase 5c | [reference/phase5c-dependencies-blast-radius.md](reference/phase5c-dependencies-blast-radius.md) | VS-09 — third-party dependency surface, credentials shared across environments, blast-radius table |
 | Phase 6 | [reference/phase6-delivery-ops-checks.md](reference/phase6-delivery-ops-checks.md) | DL-01..DL-12 — stages, alerting, IaC, image tags, webhooks |
 | Phase 6b | [reference/phase6b-log-analysis.md](reference/phase6b-log-analysis.md) | LG-01..LG-10 — deployment/runtime log errors, secrets in logs, startup & stop time |
 | Phase 6c | [reference/phase6c-change-origin.md](reference/phase6c-change-origin.md) | OP-01..OP-06 — Terraform vs Console, shell access, external resources |
@@ -145,6 +147,8 @@ Qovery Assessment Progress:
 |---|---|
 | [templates/scripts/collect-snapshot.sh](templates/scripts/collect-snapshot.sh) | **Run it.** GET-only collector; writes the org snapshot as JSON under `./qovery-assessment/raw/`. |
 | [templates/scripts/compare-snapshots.sh](templates/scripts/compare-snapshots.sh) | **Run it** when a previous snapshot exists. Diffs two snapshots — config drift, closed findings, regressions, change attribution. Local files only, no API calls. |
+| [templates/scripts/cross-env-secrets.sh](templates/scripts/cross-env-secrets.sh) | **Run it** for `VS-09`. Groups plain variables by a truncated hash to find credentials shared between environments. Prints no value. Local files only. |
+| [templates/scripts/dependency-surface.sh](templates/scripts/dependency-surface.sh) | **Run it** for the dependency map. Enumerates third-party vendors from key names only. Local files only. |
 | [templates/report-template.md](templates/report-template.md) | **Read & copy**, then fill every `{{placeholder}}`. The customer-facing deliverable. |
 | [templates/findings.csv](templates/findings.csv) | **Read & copy** the header, then append one row per finding. |
 | [examples/executive-summary-excerpt.md](examples/executive-summary-excerpt.md) | Tone and density reference for the executive summary (fictional data). |
@@ -162,13 +166,13 @@ track remediation across reassessments.
 | `RL-` | Reliability & resilience | 4 | 22 |
 | `BP-` | Anti-patterns | 4b | 8 |
 | `SC-` | Security & data protection | 5 | 22 |
-| `VS-` | Variables & secrets | 5b | 8 |
+| `VS-` | Variables & secrets | 5b, 5c | 9 |
 | `DL-` | Delivery & operations | 6 | 12 |
 | `LG-` | Logs, correlation & timing | 6b | 10 |
 | `OP-` | Change origin & governance | 6c | 6 |
 | `CE-` | Cost efficiency | 6d | 11 |
 | `DR-` | Disaster recovery | 6e | 6 |
-| | **Total** | | **136** |
+| | **Total** | | **137** |
 
 Each check resolves to exactly one of:
 
