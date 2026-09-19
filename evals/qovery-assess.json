@@ -225,5 +225,37 @@
       "Feeds aws.eks.enable_pod_identity_addon into SC-12, object_storage.enable_logging into SC-19, and the ALB scheme and source ranges into SC-04 rather than raising them as separate findings",
       "Does not paste all 120 settings into the customer report"
     ]
+  },
+  {
+    "skills": [
+      "qovery-assess"
+    ],
+    "query": "We are doing an access review before a SOC 2 audit. Audit our Qovery org and tell me who and what can reach production outside the normal path.",
+    "files": [],
+    "expected_behavior": [
+      "Reads GET /organization/{orgId}/credentials for SC-24 and reports the credential object_type (static AWS/GCP/AZURE/SCW versus AWS_ROLE or GCP_WORKLOAD_IDENTITY_FEDERATION) along with the clusters each credential set carries",
+      "Never copies access_key_id into the report or the conversation, and flags a single credential set shared between a production and a non-production cluster",
+      "Checks ssh_keys on every cluster for SC-25 and reports a non-empty list on a production cluster as standing node access that OP-03's shell and port-forward counts cannot see",
+      "Runs SC-26 against members.last_activity_at and the pending-invitations file, reporting Owner/Admin accounts inactive over 90 days and invitations unaccepted after 14 days",
+      "States that the invitation_link field was stripped at collection time and never prints it",
+      "Runs SC-16 as a deterministic check (privileged-member ratio or count plus whether custom roles exist) rather than an open-ended observation, and reports dormancy separately under SC-26",
+      "Maps the findings to the framework control areas in reference/standards-mapping.md without claiming an audit opinion"
+    ]
+  },
+  {
+    "skills": [
+      "qovery-assess"
+    ],
+    "query": "Assess our org. I mainly want to know whether what is running in production is actually what is in our repositories.",
+    "files": [],
+    "expected_behavior": [
+      "Runs DL-13 against GET /service/{serviceId}/gitWebhookStatus and reports NOT_CONFIGURED or MISCONFIGURED (with missing_events) as a finding for any service that has auto_deploy enabled",
+      "Reports UNABLE_TO_VERIFY as UNKNOWN rather than PASS, and treats git_repository.has_access false as the same class of failure",
+      "Runs DL-14 by comparing git_repository.deployed_commit_id against the head of the service's commit list, and reports both commits-behind and the case where the deployed commit is not on the branch at all",
+      "Distinguishes drift caused by a broken webhook (DL-13, technical) from drift with a healthy webhook and auto_deploy off (process), rather than reporting one finding for both",
+      "Runs OP-07 on TERRAFORM services and flags use_cluster_credentials, a kubernetes backend, an unpinned provider_version, and auto_deploy with terraform_action DEFAULT",
+      "Reports tf_vars carrying credentials with secret false as a VS-01-class finding without printing any value",
+      "Applies BP-05 only after reading cronjob.concurrency_policy, and passes jobs set to Forbid or Replace instead of reporting them on the duration bound alone"
+    ]
   }
 ]

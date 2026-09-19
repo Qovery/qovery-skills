@@ -476,3 +476,39 @@ and fails harder when it does.
 
 **Recommendation:** route slow pipelines to `qovery-speedup`; route a specific failing
 deployment to `qovery-troubleshoot`.
+
+---
+
+### RL-23 — Lifecycle jobs clean up what they create
+
+**Severity:** High (Critical where the job provisions cloud infrastructure)
+
+```bash
+jq -r '.results[]? | select(.service_type == "JOB" and .job_type == "LIFECYCLE")
+  | [.name,
+     (.schedule.lifecycle_type // "GENERIC"),
+     (if .schedule.on_start  then "on_start"  else "-" end),
+     (if .schedule.on_stop   then "on_stop"   else "-" end),
+     (if .schedule.on_delete then "on_delete" else "MISSING" end)] | @tsv' \
+  raw/env/<envId>/services.json | column -t
+```
+
+**Fails when:** a lifecycle job defines `on_start` but no `on_delete`.
+
+**Why it matters:** a lifecycle job is how an environment reaches outside itself — it
+creates the bucket, the queue, the DNS record, the managed database the environment needs.
+`on_start` creates them. `on_delete` is the only thing that removes them. Without it,
+deleting the environment deletes the Qovery side and leaves the cloud side running: the
+resource keeps its data, keeps its network exposure, and keeps billing, with nothing left
+in Qovery pointing at it. Preview and ephemeral environments make this compound, because
+each one leaks a fresh copy.
+
+`lifecycle_type: TERRAFORM` or `CLOUDFORMATION` raises it to Critical. Those jobs hold
+state, and an environment deleted without `on_delete` orphans the state file along with
+everything it tracks, so the resources can no longer be destroyed by the tool that made
+them.
+
+**Recommendation:** every lifecycle job that provisions gets an `on_delete` that destroys.
+Verify it in a preview environment rather than in production: create one, delete it, and
+confirm in the cloud console that nothing remains. Pair with `OP-05`, which asks whether
+those external resources are declared in Qovery at all.

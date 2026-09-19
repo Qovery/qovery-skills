@@ -34,7 +34,8 @@ redeploy, not a restart, not a "harmless" tag.
 | HTTP verbs | `GET` only against `api.qovery.com`. No `POST`, `PUT`, `PATCH`, `DELETE`. |
 | Sole exception | The anonymous usage-tracking ping below (`POST /organization/{orgId}/skill-tracking`). It touches no customer resource. Mention it if the customer asks what was written. |
 | CLI | Read verbs only (`list`, `status`, `log`). Never `deploy`, `stop`, `restart`, `delete`, `cancel`, `token create`. |
-| Forbidden endpoints | `GET /database/{databaseId}/masterCredentials` and `GET /organization/{orgId}/cluster/{clusterId}/kubeconfig` — never call them. They return live credentials and standing cluster access. |
+| Forbidden endpoints | `GET /database/{databaseId}/masterCredentials` and `GET /organization/{orgId}/cluster/{clusterId}/kubeconfig` — never call them. They return live credentials and standing cluster access. `POST /environment/{envId}/deploymentBuildUsageReport` is forbidden twice over: it is a write, and it publishes a publicly readable Grafana snapshot. |
+| Credential-bearing reads | Two allowed endpoints carry sensitive material and are handled, not avoided. `GET /organization/{orgId}/inviteMember` returns a usable `invitation_link` — the collector strips it in the stream; never re-fetch it without stripping. `GET /organization/{orgId}/credentials` returns `access_key_id` — read the credential *type* for `SC-24`, never copy the key ID into the report. |
 | In-cluster state | The rule is **never hold a cluster credential**, not "never look inside". The Qovery MCP Server's read-only cluster-state tools are brokered per call, scoped by organization RBAC, and audited — allowed and preferred. They return `.status` only, never `.spec`: they establish NetworkPolicy, policy-engine, PDB, certificate and node health, but **not** pod security context. Never call the agent-style tool that deploys, updates or triggers. See [reference/standards-mapping.md](reference/standards-mapping.md). |
 | Secrets | Report secret **keys** and their scope. NEVER report a secret value, token, password, connection string, or credential — in the document, in a log line, or in the conversation. |
 | Logs & events | Fetched through the redacting collector only. Variable `value` fields and log bodies are read for detection and reported as classes and counts, never as content. |
@@ -130,14 +131,14 @@ Qovery Assessment Progress:
 | Standards | [reference/standards-mapping.md](reference/standards-mapping.md) | Maps checks to CIS Kubernetes Benchmark, Pod Security Standards, NSA/CISA and NIST SP 800-190 — with the coverage caveat |
 | Phase 2 | [reference/phase2-cluster-checks.md](reference/phase2-cluster-checks.md) | CL-01..CL-17 — cluster health, sizing, version, observability, retention, advanced-settings sweep, overcommit |
 | Phase 3 | [reference/phase3-environment-topology.md](reference/phase3-environment-topology.md) | TP-01..TP-11 — tier presence, mode hygiene, isolation, parity |
-| Phase 4 | [reference/phase4-reliability-checks.md](reference/phase4-reliability-checks.md) | RL-01..RL-22 — replicas, probes, anti-affinity, rollout, databases |
+| Phase 4 | [reference/phase4-reliability-checks.md](reference/phase4-reliability-checks.md) | RL-01..RL-23 — replicas, probes, anti-affinity, rollout, databases, lifecycle-job cleanup |
 | Phase 4b | [reference/phase4b-bad-practices.md](reference/phase4b-bad-practices.md) | BP-01..BP-08 — singleton brokers, DB without replica/backup, cron overlap, env bleed |
-| Phase 5 | [reference/phase5-security-checks.md](reference/phase5-security-checks.md) | SC-01..SC-23 — exposure, K8s API, ingress, RBAC, SSO, IMDS, audit logging, Secrets encryption |
+| Phase 5 | [reference/phase5-security-checks.md](reference/phase5-security-checks.md) | SC-01..SC-27 — exposure, K8s API, ingress, RBAC, SSO, IMDS, audit logging, Secrets encryption, cloud credentials, dangling domains |
 | Phase 5b | [reference/phase5b-variables-secrets.md](reference/phase5b-variables-secrets.md) | VS-01..VS-08 — secret values, aliases, overrides, interpolation, scope |
 | Phase 5c | [reference/phase5c-dependencies-blast-radius.md](reference/phase5c-dependencies-blast-radius.md) | VS-09 — third-party dependency surface, credentials shared across environments, blast-radius table |
-| Phase 6 | [reference/phase6-delivery-ops-checks.md](reference/phase6-delivery-ops-checks.md) | DL-01..DL-12 — stages, alerting, IaC, image tags, webhooks |
+| Phase 6 | [reference/phase6-delivery-ops-checks.md](reference/phase6-delivery-ops-checks.md) | DL-01..DL-14 — stages, alerting, IaC, image tags, webhooks, git webhook health, deployed-commit drift |
 | Phase 6b | [reference/phase6b-log-analysis.md](reference/phase6b-log-analysis.md) | LG-01..LG-10 — deployment/runtime log errors, secrets in logs, startup & stop time |
-| Phase 6c | [reference/phase6c-change-origin.md](reference/phase6c-change-origin.md) | OP-01..OP-06 — Terraform vs Console, shell access, external resources |
+| Phase 6c | [reference/phase6c-change-origin.md](reference/phase6c-change-origin.md) | OP-01..OP-07 — Terraform vs Console, shell access, external resources, Terraform service scope |
 | Phase 6d | [reference/phase6d-cost-efficiency.md](reference/phase6d-cost-efficiency.md) | CE-01..CE-11 — scheduling, measured CPU/memory/storage waste, spot capacity |
 | Phase 6e | [reference/phase6e-disaster-recovery.md](reference/phase6e-disaster-recovery.md) | DR-01..DR-06 — RPO/RTO, backups, tested restore, rebuild, runbook |
 | Phase 6f | [reference/phase6f-external-metrics.md](reference/phase6f-external-metrics.md) | *Optional.* Resolves CE-03/07/08/09/11 and RL-14 from Datadog, New Relic, Grafana or CloudWatch. Opt-in, never using a credential found in the estate |
@@ -169,16 +170,16 @@ track remediation across reassessments.
 | `CP-` | Compliance profile | 1b | 4 |
 | `CL-` | Cluster foundation | 2 | 17 |
 | `TP-` | Topology & environments | 3 | 11 |
-| `RL-` | Reliability & resilience | 4 | 22 |
+| `RL-` | Reliability & resilience | 4 | 23 |
 | `BP-` | Anti-patterns | 4b | 8 |
-| `SC-` | Security & data protection | 5 | 23 |
+| `SC-` | Security & data protection | 5 | 27 |
 | `VS-` | Variables & secrets | 5b, 5c | 9 |
-| `DL-` | Delivery & operations | 6 | 12 |
+| `DL-` | Delivery & operations | 6 | 14 |
 | `LG-` | Logs, correlation & timing | 6b | 10 |
-| `OP-` | Change origin & governance | 6c | 6 |
+| `OP-` | Change origin & governance | 6c | 7 |
 | `CE-` | Cost efficiency | 6d | 11 |
 | `DR-` | Disaster recovery | 6e | 6 |
-| | **Total** | | **139** |
+| | **Total** | | **147** |
 
 Each check resolves to exactly one of:
 
@@ -234,6 +235,8 @@ disclosed in the report so the score is honest about its coverage.
 GET /organization                                             List orgs
 GET /organization/{orgId}                                     Plan, name, billing restriction
 GET /organization/{orgId}/member                              Members and roles
+GET /organization/{orgId}/inviteMember                        Pending/expired invitations — STRIP invitation_link
+GET /organization/{orgId}/credentials                         Cloud credential sets, and the clusters each one carries
 GET /organization/{orgId}/customRole                          Custom RBAC roles
 GET /organization/{orgId}/apiToken                            API tokens
 GET /organization/{orgId}/policyApiToken                      Scoped policy tokens
@@ -283,12 +286,16 @@ GET /application/{appId}                                      cpu, memory, insta
 GET /application/{appId}/advancedSettings
 GET /application/{appId}/deploymentRestriction
 GET /application/{appId}/customDomain
+GET /application/{appId}/commit                               Last 100 commits on the branch (DL-14)
+GET /service/{serviceId}/gitWebhookStatus                     Webhook health at the git provider (DL-13)
+GET /{app,container,helm}/{id}/customDomain/{domainId}/status  Live domain validation state (SC-27)
 GET /container/{containerId}  (+ /advancedSettings)
 GET /job/{jobId}              (+ /advancedSettings)
 GET /helm/{helmId}            (+ /advancedSettings)
 GET /database/{dbId}                                          mode, accessibility, storage, disk_encrypted
 GET /database/{dbId}/backup                                   Backup recency
 GET /defaultApplicationAdvancedSettings                       Baseline to diff against
+GET /defaultTerraformAdvancedSettings                         Baseline to diff against
 
 # Logs — ALWAYS redact on write (see the collector's redact_log)
 GET /environment/{envId}/logs?version={executionId}           Deployment logs for one execution

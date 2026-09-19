@@ -99,16 +99,24 @@ qovery-assessment/
 │   ├── git-tokens.json            annotations-groups.json    labels-groups.json
 │   ├── current-cost.json          projects.json           environments.json
 │   ├── services.json              clusters.json           cluster-status.json
-│   ├── default/{application,cluster,container,job,helm}-advanced-settings.json
+│   ├── cloud-credentials.json     pending-invitations.json
+│   ├── default/{application,cluster,container,job,helm,terraform}-advanced-settings.json
 │   ├── cluster/<clusterId>/{advanced-settings,routing-table,cloud-provider-info,
 │   │                        deployment-history,analyses}.json
 │   ├── project/<projectId>/{environments,overview,deployment-rules}.json
 │   ├── env/<envId>/{environment,statuses,services,deployment-stages,deployment-rule,
 │   │                variables,secret-keys,deployment-history}.json
 │   └── service/<serviceId>/{advanced-settings,deployment-restriction,custom-domains,
-│                            backups}.json
+│                            backups,git-webhook-status,commits}.json
 └── collect.log
 ```
+
+Two of those files are filtered at collection time rather than written verbatim.
+`pending-invitations.json` has its `invitation_link` removed in the stream, because that
+link is a usable credential. `cloud-credentials.json` keeps `access_key_id` — `SC-24`
+needs the credential *type* that sits beside it — but the key ID must never be copied
+into the report. `git-webhook-status.json` and `commits.json` appear only for services
+that have a git source.
 
 `env/<envId>/services.json` already carries each service's full configuration —
 replicas, health checks, ports, resources, storage — so the per-service files hold only

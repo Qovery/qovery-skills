@@ -125,18 +125,45 @@ anything else.
 **Severity:** High
 
 ```bash
-jq -r '.results[] | select(.service_type=="JOB")
+# Schedule and duration bound, per cron job.
+jq -r '.results[] | select(.service_type=="JOB" and .job_type=="CRON")
   | [.name, (.schedule.cronjob.scheduled_at // "-"),
      "maxdur=\(.max_duration_seconds // "unset")",
      "restarts=\(.max_nb_restart // "-")"] | @tsv' raw/env/<envId>/services.json | column -t
+
+# Does Kubernetes already prevent the overlap? This is the deciding field.
+jq -r '{concurrency: ."cronjob.concurrency_policy",
+        failed_history: ."cronjob.failed_jobs_history_limit",
+        success_history: ."cronjob.success_jobs_history_limit",
+        job_ttl: ."job.delete_ttl_seconds_after_finished"}' \
+  raw/service/<jobId>/advanced-settings.json
 ```
 
-**Fails when:** `max_duration_seconds` is unset, or exceeds the interval between runs.
+**Read `cronjob.concurrency_policy` first.** It decides the verdict, and the duration
+bound only matters when the policy allows a second run:
+
+| `concurrency_policy` | Verdict |
+|---|---|
+| `Forbid` | **PASS.** Kubernetes skips the run while the previous one is active. The duration bound is still worth reporting, as Info, because a skipped run is a missed run. |
+| `Replace` | **PASS** for overlap. Flag separately if the job is not safely interruptible — `Replace` kills the running instance mid-work. |
+| `Allow` (the default) | Fall through to the duration test below. |
+
+**Fails when:** the policy is `Allow` **and** `max_duration_seconds` is unset or exceeds
+the interval between runs.
 
 **Why it matters:** two instances of the same job running concurrently is how duplicate
 charges, double-sent notifications, and corrupted aggregates happen. Where the job holds a
 lock, the second run blocks and the backlog compounds until something times out. `RL-20`
-checks that bounds exist at all; this one checks the bound against the schedule.
+checks that bounds exist at all; this one checks the bound against the schedule, and the
+concurrency policy against both.
+
+**Recommendation:** `Forbid` expresses the intent directly and does not depend on anyone
+keeping the duration bound in step with the schedule. Keep the duration bound as well, so
+a hung run is killed rather than blocking every run after it.
+
+**While you are in this payload:** `job.delete_ttl_seconds_after_finished` unset means
+completed job objects accumulate on the cluster indefinitely. It is a Low finding on its
+own — report it beside this one rather than raising it separately.
 
 ---
 

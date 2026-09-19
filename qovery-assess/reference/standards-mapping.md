@@ -147,6 +147,8 @@ configuration (registry, IAM, encryption, endpoint access).
 | `SC-16` admin minimisation | Policies — RBAC and service accounts |
 | `SC-11` service-account token automount | Policies — RBAC and service accounts |
 | `SC-12` per-service cloud identity | Managed services — identity and access management |
+| `SC-24` role-based cloud credentials | Managed services — identity and access management |
+| `SC-25` SSH keys on cluster nodes | Worker nodes — remote access |
 | `SC-10` read-only root filesystem | Policies — pod security |
 | `SC-14` encryption at rest | Managed services — encryption |
 | `SC-08` `VS-01` `VS-02` secret handling | Policies — secrets management |
@@ -189,7 +191,8 @@ one to *quote* in a report because its sections read as risks.
 | `SC-01` `SC-04` `SC-02` exposure | Network separation and hardening |
 | `SC-03` API endpoint restriction | Network separation and hardening |
 | `SC-10` `SC-11` workload hardening | Kubernetes pod security |
-| `SC-15` `SC-16` `SC-17` identity | Authentication and authorization |
+| `SC-15` `SC-16` `SC-17` `SC-26` identity | Authentication and authorization |
+| `SC-24` credential type, `SC-25` node SSH access | Authentication and authorization |
 | `SC-19` `SC-22` `DL-05` `OP-03` `OP-04` | Audit logging and threat detection |
 | `CL-02` Kubernetes version currency | Upgrading and application security practices |
 
@@ -206,7 +209,9 @@ for anyone with a federal or NIST-aligned obligation.
 | `SC-18` registry credentials, registry configuration | Registry countermeasures |
 | `SC-16` RBAC, `SC-03` API access, `SC-08` secrets | Orchestrator countermeasures |
 | `SC-10` `SC-11` runtime hardening | Container countermeasures |
-| `SC-13` instance metadata service | Host OS countermeasures |
+| `SC-13` instance metadata service, `SC-25` node SSH keys | Host OS countermeasures |
+| `DL-13` webhook integrity, `DL-14` deployed-commit provenance | Image countermeasures — provenance of what runs |
+| `OP-07` Terraform service scope | Orchestrator countermeasures — least privilege for automation |
 
 **Not observable here:** image vulnerability scanning results, base-image provenance and
 age, runtime behavioural monitoring, host OS configuration.

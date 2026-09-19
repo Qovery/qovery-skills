@@ -5,6 +5,15 @@
 # Issues GET requests ONLY. It never creates, updates, deletes, deploys, stops,
 # or restarts anything. It never fetches master credentials or a kubeconfig.
 #
+# Two payloads carry live credentials and are handled specially rather than skipped:
+#   * /organization/{orgId}/inviteMember returns an `invitation_link`, which anyone can
+#     use to accept the invitation. It is stripped IN THE STREAM (api_get_stripped).
+#   * /organization/{orgId}/credentials returns `access_key_id`. It is kept — the check
+#     needs the credential TYPE — but SC-24 forbids copying the key ID into the report.
+#
+# /environment/{envId}/deploymentBuildUsageReport is deliberately NOT collected: it is a
+# POST, and it publishes a publicly accessible Grafana snapshot. Never add it.
+#
 # Usage:
 #   ./collect-snapshot.sh <organizationId> [outputDir]
 #
@@ -168,6 +177,41 @@ api_get_redacted() {
   rm -f "$hdr"
 }
 
+# api_get_stripped <path> <dest> <jq-filter>
+# Like api_get, but the body passes through a jq filter IN THE STREAM. Used where the
+# payload carries a field that must never reach disk — an invitation link is a usable
+# credential, so it is removed before the file is written, not after.
+api_get_stripped() {
+  local path="$1" dest="$2" filter="$3" code hdr
+  hdr="$(mktemp)"
+  refresh_auth
+  mkdir -p "$(dirname "$dest")"
+  curl -sS -D "$hdr" -X GET \
+    --connect-timeout 10 --max-time 60 --retry 2 --retry-connrefused \
+    -H "$AUTH_HEADER" \
+    -H "User-Agent: $UA" "${API}${path}" 2>>"$LOG" \
+    | jq "$filter" > "$dest" 2>/dev/null
+  code=$(awk 'toupper($1) ~ /^HTTP/ {c=$2} END {print c+0}' "$hdr" 2>/dev/null)
+  [ -z "$code" ] && code=0
+  if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
+    printf 'OK    %s %s\n' "$code" "$path" >> "$LOG"
+  else
+    printf '{"_unreadable":true,"_status":%s,"_path":"%s"}\n' "$code" "$path" > "$dest"
+    printf 'MISS  %s %s\n' "$code" "$path" >> "$LOG"
+  fi
+  rm -f "$hdr"
+}
+
+# has_git_source <serviceId> <services.json>
+# The webhook and commit endpoints return 400 for a service with no git source (a
+# container from a registry, a database). A git source always carries both `branch`
+# and `url`, wherever it sits in the payload.
+has_git_source() {
+  jq -e --arg id "$1" '.results[]? | select(.id == $id)
+      | [.. | objects | select(has("branch") and has("url"))] | length > 0' \
+    "$2" >/dev/null 2>&1
+}
+
 say() { printf '  %s\n' "$1"; }
 
 echo "Collecting read-only snapshot for organization $ORG_ID"
@@ -183,6 +227,10 @@ api_get "/organization/${ORG_ID}/availableRole"            "$RAW/available-roles
 api_get "/organization/${ORG_ID}/apiToken"                 "$RAW/api-tokens.json"
 api_get "/organization/${ORG_ID}/policyApiToken"           "$RAW/policy-tokens.json"
 api_get "/organization/${ORG_ID}/enterpriseconnection"     "$RAW/sso.json"
+api_get "/organization/${ORG_ID}/credentials"              "$RAW/cloud-credentials.json"
+# invitation_link is a usable credential: removed in the stream, never written.
+api_get_stripped "/organization/${ORG_ID}/inviteMember"    "$RAW/pending-invitations.json" \
+  'if type == "object" then (.results? |= (map(del(.invitation_link)))) else . end'
 
 say "integrations, alerting & metadata"
 api_get "/organization/${ORG_ID}/webhook"                  "$RAW/webhooks.json"
@@ -206,6 +254,7 @@ api_get "/defaultClusterAdvancedSettings"                  "$RAW/default/cluster
 api_get "/defaultContainerAdvancedSettings"                "$RAW/default/container-advanced-settings.json"
 api_get "/defaultJobAdvancedSettings"                      "$RAW/default/job-advanced-settings.json"
 api_get "/defaultHelmAdvancedSettings"                     "$RAW/default/helm-advanced-settings.json"
+api_get "/defaultTerraformAdvancedSettings"                "$RAW/default/terraform-advanced-settings.json"
 
 say "audit events (change origin, shell access, role changes)"
 # Paged: the API returns newest first. Five pages of 100 is enough to characterise
@@ -290,6 +339,10 @@ for eid in $ENV_IDS; do
         api_get "/application/${sid}/advancedSettings"       "$S/advanced-settings.json"
         api_get "/application/${sid}/deploymentRestriction"  "$S/deployment-restriction.json"
         api_get "/application/${sid}/customDomain"           "$S/custom-domains.json"
+        if has_git_source "$sid" "$E/services.json"; then
+          api_get "/service/${sid}/gitWebhookStatus"         "$S/git-webhook-status.json"
+          api_get "/application/${sid}/commit"               "$S/commits.json"
+        fi
         [ "$WITH_RUNTIME_LOGS" = "1" ] && \
           api_get_redacted "/application/${sid}/log"         "$S/runtime-logs.json"
         ;;
@@ -302,15 +355,27 @@ for eid in $ENV_IDS; do
       JOB)
         api_get "/job/${sid}/advancedSettings"               "$S/advanced-settings.json"
         api_get "/job/${sid}/deploymentRestriction"          "$S/deployment-restriction.json"
+        if has_git_source "$sid" "$E/services.json"; then
+          api_get "/service/${sid}/gitWebhookStatus"         "$S/git-webhook-status.json"
+          api_get "/job/${sid}/commit"                       "$S/commits.json"
+        fi
         ;;
       HELM)
         api_get "/helm/${sid}/advancedSettings"              "$S/advanced-settings.json"
         api_get "/helm/${sid}/deploymentRestriction"         "$S/deployment-restriction.json"
         api_get "/helm/${sid}/customDomain"                  "$S/custom-domains.json"
+        if has_git_source "$sid" "$E/services.json"; then
+          api_get "/service/${sid}/gitWebhookStatus"         "$S/git-webhook-status.json"
+          api_get "/helm/${sid}/commit?of=chart"             "$S/commits.json"
+        fi
         ;;
       TERRAFORM)
         api_get "/terraform/${sid}/advancedSettings"         "$S/advanced-settings.json"
         api_get "/terraform/${sid}/deploymentRestriction"    "$S/deployment-restriction.json"
+        if has_git_source "$sid" "$E/services.json"; then
+          api_get "/service/${sid}/gitWebhookStatus"         "$S/git-webhook-status.json"
+          api_get "/terraform/${sid}/commit"                 "$S/commits.json"
+        fi
         ;;
       DATABASE)
         # NEVER /database/{id}/masterCredentials.

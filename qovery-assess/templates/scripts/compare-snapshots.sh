@@ -49,10 +49,15 @@ tsv_diff "alert receivers"        "alert-receivers.json"      '.results[]? | [.n
 tsv_diff "alert rules"            "alert-rules.json"          '.results[]? | [.name, (.severity//"-"), (.enabled|tostring)] | @tsv'
 tsv_diff "webhooks"               "webhooks.json"             '.results[]? | [.kind, (.enabled|tostring), ((.events//[])|join(","))] | @tsv'
 tsv_diff "container registries"   "container-registries.json" '.results[]? | [.kind, .name] | @tsv'
+# SC-24: the credential TYPE and the clusters it carries. Never the access_key_id.
+tsv_diff "cloud credentials"      "cloud-credentials.json" \
+  '.results[]? | [.credential.name, .credential.object_type, ((.clusters//[])|map(.name)|sort|join(","))] | @tsv'
+# SC-26: an invitation appearing or disappearing is an access change.
+tsv_diff "pending invitations"    "pending-invitations.json"  '.results[]? | [.email, .role, .invitation_status] | @tsv'
 
 hr "Clusters"
 tsv_diff "cluster inventory"      "clusters.json" \
-  '.results[]? | [.name, .cloud_provider, .region, .version, .instance_type, "nodes:\(.min_running_nodes)-\(.max_running_nodes)", "prod:\(.production)", "obs:\(.metrics_parameters.enabled // false)", "keda:\(.keda.enabled // false)"] | @tsv'
+  '.results[]? | [.name, .cloud_provider, .region, .version, .instance_type, "nodes:\(.min_running_nodes)-\(.max_running_nodes)", "prod:\(.production)", "obs:\(.metrics_parameters.enabled // false)", "keda:\(.keda.enabled // false)", "ssh_keys:\((.ssh_keys//[])|length)"] | @tsv'
 tsv_diff "cluster status"         "cluster-status.json" \
   '.results[]? | [.cluster_id, .status, (.is_deployed|tostring), (.next_k8s_available_version // "current")] | @tsv'
 

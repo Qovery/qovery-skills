@@ -9,7 +9,9 @@ score here for a clean bill of health.
 Data sources: `env/<envId>/services.json`, `service/<id>/service.json`,
 `service/<id>/advanced-settings.json`, `cluster/<id>/advanced-settings.json`,
 `members.json`, `custom-roles.json`, `api-tokens.json`, `policy-tokens.json`,
-`sso.json`, `env/<envId>/variables.json`, `env/<envId>/secret-keys.json`.
+`sso.json`, `cloud-credentials.json`, `pending-invitations.json`, `clusters.json`,
+`service/<id>/custom-domains.json`, `env/<envId>/variables.json`,
+`env/<envId>/secret-keys.json`.
 
 > **Never print a secret value.** Secret *keys* and scopes are fine and necessary.
 > Values, tokens, passwords, and connection strings never enter the report, the logs,
@@ -363,17 +365,32 @@ the identity provider the single place access is granted and revoked.
 **Severity:** High
 
 ```bash
-jq -r '.results[] | [.name, .role_name, .last_activity_at // "unknown"] | @tsv' raw/members.json \
-  | sort -k2
+# Role distribution, and the share of the organization holding full control.
+jq -r '.results[] | .role_name' raw/members.json | sort | uniq -c | sort -rn
+jq '{members: (.results | length),
+     privileged: ([.results[] | select(.role_name == "Owner" or .role_name == "Admin")] | length)}' \
+  raw/members.json
+
+# Are custom roles used at all, and are they actually narrower than Admin?
 jq -r '.results[] | [.name, (.project_permissions | length), (.cluster_permissions | length)] | @tsv' \
   raw/custom-roles.json
 ```
 
-**Assess:** how many members hold Owner or Admin; whether custom roles are used at all;
-whether any member has been inactive for a long period.
+**Fails when:** more than **half** the members hold `Owner` or `Admin`, or more than
+**five** accounts do, whichever comes first — and no custom role is defined. An
+organization of three where everyone is an Admin is a deliberate choice and passes; an
+organization of thirty where twenty are is not.
+
+Dormancy is a different question with a different remedy, so it is scored separately in
+`SC-26`. Report the two together: "19 of 30 accounts are Admin, 6 of them inactive for
+over 90 days" is one sentence that carries both findings.
 
 **Why it matters:** blanket Admin is the default because it is easy. It also means
 every account is a full-organization account, including the one that gets phished.
+
+**Recommendation:** define a custom role for the common case (deploy and read in named
+projects) and leave Admin to the people who administer the organization rather than use
+it.
 
 ---
 
@@ -410,6 +427,125 @@ availability risk when they leave and a security risk while they stay.
 
 ---
 
+### SC-24 — Cloud credentials are role-based, not static keys
+
+**Severity:** Critical (production), High (elsewhere)
+
+```bash
+# One row per credential set: its type, and every cluster it carries.
+jq -r '.results[]? | .credential as $c
+  | [$c.name, $c.object_type, ((.clusters // []) | map(.name) | join(","))] | @tsv' \
+  raw/cloud-credentials.json | column -t -s$'\t'
+
+# Which of those clusters are production, to read the table above against.
+jq -r '.results[] | select(.production == true) | .name' raw/clusters.json
+```
+
+**Fails when:** a credential set of a static type carries a **production** cluster, or a
+single credential set carries both a production and a non-production cluster.
+
+| `object_type` | What it is |
+|---|---|
+| `AWS`, `GCP`, `AZURE`, `SCW` | Static key pair. A permanent secret held by Qovery. |
+| `AWS_ROLE`, `GCP_WORKLOAD_IDENTITY_FEDERATION` | Assumed role / federated identity. Short-lived, revocable at the provider. |
+| `EKS_ANYWHERE_VSPHERE`, `OTHER` | Self-managed. Assess against the customer's own control. |
+
+**Credential sets carrying zero clusters are their own small finding.** On the
+organization this check was built against, 9 of 13 credential sets were attached to
+nothing. An unused credential is an unrotated credential nobody is watching — report the
+count as Low, and keep it separate from the production finding so it does not dilute it.
+
+**Report the credential `name` and `object_type` only.** The payload also carries
+`access_key_id`. It is not a secret, but it identifies the IAM principal precisely, and it
+has no place in a document that leaves the room. Never copy it into the report.
+
+**Why it matters:** a static key pair does not expire. Rotating it means editing the
+cluster's credentials and re-running the infrastructure, so in practice nobody does, and
+the pair stays valid for as long as the organization exists. An assumed role expires by
+construction and can be cut off at the provider without touching Qovery. The second part
+of the check matters just as much: when one credential set carries prod and staging, a
+compromise or a revocation in either direction takes both down.
+
+**Recommendation:** move production clusters to `AWS_ROLE` (or the provider's federated
+equivalent) and give each tier its own credential set, scoped to the accounts it actually
+manages.
+
+---
+
+### SC-25 — No SSH keys are registered on production clusters
+
+**Severity:** High
+
+```bash
+jq -r '.results[] | [.name, (.production|tostring), ((.ssh_keys // []) | length)] | @tsv' \
+  raw/clusters.json | column -t
+```
+
+**Fails when:** `ssh_keys` is non-empty on a cluster with `production: true`.
+
+**Why it matters:** a registered public key is standing node access. Whoever holds the
+matching private key can reach the instance directly, outside Qovery's RBAC and outside
+its event stream — so `OP-03`, which counts shell and port-forward events, will report
+"no interactive production access" while a second, unmetered door stands open. The key
+also outlives the person: it is attached to the cluster, not to an account, so offboarding
+and SSO revocation (`SC-15`) do not touch it.
+
+**An empty list is the norm.** Across the clusters this check was built against, every
+one returned `ssh_keys: []`. That is what makes a non-empty list worth chasing rather than
+a box to tick: someone added it deliberately, for a reason that is usually no longer
+current.
+
+**Never print the key material.** These are public keys, but a public key still names a
+person and a machine. Report the count, and the key comment only if the customer needs to
+identify which one to remove.
+
+**Recommendation:** remove the keys. `qovery shell` and `qovery port-forward` are
+RBAC-scoped and recorded. Where genuine break-glass node access is required, route it
+through the cloud provider's session manager so the session is authenticated and logged
+rather than through a key baked into the cluster.
+
+---
+
+### SC-26 — Dormant accounts and stale invitations are cleared
+
+**Severity:** High
+
+```bash
+# Members with no activity in 90 days. ISO-8601 date prefixes compare correctly as strings.
+CUT90=$(date -u -v-90d +%Y-%m-%d 2>/dev/null || date -u -d '90 days ago' +%Y-%m-%d)
+jq -r --arg cut "$CUT90" '.results[]
+  | select(((.last_activity_at // "0000-00-00")[0:10]) < $cut)
+  | [.name, .role_name, ((.last_activity_at // "never")[0:10])] | @tsv' \
+  raw/members.json | column -t
+
+# Invitations that were never accepted. EXPIRED and PENDING are the only two states.
+CUT14=$(date -u -v-14d +%Y-%m-%d 2>/dev/null || date -u -d '14 days ago' +%Y-%m-%d)
+jq -r --arg cut "$CUT14" '.results[]?
+  | [.email, .role, (.role_name // "-"), .invitation_status, (.created_at[0:10]),
+     (if (.created_at[0:10]) < $cut then "STALE" else "recent" end)] | @tsv' \
+  raw/pending-invitations.json | column -t
+```
+
+**Fails when:** any account holding `Owner` or `Admin` has been inactive for over 90 days,
+or any invitation is still unaccepted after 14 days.
+
+**Why it matters:** the dormant Admin is the account nobody would notice being used. It
+is the first thing an access review asks for and the last thing anyone remembers to do.
+A stale invitation is the same problem one step earlier: an outstanding grant to an
+address that may no longer belong to the person it was sent to, and an `EXPIRED` one still
+records intent to grant access that was never followed up.
+
+**Handle the invitation payload carefully.** `GET /organization/{orgId}/inviteMember`
+returns an `invitation_link`, which is a usable credential: anyone holding it can accept
+the invitation. The collector strips that field in the stream, before anything is written.
+If you re-fetch the endpoint by hand, strip it the same way and never paste it anywhere.
+
+**Recommendation:** revoke what nobody has used. Where SSO is in place (`SC-15`), the
+identity provider should be the thing that grants and removes access, and a Qovery account
+that outlives its SSO identity is exactly the gap SSO was bought to close.
+
+---
+
 ## Traceability
 
 ### SC-19 — Audit and network logs are retained
@@ -437,6 +573,9 @@ jq -r '.results[] | [.name, "object_storage_logging=" + (.advanced_settings["obj
 
 Report it beside the VPC flow-log gap rather than as a separate finding — they answer the
 same question, "can we reconstruct who accessed what", at two different layers.
+
+---
+
 ### SC-20 — Custom domains present valid certificates
 
 **Severity:** Medium
@@ -447,6 +586,48 @@ jq -r '.results[] | [.domain, .generate_certificate, .status] | @tsv' raw/servic
 
 **Fails when:** a domain's certificate status is not valid, or a production domain
 relies on a certificate nobody is renewing.
+
+---
+
+### SC-27 — No dangling custom domain
+
+**Severity:** High
+
+```bash
+# Every custom domain in the organization, with the service it is attached to.
+for f in raw/service/*/custom-domains.json; do
+  sid=$(basename "$(dirname "$f")")
+  jq -r --arg sid "$sid" '.results[]? |
+    [$sid, .domain, .status, (.generate_certificate|tostring), (.use_cdn|tostring),
+     (.validation_domain // "-")] | @tsv' "$f" 2>/dev/null
+done | column -t
+
+# Does the service behind each domain still expose a public port?
+jq -r '.results[]? | select(.service_type == "APPLICATION" or .service_type == "CONTAINER"
+                            or .service_type == "HELM")
+  | [.id, .name, ([.ports[]? | select(.publicly_accessible == true)] | length)] | @tsv' \
+  raw/env/<envId>/services.json | column -t
+```
+
+**Fails when:** a domain is still configured on a service that no longer exposes a public
+port, or its status is stuck in `VALIDATION_PENDING` — both mean a DNS record still points
+somewhere that no longer answers for it.
+
+**Why it matters:** this is subdomain takeover. The customer's DNS keeps a `CNAME` to a
+Qovery endpoint that has stopped serving the name. Anyone who can make that endpoint answer
+for the hostname inherits a domain the customer's users, and the customer's cookies, still
+trust. It is a different failure from `SC-20`: that check asks whether the certificate is
+valid, this one asks whether the name should still be pointed here at all.
+
+**Live status, when the snapshot may be stale:**
+`GET /{applicationId|containerId|helmId}/customDomain/{customDomainId}/status` re-reads the
+same object from the API. Use it to confirm before reporting, since a domain mid-deployment
+is legitimately pending for a few minutes.
+
+**Recommendation:** for each finding, either remove the custom domain in Qovery or remove
+the DNS record at the registrar. Leaving one of the two in place is what creates the
+dangling half. Where `use_cdn: true`, check the CDN's origin configuration too — the
+record that matters is the one in front.
 
 ---
 

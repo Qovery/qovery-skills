@@ -8,7 +8,8 @@ Cost efficiency moved to its own phase file (`phase6d-cost-efficiency.md`); anti
 to `phase4b-bad-practices.md`.
 
 Data sources: `env/<envId>/deployment-stages.json`, `env/<envId>/deployment-history.json`,
-`service/<id>/deployment-restriction.json`, `webhooks.json`, `alert-receivers.json`,
+`service/<id>/deployment-restriction.json`, `service/<id>/git-webhook-status.json`,
+`service/<id>/commits.json`, `webhooks.json`, `alert-receivers.json`,
 `alert-rules.json`, `current-cost.json`, `environments.json`, `clusters.json`.
 
 ---
@@ -261,6 +262,120 @@ pinned chart version or commit.
 
 ---
 
+### DL-13 — Git webhooks are healthy
+
+**Severity:** High (where `auto_deploy` is on), Medium otherwise
+
+```bash
+# Webhook state per git-sourced service.
+for f in raw/service/*/git-webhook-status.json; do
+  sid=$(basename "$(dirname "$f")")
+  jq -r --arg sid "$sid" '[$sid, (.status // "UNREADABLE"), (.provider // "-"),
+    ((.missing_events // []) | join(","))] | @tsv' "$f" 2>/dev/null
+done | column -t
+
+# Does Qovery still have access to the repository at all?
+# The git source sits at a different path per service type (.git_repository on an
+# application, .source.docker.git_repository on a job, .terraform_files_source.git
+# on a Terraform service), so match on shape rather than on path.
+jq -r '.results[]? | . as $s
+  | ([.. | objects | select(has("branch") and has("deployed_commit_id"))][0] // null) as $g
+  | select($g != null)
+  | [$s.name, $s.service_type, ($s.auto_deploy|tostring), $g.branch,
+     ($g.has_access|tostring), ($g.git_token_name // "account")] | @tsv' \
+  raw/env/<envId>/services.json | column -t
+```
+
+**Fails when:** a service with `auto_deploy: true` reports anything other than `ACTIVE`,
+or its git source reports `has_access: false`.
+
+| Status | What it means |
+|---|---|
+| `ACTIVE` | Webhook present with every required event. |
+| `NOT_CONFIGURED` | No Qovery webhook on the repository. Pushes reach nothing. |
+| `MISCONFIGURED` | Webhook exists but `missing_events` are not subscribed. Some pushes are ignored, others are not. |
+| `UNABLE_TO_VERIFY` | Qovery could not query the provider — the git token lacks the scope to read webhooks, the integration was reinstalled, or the provider rate-limited. Report `UNKNOWN`, not `PASS`. |
+
+**Expect a lot of `UNABLE_TO_VERIFY`.** On a real organization of 199 services, a
+60-service sample returned 25 `ACTIVE` and 35 `UNABLE_TO_VERIFY`. Report the distribution
+as coverage — "webhook health confirmed for 25 of 60 services sampled" — and score only
+the services that answered. Do not present an unverifiable webhook as a failure; an
+`UNABLE_TO_VERIFY` cluster concentrated on one git token is itself worth mentioning under
+`SC-18`, because the token that cannot read a webhook is often the token that can no longer
+install one.
+
+**Why it matters:** this is the quietest failure in the whole delivery chain. `DL-02` reads
+`auto_deploy: true` and the team believes merges ship. If the webhook was removed during a
+repository migration, or the token that installed it was revoked (`SC-18`), nothing
+happens on push and nothing reports an error. The gap is usually found weeks later, when
+someone notices production is running code from a sprint ago — which is exactly what
+`DL-14` measures.
+
+`MISCONFIGURED` is worse than `NOT_CONFIGURED`, because it works often enough that nobody
+distrusts it.
+
+**Recommendation:** reconnect the service's git source, which reinstalls the webhook with
+the full event set. Where `has_access` is false, the git token behind the service has been
+revoked or has expired — fix it centrally (`SC-18`) rather than per service.
+
+---
+
+### DL-14 — Running code matches the branch
+
+**Severity:** Medium (High in production)
+
+```bash
+# What is deployed, per service — same shape match as DL-13.
+jq -r '.results[]? | . as $s
+  | ([.. | objects | select(has("branch") and has("deployed_commit_id"))][0] // null) as $g
+  | select($g != null)
+  | [$s.name, $s.service_type, $g.branch,
+     ($g.deployed_commit_id // "none")[0:8],
+     ($g.deployed_commit_date // "-")[0:10],
+     ($g.deployed_commit_tag // "-")] | @tsv' \
+  raw/env/<prodEnvId>/services.json | column -t
+
+# What the branch head actually is (the commit list is newest first).
+# A 404 here is EVIDENCE, not a gap in the data: the API answers
+# "Cannot get last commit on <owner>/<repo> <branch>. Verify that the repository or
+# branch still exists" — the service points at a repository or branch that is gone.
+jq -r '.results[0] | [.git_commit_id[0:8], .created_at[0:10], .author_name] | @tsv' \
+  raw/service/<id>/commits.json
+
+# How far behind: position of the deployed commit in the last 100.
+jq -r --arg dep "<deployed_commit_id>" \
+  '[.results[]? | .git_commit_id] | index($dep) as $i
+   | if $i == null then "deployed commit not in the last 100 on this branch"
+     else "\($i) commits behind head" end' raw/service/<id>/commits.json
+```
+
+**Fails when:** a production service is more than ~20 commits or ~30 days behind its
+configured branch, the deployed commit does not appear on that branch at all, or the
+commit endpoint returns **404** — the repository or branch the service deploys from no
+longer exists.
+
+That last case is more common than it sounds: on the organization this check was built
+against, 18 of 40 sampled applications returned 404. Most were long-dead demo services,
+which is the point — a service still configured against a repository nobody can reach
+cannot be deployed, and nothing in the Console says so until someone tries.
+
+**Why it matters:** the branch is what the team reads when they ask "what is in
+production". When the two have drifted, every subsequent judgement is made against the
+wrong code: the incident review reads a fix that was never deployed, and the next deploy
+ships a quarter of accumulated change instead of one commit. A deployed commit that is
+**not on the branch** is the sharper version — the history was rewritten, or the service
+was deployed from somewhere else, and nothing in Qovery records which.
+
+Distinguish the two causes before writing the finding. Drift with a broken webhook is
+`DL-13` and the remedy is technical. Drift with a healthy webhook and `auto_deploy: false`
+is a process finding: the gate exists, nobody walks through it.
+
+**Recommendation:** deploy, then decide whether the gap was intentional. If production is
+deliberately pinned behind the branch, say so in the environment description so the next
+reader does not have to guess.
+
+---
+
 ## Hand-off map
 
 Every finding in this assessment should point at what comes next. Use this mapping in
@@ -271,6 +386,7 @@ the report's "Where Qovery helps" section:
 | `RL-14`, `CE-02`, `CE-03` — sizing and elasticity | `qovery-optimize` (KRR-based, uses real consumption) |
 | `RL-22`, `DL-06` — slow or failing pipeline | `qovery-speedup`, then `qovery-troubleshoot` for a specific failure |
 | `DL-07` — no infrastructure-as-code | `qovery-terraform` |
+| `DL-13`, `DL-14` — broken webhook or stale deployed commit | `qovery-troubleshoot` for the failing hook, then redeploy |
 | `SC-17` — broad API tokens | `qovery-policy-token` |
 | `TP-03`, `TP-09` — no isolated developer environments | `qovery-preview` |
 | `CL-08` — no observability | Enable Qovery observability, then re-run this assessment |

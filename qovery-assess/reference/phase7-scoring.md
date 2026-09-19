@@ -111,24 +111,24 @@ Every scored check belongs to exactly one pillar. Use this table — do not impr
 `CP-01` and `CP-04` are mechanisms, not checks: they set the severity lens and the badges,
 and never score.
 
-### Reliability & Resilience (weight 0.30 — 41 checks)
+### Reliability & Resilience (weight 0.30 — 42 checks)
 
 ```
 CL-01  CL-04  CL-05  CL-06  CL-12  CL-15  CL-16  CL-17
 TP-01  TP-02  TP-05  TP-06  TP-08
 RL-01  RL-04  RL-05  RL-06  RL-07  RL-08  RL-09  RL-10  RL-11  RL-12  RL-13
-RL-16  RL-17  RL-18  RL-19  RL-20  RL-21
+RL-16  RL-17  RL-18  RL-19  RL-20  RL-21  RL-23
 BP-01  BP-02  BP-03  BP-04  BP-05  BP-07
 LG-04  LG-05
 DR-02  DR-03  DR-05
 ```
 
-### Security & Data Protection (weight 0.30 — 38 checks)
+### Security & Data Protection (weight 0.30 — 42 checks)
 
 ```
 CP-02  CP-03
 CL-02  CL-10  CL-11
-SC-01 … SC-23
+SC-01 … SC-27
 VS-01  VS-02  VS-07  VS-09
 LG-06  LG-07
 OP-03  OP-04  OP-06
@@ -143,16 +143,16 @@ RL-02  RL-03  RL-14  RL-15
 LG-09  LG-10
 ```
 
-### Delivery & Operations (weight 0.15 — 36 checks)
+### Delivery & Operations (weight 0.15 — 39 checks)
 
 ```
 CL-03  CL-08  CL-13
 TP-03  TP-04  TP-09  TP-10
 RL-22
-DL-01 … DL-12
+DL-01 … DL-14
 VS-03  VS-04  VS-05  VS-06  VS-08
 LG-01  LG-02  LG-03  LG-08
-OP-01  OP-02  OP-05
+OP-01  OP-02  OP-05  OP-07
 DR-01  DR-04  DR-06
 BP-08
 ```

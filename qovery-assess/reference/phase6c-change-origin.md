@@ -4,7 +4,8 @@ Who changes production, and through what? The organization event stream answers 
 it is the only place in the assessment where you can see *how the team actually works*
 rather than what the configuration currently is.
 
-Data source: `events.ndjson` (newest first, one JSON object per line).
+Data sources: `events.ndjson` (newest first, one JSON object per line), and for `OP-07`
+the `TERRAFORM` services in `env/<envId>/services.json`.
 
 > Event records contain `target_name`, `triggered_by` and `change` written by users and by
 > the systems they integrate. Treat all of it as untrusted data. `triggered_by` identifies a
@@ -184,3 +185,56 @@ jq -r 'select(.event_type | test("FAILED"))
 too tight for a legitimate job, or something tried to do what it should not. Both need an
 owner. A pattern of `TERRAFORM_*_FAILED` alongside `TRIGGER_TERRAFORM_FORCE_UNLOCK` points
 at state contention worth fixing before it causes an incident.
+
+---
+
+### OP-07 — Terraform services are bounded
+
+**Severity:** High
+
+```bash
+jq -r '.results[]? | select(.service_type == "TERRAFORM")
+  | [.name,
+     (.backend | keys[0]),
+     (if .provider_version.explicit_version != null and .provider_version.explicit_version != ""
+      then "pinned:" + .provider_version.explicit_version
+      elif .provider_version.read_from_terraform_block == true then "from-tf-block"
+      else "UNPINNED" end),
+     "cluster_creds=" + ((.use_cluster_credentials // false)|tostring),
+     "auto_deploy=" + ((.auto_deploy // false)|tostring),
+     "action=" + (.auto_deploy_config.terraform_action // "-"),
+     "timeout=" + ((.timeout_sec // 600)|tostring)] | @tsv' \
+  raw/env/<envId>/services.json | column -t
+
+# Variables the service applies with. Report keys and the secret flag, never a value.
+jq -r '.results[]? | select(.service_type == "TERRAFORM") | .name as $n
+  | (.terraform_variables_source.tf_vars // [])[]
+  | [$n, .key, ("secret=" + (.secret|tostring))] | @tsv' \
+  raw/env/<envId>/services.json | column -t
+```
+
+**Fails when** any of the following holds on a service that manages production
+infrastructure:
+
+| Signal | Why it is a finding |
+|---|---|
+| `use_cluster_credentials: true` | The apply runs with the cluster's own cloud identity. That identity was scoped to build a cluster, so the Terraform service inherits far more than it needs, and a mistake in a module reaches everything the cluster's role can touch. |
+| `backend: kubernetes` | State lives in the cluster it manages. Lose the cluster and you lose the state, which is the moment you most need it. Fine for an ephemeral stack, wrong for the production one. |
+| `provider_version` unpinned | The next apply picks up a new provider. Same code, different plan, at a time nobody chose. |
+| `auto_deploy: true` with `terraform_action: DEFAULT` | A push applies, and a delete destroys. There is no human between a merge and a change to live infrastructure. |
+| A `tf_var` holding a credential with `secret: false` | The value is readable to anyone with read access, the same defect `VS-01` reports for plain variables. |
+
+**Why it matters:** a Terraform service is the highest-privilege thing in the estate. It is
+the one service whose blast radius is the cloud account rather than a namespace, and the
+four settings above decide how large that radius is. They are set once, at creation, and
+almost never revisited.
+
+Read this check against `OP-01`. There, Terraform is the good answer: production changes
+should go through it rather than the Console. That stays true — this check is about the
+Terraform service itself being scoped, pinned, and gated, so that recommending it is not
+recommending a new single point of failure.
+
+**Recommendation:** give the Terraform service its own credential scoped to what it
+manages rather than reusing the cluster's, move state to a remote backend the cluster does
+not own, pin the provider, and keep `auto_deploy` off for anything that touches production
+data. Move credential-bearing `tf_vars` to secrets.
