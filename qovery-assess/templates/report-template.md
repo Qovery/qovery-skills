@@ -27,7 +27,8 @@ single most important thing to act on.}}
 {{if_capped: The overall level is capped at Level 2 because {{count}} Critical
 finding(s) remain unresolved — see {{finding_ids}}.}}
 
-**Coverage:** {{total_checks}} checks defined, {{evaluated}} evaluated,
+**Coverage:** {{total_checks}} checks defined, {{evaluated}} evaluated
+({{passed}} pass, {{partial}} partial, {{failed}} fail), {{observations}} observations,
 {{not_applicable}} not applicable, {{unknown}} could not be determined.
 
 ### Top risks
@@ -160,7 +161,49 @@ tracking. The full machine-readable list, including passing checks, is in
 
 ---
 
-## 5. Remediation roadmap
+## 5. Architecture
+
+{{One figure showing how this environment actually fits together — the path the product's
+work takes, not a box per service. Hand-authored inline SVG: `currentColor` for strokes and
+text, one literal colour reserved for the element carrying the top finding, a `viewBox`,
+`role="img"` and an `aria-label` repeating the caption's claim. Every arrow labelled.
+Include it for any environment with more than a handful of services; delete this section
+where a sentence does the job.}}
+
+**Figure 1 — {{environment_name}}: {{what the figure proves}}**
+
+{{caption. State what is read from configuration — service existence, public exposure,
+datastore wiring — and what is inferred. If the edges came from `ENVIRONMENT`- or
+`PROJECT`-scoped aliases, say that they prove something in the environment calls the target
+and not which caller, and present those arrows as questions for the team. Run
+`templates/scripts/service-graph.sh` first: it reports which kind of attribution the
+snapshot supports.}}
+
+---
+
+## 6. External dependencies & blast radius
+
+{{Delete this section for a single-environment setup with no external processors, where it
+would be an empty table. Method and the writing rules are in Phase 5c.}}
+
+### Third-party surface
+
+| Layer | Vendor | Where it is configured | On the data path? |
+|---|---|---|---|
+| {{layer}} | {{vendor}} | {{scope — environment or service}} | {{yes/no}} |
+
+### What a compromise of each environment would reach
+
+| Environment | Reaches | By what mechanism | Shared with |
+|---|---|---|---|
+| {{env}} | {{what}} | {{shared credential / shared cluster / network path}} | {{other envs}} |
+
+{{The one paragraph the rest of the report cannot give: how these findings combine. Name
+the single fix that breaks the chain.}}
+
+---
+
+## 7. Remediation roadmap
 
 Sequenced by risk reduced per unit of effort, not by severity alone.
 
@@ -182,7 +225,7 @@ Sequenced by risk reduced per unit of effort, not by severity alone.
 
 ---
 
-## 6. Where Qovery helps
+## 8. Where Qovery helps
 
 ### Already in the platform — configuration, not engineering
 
@@ -225,9 +268,9 @@ is where the Qovery team works as an extension of yours:
 
 ---
 
-## 7. Appendix
+## 9. Appendix
 
-### 7.1 Every control that was run
+### 9.1 Every control that was run
 
 **Include all {{total_checks}} checks, not only the ones that failed.** This is the section
 that shows the assessment was thorough rather than selective, and it is what an auditor or a
@@ -260,7 +303,7 @@ CL · Cluster foundation — 16 checks · 11 pass · 2 partial · 2 fail · 1 un
 customer can verify; a bare `PASS` is a claim. A `PASS` with no note is the row a reviewer
 will ask about first.
 
-### 7.2 Unknowns
+### 9.2 Unknowns
 
 Checks that could not be evaluated, and what is needed to close them.
 
@@ -268,7 +311,7 @@ Checks that could not be evaluated, and what is needed to close them.
 |---|---|---|
 | {{id}} | {{reason}} | {{what to provide or enable}} |
 
-### 7.3 Limitations
+### 9.3 Limitations
 
 - Configuration was read at a point in time ({{assessment_date}}); later changes are not reflected.
 - Checks depending on runtime behaviour (actual startup time, real resource consumption,
@@ -278,10 +321,20 @@ Checks that could not be evaluated, and what is needed to close them.
   outside Qovery's scope were not examined.
 - No change was made to the environment during this assessment.
 
-### 7.4 Scoring method
+### 9.4 Scoring method
 
 Each check resolves to PASS / FAIL / N/A / UNKNOWN. Checks evaluated across many
-services score partial credit (`passing ÷ applicable`). Contributions are weighted by
+services score partial credit (`passing ÷ applicable`), and appear as `PARTIAL` in the
+appendix above when some instances pass and some do not; `OBSERVATION` marks an
+Info-severity check, which carries weight 0 and never moves a score.
+
+**Exposure checks are the exception: they are all-or-nothing.** For `SC-01` (public
+database), `SC-03` (open Kubernetes API), `LG-06` (credentials in logs), `BP-04`, `BP-07`,
+`VS-01` and `VS-02`, a single failing instance scores the check at zero regardless of how
+many instances pass. Nineteen private databases do not reduce the risk of the twentieth
+being on the internet, and a 95% pass rate would say they did.
+
+Contributions are weighted by
 severity — Critical 10, High 6, Medium 3, Low 1, Info 0 — and aggregated per pillar:
 `100 × Σ(weight × fraction) ÷ Σ(weight)`. The overall score weights Reliability 30%,
 Security 30%, Performance 15%, Delivery 15%, Cost Efficiency 10%. N/A and UNKNOWN

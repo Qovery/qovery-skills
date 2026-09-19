@@ -48,7 +48,7 @@ for d in raw/env/*/; do
   jq -r --arg m "$M" '.results[]? | select(.variable_type=="VALUE")
     | select(.value != null)
     | select(
-        (.value|test("^(AKIA|ASIA)[0-9A-Z]{16}$"))                              # AWS key id
+        (.value|test("^(AKIA|ASIA)[0-9A-Z]{16}$"))                              # AWS key ID — see note
         or (.value|test("^eyJ[A-Za-z0-9_-]{8,}\\."))                            # JWT
         or (.value|test("-----BEGIN [A-Z ]*PRIVATE KEY-----"))                  # PEM
         or (.value|test("^(postgres|postgresql|mysql|mongodb|redis|amqp)s?://[^:@/]+:[^@]+@"))  # DSN with password
@@ -59,6 +59,15 @@ for d in raw/env/*/; do
     | [$m, .key, .scope, (.value|length|tostring) + "chars"] | @tsv' "$d/variables.json"
 done | column -t
 ```
+
+**An AWS access key ID is not a credential, and must not be reported as one.** `AKIA…` /
+`ASIA…` is the public identifier half of the pair; the secret access key is the material,
+and it is never in this list because it does not match any of these shapes. Report a key-ID
+hit as **Info**, phrased as what it is: "an AWS key ID is configured in a plain variable, so
+the matching secret access key is somewhere in this estate — confirm it is stored as a
+secret". Scoring it Critical contradicts `SC-08`'s own triage table two files away, and one
+false Critical costs more credibility than this check earns. Everything else in the list
+above is material and is Critical.
 
 **Why it matters:** variables are readable by anyone with read access to the environment
 and are shown in plain text in the Console. Secrets are write-only and masked. A live
@@ -99,12 +108,12 @@ for d in raw/env/*/; do
         ([ (if $blob|test("(AKIA|ASIA)[0-9A-Z]{16}")            then "aws-access-key-id" else empty end),
            (if $blob|test("-----BEGIN [A-Z ]*PRIVATE KEY")      then "private-key"       else empty end),
            (if $blob|test("eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.") then "jwt"  else empty end),
-           (if $blob|test("gh[pousr]_[A-Za-z0-9]{20,}|github_pat_") then "github-token"  else empty end),
+           (if $blob|test("gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}") then "github-token"  else empty end),
            (if $blob|test("xox[abprs]-[A-Za-z0-9-]{10,}")        then "slack-token"      else empty end),
            (if $blob|test("(postgres|mysql|mongodb|redis|amqp)://[^:@/]+:[^@]+@") then "dsn-with-password" else empty end),
            (if $blob|test("(?i)(password|passwd|secret|api_?key|token)\"?[[:space:]]*[:=][[:space:]]*\"?[^[:space:]\"]{8,}") then "inline-credential" else empty end)
          ] | if length==0 then "clean" else join(",") end) ] | @tsv' "$d/services.json"
-done | grep -v '\tclean$' | column -t -s$'\t'
+done | grep -v $'\tclean$' | column -t -s$'\t'
 ```
 
 **Fails when:** any row returns a class other than `clean`. Report the service name and the
@@ -120,20 +129,32 @@ Console — this document names the location, never the content.
 Compare values by **hash**, never by content:
 
 ```bash
+# The grouping key is a one-way hash. @base64 would work as a grouping key too, and it is
+# reversible — anyone with the intermediate stream could decode the credential back out.
+HASH=$(command -v sha256sum || command -v shasum)
 for d in raw/env/*/; do
   N=$(jq -r .name "$d/environment.json")
   jq -r --arg n "$N" '.results[]? | select(.variable_type=="VALUE") | select(.value != null)
     | select((.value|length) > 8)
-    | [$n, .key, .scope, (.service_name // "-"), (.value|@base64)] | @tsv' "$d/variables.json"
-done | awk -F'\t' '{h[$5]=h[$5]" "$2"@"$4; c[$5]++} END {for(k in c) if(c[k]>1) print c[k]" occurrences:"h[k]}' \
+    | [$n, .key, .scope, (.service_name // "-"), .value] | @tsv' "$d/variables.json"
+done | while IFS=$'\t' read -r env key scope svc value; do
+  h=$(printf '%s' "$value" | $HASH | cut -c1-12)
+  printf '%s\t%s\t%s\t%s\t%s\n' "$env" "$key" "$scope" "$svc" "$h"
+done | awk -F'\t' '{g[$5]=g[$5]" "$2"@"$4"("$1")"; c[$5]++}
+                   END {for(k in c) if(c[k]>1) print c[k]" occurrences:"g[k]}' \
   | sort -rn | head -20
 ```
 
-The base64 is a grouping key only — **do not print column 5**, and do not decode it.
+**Never print the hash column to the customer either** — it is stable across environments,
+so publishing it says "these two values are identical" about data the reader may not be
+entitled to correlate. It exists to group rows in your own terminal.
 
-This groups by key and service and **drops the environment**, so it finds duplication
-*within* a tier and misses the case that matters most — the same credential in production
-and in staging. That is `VS-09`, in **Phase 5c**; run both.
+Every environment feeds one grouping pass, so this reports duplication **within and across**
+environments; the environment name is carried in each occurrence so you can tell which you
+are looking at. Cross-environment duplication is the more serious of the two and gets its
+own treatment — blast radius, per-environment isolation, and the rotation argument — in
+`VS-09`, **Phase 5c**. Run both: this one tells you a value is repeated, `VS-09` tells you
+what a compromise of it would reach.
 
 **Why it matters:** a value defined in eleven places is rotated in nine of them. The other
 two break at 3am, and the failure looks like an application bug.

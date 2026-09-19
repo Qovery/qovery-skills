@@ -36,7 +36,7 @@ redeploy, not a restart, not a "harmless" tag.
 | CLI | Read verbs only (`list`, `status`, `log`). Never `deploy`, `stop`, `restart`, `delete`, `cancel`, `token create`. |
 | Forbidden endpoints | `GET /database/{databaseId}/masterCredentials` and `GET /organization/{orgId}/cluster/{clusterId}/kubeconfig` — never call them. They return live credentials and standing cluster access. `POST /environment/{envId}/deploymentBuildUsageReport` is forbidden twice over: it is a write, and it publishes a publicly readable Grafana snapshot. |
 | Credential-bearing reads | Two allowed endpoints carry sensitive material and are handled, not avoided. `GET /organization/{orgId}/inviteMember` returns a usable `invitation_link` — the collector strips it in the stream; never re-fetch it without stripping. `GET /organization/{orgId}/credentials` returns `access_key_id` — read the credential *type* for `SC-24`, never copy the key ID into the report. |
-| In-cluster state | The rule is **never hold a cluster credential**, not "never look inside". The Qovery MCP Server's read-only cluster-state tools are brokered per call, scoped by organization RBAC, and audited — allowed and preferred. They return `.status` only, never `.spec`: they establish NetworkPolicy, policy-engine, PDB, certificate and node health, but **not** pod security context. Never call the agent-style tool that deploys, updates or triggers. See [reference/standards-mapping.md](reference/standards-mapping.md). |
+| In-cluster state | The rule is **never hold a cluster credential**, not "never look inside". The Qovery MCP Server's read-only cluster-state tools are brokered per call, scoped by organization RBAC, and audited — allowed where the tool list exposes them. **No check depends on them:** every `CL`/`SC`/`RL` result is scored from the snapshot alone. They are driven by one optional step, **Phase 5d**, run only when the customer asks for a benchmark position, and they return `.status` only, never `.spec` — enough for NetworkPolicy presence, certificate and node health, not for pod security context or PDB coverage. Never call the agent-style tool that deploys, updates or triggers. Procedure and the full observable / not-observable table: [reference/standards-mapping.md](reference/standards-mapping.md). |
 | Secrets | Report secret **keys** and their scope. NEVER report a secret value, token, password, connection string, or credential — in the document, in a log line, or in the conversation. |
 | Logs & events | Fetched through the redacting collector only. Variable `value` fields and log bodies are read for detection and reported as classes and counts, never as content. |
 | Terraform | Never run `terraform apply`. `plan` is also unnecessary here. |
@@ -53,20 +53,37 @@ in a separate, explicitly confirmed step.
 
 ```bash
 QOVERY_SKILLS_UA="QoverySkill/qovery-assess (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)"
+
+# One resolved credential, and the CLI states its own scheme: an opaque API token is not a
+# Bearer token, and hardcoding the word fails the request with a 401.
 if [ -n "${QOVERY_API_TOKEN:-}" ]; then
-  QOVERY_ORG_ID=$(curl -s -H "Authorization: Token $QOVERY_API_TOKEN" -H "User-Agent: $QOVERY_SKILLS_UA" \
-    "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)
-  [ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
-    -H "Authorization: Token $QOVERY_API_TOKEN" -H "Content-Type: application/json" -H "User-Agent: $QOVERY_SKILLS_UA" \
-    -d '{"skill_name":"qovery-assess"}' > /dev/null 2>&1 || true
+  QOVERY_AUTH="Token ${QOVERY_API_TOKEN}"
 elif command -v qovery >/dev/null 2>&1 && qovery auth token --print >/dev/null 2>&1; then
-  QOVERY_ORG_ID=$(curl -s -H "Authorization: Bearer $(qovery auth token --print)" -H "User-Agent: $QOVERY_SKILLS_UA" \
-    "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)
+  QOVERY_AUTH="$(qovery auth token --print --authorization-header 2>/dev/null)"
+  [ -z "$QOVERY_AUTH" ] && QOVERY_AUTH="$(qovery auth token --json 2>/dev/null | jq -r '.token_type // "Bearer"') $(qovery auth token --print 2>/dev/null)"
+fi
+
+if [ -n "${QOVERY_AUTH:-}" ]; then
+  # Only auto-select when the account has exactly ONE organization. With several,
+  # `.results[0]` attributes the ping to whichever the API listed first, which may not be
+  # the one being assessed — send it after the user confirms the target instead.
+  QOVERY_ORG_ID=$(curl -s -H "Authorization: $QOVERY_AUTH" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    "https://api.qovery.com/organization" \
+    | jq -r 'if (.results | length) == 1 then .results[0].id else empty end' 2>/dev/null)
+  # A malformed id would be interpolated straight into the request path.
+  case "$QOVERY_ORG_ID" in
+    ????????-????-????-????-????????????) ;;
+    *) QOVERY_ORG_ID="" ;;
+  esac
   [ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
-    -H "Authorization: Bearer $(qovery auth token --print)" -H "Content-Type: application/json" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    -H "Authorization: $QOVERY_AUTH" -H "Content-Type: application/json" -H "User-Agent: $QOVERY_SKILLS_UA" \
     -d '{"skill_name":"qovery-assess"}' > /dev/null 2>&1 || true
 fi
 ```
+
+> With more than one organization on the account, `QOVERY_ORG_ID` is deliberately left
+> empty. Send the ping once Phase 1 has confirmed which organization is being assessed,
+> using the same block with the confirmed ID.
 
 > **API rule:** The `User-Agent` header above is required on **every** `curl` call to
 > `api.qovery.com` — not just this tracking call. Never omit it.
@@ -108,6 +125,7 @@ Qovery Assessment Progress:
 - [ ] Phase 5  — Security & data protection (SC)
 - [ ] Phase 5b — Variables, secrets & interpolation (VS)
 - [ ] Phase 5c — External dependencies, shared credentials & blast radius (VS-09)
+- [ ] Phase 5d — *Optional, on request:* in-cluster state via the Qovery MCP (no check depends on it)
 - [ ] Phase 6  — Delivery & operations (DL)
 - [ ] Phase 6b — Log analysis, correlation, startup/shutdown timing (LG)
 - [ ] Phase 6c — Change origin & governance: Terraform vs Console (OP)
@@ -181,7 +199,9 @@ track remediation across reassessments.
 | `DR-` | Disaster recovery | 6e | 6 |
 | | **Total** | | **147** |
 
-Each check resolves to exactly one of:
+Each check resolves to exactly one of these four. The report prints two further labels,
+`PARTIAL` and `OBSERVATION`, which are renderings of the same resolutions — the mapping is
+fixed in [reference/phase7-scoring.md](reference/phase7-scoring.md) and nowhere else.
 
 - **PASS** — the evidence shows the practice is in place.
 - **FAIL** — the evidence shows it is not. Produces a finding.
@@ -264,7 +284,10 @@ GET /organization/{orgId}/cluster/{clusterId}/advancedSettings
 GET /organization/{orgId}/cluster/{clusterId}/routingTable
 GET /organization/{orgId}/cluster/{clusterId}/cloudProviderInfo
 GET /organization/{orgId}/cluster/{clusterId}/deploymentHistoryV2
-GET /cluster/{clusterId}/metrics?query={promql}&range={dur}&step={interval}
+GET /cluster/{clusterId}/metrics?endpoint={type}&query={promql}
+                                                              `endpoint` is REQUIRED — omitting it is a 400.
+                                                              Returned metrics:"" for every query shape
+                                                              tested; treat as unavailable (see Phase 6d)
 GET /clusters/{clusterId}/analysis                            Past KRR/cost analyses
 GET /defaultClusterAdvancedSettings                           Baseline to diff against
 
@@ -301,7 +324,8 @@ GET /defaultTerraformAdvancedSettings                         Baseline to diff a
 GET /environment/{envId}/logs?version={executionId}           Deployment logs for one execution
 GET /application/{appId}/log                                  Runtime logs (recent window, a SAMPLE not history)
 GET /container/{containerId}/log                              Runtime logs
-GET /cluster/{clusterId}/logs?query={logql}&since=&limit=     Loki-backed cluster logs (observability required)
+GET /cluster/{clusterId}/logs?endpoint={type}&query={logql}    `endpoint` and `query` are both REQUIRED.
+                                                              Loki-backed; needs cluster observability
 ```
 
 ### Log and event safety

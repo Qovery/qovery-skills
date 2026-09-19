@@ -83,8 +83,10 @@ it rules out most of what a pod-security review wants.
 | Wanted | Available? | Why |
 |---|---|---|
 | NetworkPolicy present or absent | **Yes** | Objects are enumerated by kind/name/namespace even when they carry no status at all |
-| Policy engine installed (Kyverno, Gatekeeper, OPA) | **Yes** | Enumerate `ValidatingWebhookConfiguration`; an empty result means none is installed |
-| PodDisruptionBudget coverage, and `DisruptionAllowed=False` | **Yes** | Exposed as a status condition |
+| Admission webhooks are registered | **Yes** | Enumerate `ValidatingWebhookConfiguration` |
+| *Which* policy engine is installed, or that none is | **No, not from webhooks alone** | A `ValidatingWebhookConfiguration` is registered by cert-manager and by several controllers that are not policy engines, and an empty list misses Kubernetes-native `ValidatingAdmissionPolicy`, which registers no webhook. Confirm by querying the engine's own CRDs (`ClusterPolicy` for Kyverno, `ConstraintTemplate` for Gatekeeper) and `ValidatingAdmissionPolicy`/`-Binding`, and report `UNKNOWN` rather than "none installed" when nothing is found |
+| A PodDisruptionBudget exists, and whether it currently reports `DisruptionAllowed=False` | **Yes** | Exposed as a status condition |
+| Which workloads a PDB actually *covers* | **No** | The selector and `minAvailable`/`maxUnavailable` live in `.spec`. A cluster can hold three PDBs that between them protect nothing. Report the objects found, never a coverage percentage |
 | Certificate health — issued, Ready, not expired — and `ClusterIssuer` present | **Yes** | Ready condition on `Certificate` and `ClusterIssuer` |
 | Node readiness, memory/disk/PID pressure, Karpenter node drift | **Yes** | `Node`, `NodeClaim` and `NodePool` conditions |
 | Pod phase (`Running`, `Pending`, …) | **Yes** | `phase` fallback field |

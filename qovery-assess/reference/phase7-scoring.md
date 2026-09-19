@@ -7,7 +7,23 @@ result "feels harsh".
 
 ### Step 1 — Resolve each check
 
-Every check resolves to `PASS`, `FAIL`, `N/A`, or `UNKNOWN`.
+Scoring uses exactly four resolutions: `PASS`, `FAIL`, `N/A`, `UNKNOWN`. The report prints
+six labels. They are not a second vocabulary — two of them are renderings of a resolution
+the arithmetic already produced, and the mapping is fixed:
+
+| Report label | Scoring resolution | How it is produced |
+|---|---|---|
+| `PASS` | PASS | `fraction_passing == 1` |
+| `PARTIAL` | PASS/FAIL mix | `0 < fraction_passing < 1` on a multi-instance check. Scored by the fraction, exactly as Step 2 computes it — `PARTIAL` is what a fraction between 0 and 1 is called in the appendix |
+| `FAIL` | FAIL | `fraction_passing == 0` |
+| `UNKNOWN` | UNKNOWN | Excluded from scoring, counted in coverage |
+| `N/A` | N/A | Excluded from scoring, counted in coverage |
+| `OBSERVATION` | — | An Info-severity check. Weight 0, so it never moves a score; it is recorded because the customer needs the observation |
+
+Never invent a seventh. A row whose label is not in this table means the check was not
+resolved.
+
+The two excluded resolutions:
 
 - `N/A` — the check does not apply (an AWS-only check on a GCP cluster; a readiness
   probe on a service that receives no traffic). Excluded from scoring entirely.

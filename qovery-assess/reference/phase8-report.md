@@ -4,7 +4,12 @@ The report is the product. It goes to a customer, is read by people who were not
 session, and is often forwarded to a CTO or an auditor. Write it accordingly.
 
 Copy `templates/report-template.md` (linked from `SKILL.md`) and fill every
-`{{placeholder}}`. Copy `templates/findings.csv` and append one row per finding.
+`{{placeholder}}`. Copy `templates/findings.csv` and append **one row per defined check** —
+including `PASS`, `PARTIAL`, `N/A`, `UNKNOWN` and `OBSERVATION` rows, not only the failures.
+The CSV and the report's control appendix are the same data in two formats, so a row count
+that does not reconcile with the coverage line is a bug in the deliverable. Leave
+`severity`, `impact`, `recommendation`, `effort` and `horizon` empty on rows that are not
+findings; the example rows in the template show both shapes.
 
 ```bash
 mkdir -p qovery-assessment

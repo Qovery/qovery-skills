@@ -203,23 +203,47 @@ reads `variables.json`. A key matching the pattern is a finding *because it is n
 secret store* — so compare the two:
 
 ```bash
+# The key pattern is the SAME one as the grep above — a key that matches there and not here
+# would vanish from both columns and be reported as neither exposed nor stored.
+KEYPAT='password|passwd|secret|token|api_?key|private_?key|credential|dsn|connection_?string|access_?key'
+
 for d in raw/env/*/; do
   E=$(jq -r .name "$d/environment.json")
-  jq -r '.results[]?.key' "$d/secret-keys.json" 2>/dev/null | sort > /tmp/sec.$$
-  jq -r '.results[]? | select(.variable_type=="VALUE") | select(.value != null)
-     | select((.value|length) >= 16)
+  # Secrets are keyed per SCOPE: Qovery allows the same key at environment and at service
+  # scope, so joining on the key alone marks a plain service-scope credential "also-a-secret"
+  # because an unrelated environment-scope secret shares its name.
+  jq -r '.results[]? | [.key, .scope, (.service_name // "-")] | @tsv' \
+    "$d/secret-keys.json" 2>/dev/null | sort > /tmp/sec.$$
+  # OVERRIDE rows carry a literal value too, and a credential redeclared at service scope is
+  # exactly the case this check exists to catch.
+  jq -r --arg pat "$KEYPAT" '.results[]?
+     | select(.variable_type=="VALUE" or .variable_type=="OVERRIDE")
+     | select(.value != null and (.value|length) > 0)
      | select((.value|test("^https?://"))|not)
-     | select(.key|test("password|secret|token|api_?key|private_?key|credential|access_?key";"i"))
-     | .key' "$d/variables.json" | sort | while read -r k; do
-       grep -qx "$k" /tmp/sec.$$ && echo "$E	$k	also-a-secret" || echo "$E	$k	PLAIN-ONLY"
+     | select(.key|test($pat;"i"))
+     | [.key, .scope, (.service_name // "-"), (.value|length|tostring)] | @tsv' \
+     "$d/variables.json" | sort | while IFS=$'\t' read -r k sc svc len; do
+       if grep -qx "$k	$sc	$svc" /tmp/sec.$$; then
+         echo "$E	$k	$sc/$svc	also-a-secret"
+       elif [ "$len" -lt 16 ]; then
+         echo "$E	$k	$sc/$svc	PLAIN-ONLY-short($len)"
+       else
+         echo "$E	$k	$sc/$svc	PLAIN-ONLY"
+       fi
      done; rm -f /tmp/sec.$$
 done | column -t
 ```
 
 Only `PLAIN-ONLY` rows are findings. **Report both numbers** — "163 stored correctly, 21
 are not" is a materially different statement from "21 credentials exposed", and the first
-is the one that is true. The length filter drops placeholders; a 3-character
-`*_SECRET` is not a live credential.
+is the one that is true.
+
+**Short values are triaged, not dropped.** A 12-character value can be a live database
+password; discarding it before classification reports a real credential as absent, which is
+the one direction this check must not fail in. `PLAIN-ONLY-short(n)` is a separate bucket:
+look at the key and decide. Most are placeholders like `changeme`, and a placeholder is not
+a finding — but that judgement belongs to a human reading the row, not to a length filter
+applied before anyone sees it.
 
 **There is no `is_secret` field on a variable.** `/variables` returns non-secret variables
 only, and `/environment/{id}/secret` returns secret **keys** with no values. A credential
@@ -309,8 +333,16 @@ the cluster API. Most application containers have no reason to carry one.
 **Severity:** High
 
 ```bash
-jq -r '.results[] | .name as $n | [$n, (."security.service_account_name" // "none")] | @tsv' \
-  raw/service/<id>/advanced-settings.json
+# advanced-settings.json is the FLAT settings object, not a list — `.results[]` over it
+# yields nothing, and the check silently reports no services. Read the key directly, and
+# take the name from the environment payload.
+for f in raw/service/*/advanced-settings.json; do
+  sid=$(basename "$(dirname "$f")")
+  printf '%s\t%s\n' "$sid" "$(jq -r '."security.service_account_name" // "none"' "$f" 2>/dev/null)"
+done | column -t
+
+# Resolve the IDs to names:
+jq -r '.results[]? | [.id, .name, .service_type] | @tsv' raw/services.json | column -t
 ```
 
 **Why it matters:** where services access cloud resources (S3, SQS, Secrets Manager) via

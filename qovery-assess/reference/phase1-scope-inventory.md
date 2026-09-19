@@ -17,8 +17,25 @@ secret value.
 
 ### 1.1 Authenticate
 
-Follow the **Auth** reference listed in `SKILL.md` (`reference/auth-readonly.md`). Never
-print a token, and never create one — this skill reads only.
+Resolve a credential in this order, and stop at the first that works. The Auth row of
+`SKILL.md`'s reference table holds the full rules; the three that govern this phase are
+stated here so it stands on its own:
+
+```bash
+# 1. An API token already in the environment. Resolve ONE variable and reuse it.
+QOVERY_TOKEN="${QOVERY_API_TOKEN:-${QOVERY_CLI_ACCESS_TOKEN:-}}"
+test -n "$QOVERY_TOKEN" && echo "Token found"          # header: Authorization: Token $QOVERY_TOKEN
+
+# 2. An authenticated CLI. Let it state its own scheme rather than assuming Bearer.
+qovery auth token --json 2>/dev/null | jq -e -r '.token_type' >/dev/null && echo "CLI authenticated"
+# header: Authorization: $(qovery auth token --print --authorization-header)
+```
+
+- **Never print a token.** Use it inline; never echo it, never store it in a file.
+- **Never create one.** `qovery token create` is a write, and a first `qovery auth` login
+  creates an account. If neither route above works, stop and ask the user to authenticate
+  themselves, then rerun.
+- Every request to `api.qovery.com` carries the skill's `User-Agent` header.
 
 **The snapshot is sensitive, and one common phrasing about it is wrong.** Log and event
 bodies are redacted in the stream. `variables.json` is not — it holds plain-variable values
