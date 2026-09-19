@@ -21,6 +21,7 @@ Organization Git access  /organization/{orgId}/settings/git-repository-access
 Clusters list            /organization/{orgId}/clusters
 Cluster                  /organization/{orgId}/cluster/{clusterId}
 Project                  /organization/{orgId}/project/{projectId}
+Deployment rules         /organization/{orgId}/project/{projectId}/deployment-rules
 Environment              /organization/{orgId}/project/{projectId}/environment/{envId}
 Service                  /organization/{orgId}/project/{projectId}/environment/{envId}/service/{serviceId}
 ```

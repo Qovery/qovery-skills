@@ -108,8 +108,12 @@ Present the results to the user:
 > # Manual delete
 > qovery environment delete --environment "preview-pr-{number}"
 > ```
->
-> **Console:** https://console.qovery.com/organization/{orgId}/project/{projectId}/environment/{previewEnvId}
+
+After the result block, include the Console link only after replacing every ID
+in
+`https://console.qovery.com/organization/{orgId}/project/{projectId}/environment/{previewEnvId}`
+with verified values. If any required ID is unknown, link to
+<https://console.qovery.com> and describe the navigation path instead. Never
+present the URL template itself to the user.
 
 ---
-

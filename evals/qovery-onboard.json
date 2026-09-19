@@ -8,7 +8,8 @@
       "Recommends a managed cluster on AWS (or Scaleway if EU compliance is mentioned) — does NOT push BYOK on a beginner",
       "Recommends a 3-environment structure (development / staging / production) per reference/phase2-recommend-setup.md",
       "Bakes in security defaults (private DB, internal networking, secrets encryption) WITHOUT presenting them as options",
-      "Walks the user through cloud credential setup via reference/phase3-execute-setup.md and uses CloudFormation quick-create for AWS"
+      "Walks the user through cloud credential setup via reference/phase3-execute-setup.md and uses CloudFormation quick-create for AWS",
+      "Uses complete Console links with verified IDs for the cluster list and deployment rules, or falls back to the Console root with UI navigation when an ID is unavailable"
     ]
   },
   {

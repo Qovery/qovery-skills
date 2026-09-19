@@ -10,7 +10,8 @@
       "Clones the blueprint into `preview-{branch-or-pr}` via POST /environment/{envId}/clone",
       "Switches each application's branch via PUT /application/{appId}",
       "Configures auto-shutdown (Phase 4) — stop / delete / recycle as appropriate",
-      "Returns the public URLs once deployed"
+      "Returns the public URLs once deployed",
+      "Shows a Console deep link only after substituting verified organization, project, and preview environment IDs; otherwise uses the Console root with navigation instructions"
     ]
   },
   {
