@@ -44,7 +44,7 @@ customer-facing, `3` for the revenue path and for anything fronting a queue cons
 with at-least-once semantics.
 
 **Exception to check before reporting:** a service with an attached RWO volume
-(`RL-17`) or a singleton leader-election workload legitimately runs one replica.
+(`RL-19`) or a singleton leader-election workload legitimately runs one replica.
 Verify against `storage` before calling it a gap.
 
 ---

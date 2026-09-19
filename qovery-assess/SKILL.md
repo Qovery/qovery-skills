@@ -122,7 +122,7 @@ Qovery Assessment Progress:
 | Phase | File | Purpose |
 |---|---|---|
 | Console URL | [reference/console-url-detection.md](reference/console-url-detection.md) | Extract org/project/env IDs from a Console URL |
-| Auth | [reference/auth.md](reference/auth.md) | API token flow and token-handling rules |
+| Auth | [reference/auth-readonly.md](reference/auth-readonly.md) | API token flow and token-handling rules — read-only variant; this skill never creates a token |
 | Phase 1 | [reference/phase1-scope-inventory.md](reference/phase1-scope-inventory.md) | Scoping questions, GET-only allowlist, snapshot collection |
 | Phase 1b | [reference/phase1b-compliance-profile.md](reference/phase1b-compliance-profile.md) | CP-01..CP-04 — public compliance claims, severity lens, badge mapping |
 | Standards | [reference/standards-mapping.md](reference/standards-mapping.md) | Maps checks to CIS Kubernetes Benchmark, Pod Security Standards, NSA/CISA and NIST SP 800-190 — with the coverage caveat |

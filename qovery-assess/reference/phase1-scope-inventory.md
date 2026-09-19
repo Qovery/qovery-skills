@@ -17,7 +17,16 @@ secret value.
 
 ### 1.1 Authenticate
 
-Follow [auth.md](auth.md). Never print a token.
+Follow the **Auth** reference listed in `SKILL.md` (`reference/auth-readonly.md`). Never
+print a token, and never create one — this skill reads only.
+
+**The snapshot is sensitive, and one common phrasing about it is wrong.** Log and event
+bodies are redacted in the stream. `variables.json` is not — it holds plain-variable values
+verbatim, because `VS-01`, `VS-05` and `VS-09` cannot work without them. Those are values
+the API returns to any member with read access, and a credential among them is the finding,
+not a collection mistake. So: never commit the snapshot, delete it when the assessment is
+delivered, and in the report write "log and event bodies were redacted at collection time"
+rather than "no secret value was written to disk".
 
 Quickest check that auth works and the org is reachable:
 

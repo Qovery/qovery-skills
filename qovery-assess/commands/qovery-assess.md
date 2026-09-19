@@ -9,8 +9,10 @@ If arguments are provided, use them as context:
 - `$ARGUMENTS` — a Qovery Console URL (organization, project, or environment), an
   organization name, or a scope hint such as "production only" or "security focus"
 
-Follow the qovery-assess skill: collect a GET-only snapshot, run the CL/TP/RL/SC/DL/CE
-checks, score each pillar, and write the report plus findings CSV.
+Follow the qovery-assess skill: collect a GET-only snapshot, run every cataloged family
+(CP, CL, TP, RL, BP, SC, VS, DL, LG, OP, CE, DR), score each pillar, and write the report
+plus findings CSV. Do not stop at a subset — the score is only comparable across
+reassessments if the whole catalog was run.
 
 IMPORTANT: this is read-only. Do not create, update, delete, deploy, stop, or restart
 anything. Never fetch database master credentials or a cluster kubeconfig. Never print

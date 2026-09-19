@@ -9,7 +9,8 @@ Copy `templates/report-template.md` (linked from `SKILL.md`) and fill every
 ```bash
 mkdir -p qovery-assessment
 cp templates/report-template.md qovery-assessment/qovery-assessment-{{org-slug}}.md
-cp templates/findings.csv        qovery-assessment/findings.csv
+head -n 1 templates/findings.csv > qovery-assessment/findings.csv   # header only — the
+                                                                     # template's rows are examples
 ```
 
 ### What makes this document good

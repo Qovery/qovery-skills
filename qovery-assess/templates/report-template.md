@@ -53,10 +53,13 @@ This is not padding — it tells the team what not to regress.}}
 environments, {{n_services}} services.
 
 **How:** configuration was read through the Qovery public API using GET requests only,
-and evaluated against {{total_checks}} checks across six categories (`CL` cluster,
-`TP` topology, `RL` reliability, `SC` security, `DL` delivery, `CE` cost). Each check
-is scored by severity, weighted by environment criticality, and aggregated into the
-pillar scores above. Check IDs are stable, so a reassessment produces a directly
+and evaluated against {{total_checks}} checks across 12 families (`CP` compliance profile,
+`CL` cluster, `TP` topology, `RL` reliability, `BP` anti-patterns, `SC` security,
+`VS` variables & secrets, `DL` delivery, `LG` logs, `OP` change origin, `CE` cost,
+`DR` disaster recovery). Each check resolves to pass, fail, not-applicable or unknown;
+checks spanning many services score partial credit. Contributions are weighted by severity
+(Critical 10, High 6, Medium 3, Low 1) and aggregated per pillar, then combined as
+Reliability 30%, Security 30%, Performance 15%, Delivery 15%, Cost 10%. Check IDs are stable, so a reassessment produces a directly
 comparable score.
 
 **Assumptions** (correct any that are wrong — they change the severity ratings):

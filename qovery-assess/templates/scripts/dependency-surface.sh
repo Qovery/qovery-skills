@@ -19,10 +19,27 @@ DIR="${1:-.}"
 # Qovery-injected and framework-local prefixes are not third-party vendors.
 NOISE='^(QOVERY|VITE|NEXT|NODE|PORT|LOG|ENVIRONMENT|API|RAW|ADMIN|INTERNAL|DASHBOARD|PATIENT|STAGING|DATABASE|DB|REDIS|SECRET|JWT|AGENT|MCP|TS)$'
 
+# An unreadable endpoint must never render as "no vendors" — that reads like a clean result.
+UNREADABLE=""
+for d in "$DIR"/raw/env/*/; do
+  for f in environment.json variables.json secret-keys.json services.json; do
+    [ -f "$d/$f" ] || { UNREADABLE="$UNREADABLE $(basename "$d")/$f(missing)"; continue; }
+    jq -e '._unreadable // false' "$d/$f" >/dev/null 2>&1 && \
+      UNREADABLE="$UNREADABLE $(basename "$d")/$f(status $(jq -r '._status // "?"' "$d/$f"))"
+  done
+done
+if [ -n "$UNREADABLE" ]; then
+  echo "!!! UNREADABLE INPUTS — the surface below is INCOMPLETE. Report these as UNKNOWN,"
+  echo "!!! not as an absence of dependencies:"
+  for u in $UNREADABLE; do echo "      $u"; done
+  echo
+fi
+
 echo "=== vendor prefixes per environment (key names only) ==="
 for d in "$DIR"/raw/env/*/; do
   [ -f "$d/environment.json" ] || continue
-  E=$(jq -r .name "$d/environment.json")
+  jq -e '._unreadable // false' "$d/environment.json" >/dev/null 2>&1 && continue
+  E=$(jq -r '.name // "?"' "$d/environment.json")
   { jq -r '.results[]?.key' "$d/variables.json" 2>/dev/null
     jq -r '.results[]?.key' "$d/secret-keys.json" 2>/dev/null; } \
     | sed -E 's/^(VITE|NEXT_PUBLIC)_//' \

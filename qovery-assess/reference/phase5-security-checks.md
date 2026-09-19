@@ -75,6 +75,16 @@ silently become an exposure.
 jq '{api_cidrs: ."k8s.api.allowed_public_access_cidrs"}' raw/cluster/<clusterId>/advanced-settings.json
 ```
 
+**Check `._unreadable` first.** If the cluster advanced-settings request failed, the CIDR
+field is absent because nothing was read — not because the list is empty. Treating that as a
+Critical exposure is a false finding:
+
+```bash
+jq -e '._unreadable // false' raw/cluster/<clusterId>/advanced-settings.json >/dev/null \
+  && echo "UNKNOWN — advanced settings unreadable" \
+  || jq '{cidrs: ."k8s.api.allowed_public_access_cidrs"}' raw/cluster/<clusterId>/advanced-settings.json
+```
+
 **Fails when:** the list is empty, absent, or contains `0.0.0.0/0`.
 
 **Why it matters:** an internet-reachable API server turns any leaked kubeconfig,
@@ -412,6 +422,19 @@ jq '{cp_audit_days: ."aws.cloudwatch.eks_logs_retention_days",
 ```
 
 **Fails when:** control-plane audit log retention is unset or zero.
+
+**Retention is not enablement — do not read this field as a pass.** `eks_logs_retention_days`
+configures how long CloudWatch keeps whatever it receives; it says nothing about whether the
+EKS `audit` log type is actually switched on. A cluster with 90-day retention and audit
+logging disabled produces this field and no audit log. Qovery does not expose the EKS log-type
+selection, so:
+
+- retention unset or zero → **FAIL**
+- retention set, audit log type **confirmed enabled** in the AWS console → **PASS**
+- retention set, enablement unconfirmed → **UNKNOWN**, with "confirm the EKS `audit` log type
+  is enabled" as the action
+
+Report the retention figure as supporting evidence, never as the verdict on its own.
 
 **Why it matters — and why it is separate from `SC-19`.** Three different logs answer three
 different questions, and teams routinely have one and assume they have all three:

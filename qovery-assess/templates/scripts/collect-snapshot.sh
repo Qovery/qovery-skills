@@ -12,8 +12,24 @@
 #   DEPLOY_LOG_RUNS=3     deployment executions per environment to pull logs for
 #   WITH_RUNTIME_LOGS=1   also pull per-service runtime logs (slower; set 0 to skip)
 #
-# Log bodies are REDACTED as they are written — see redact_log(). No credential value
-# is ever stored on disk or surfaced to the agent.
+# Log and event bodies are REDACTED in the stream, before anything is written — see
+# redact_log() and api_get_redacted().
+#
+# SCOPE OF THAT GUARANTEE — read this before repeating it in a report.
+# It covers log and event bodies. It does NOT cover environment variables: the snapshot
+# stores `variables.json` verbatim, values included, and it has to. Detecting a credential
+# pasted into a plain variable (VS-01), classifying a URL as internal or third-party (VS-05)
+# and finding the same credential in two environments (VS-09) all require the value.
+# Qovery returns values only for NON-SECRET variables — a secret's value is never returned
+# by the API — so the snapshot contains exactly what any member with read access already
+# sees, and a credential in there is itself the finding.
+#
+# Consequences, which are not optional:
+#   * The snapshot directory is customer configuration. Treat it as sensitive.
+#   * Never commit it, never attach it to a ticket, delete it when the assessment is done.
+#   * In the report, scope the claim: "log and event bodies were redacted at collection
+#     time". Do NOT write "no secret value was written to disk" — for variables that is
+#     not true, and the whole document's credibility rests on statements like that holding.
 #
 # Auth (in order of preference):
 #   1. $QOVERY_API_TOKEN          -> Authorization: Token <value>
@@ -110,28 +126,46 @@ api_get() {
 # value ever lands on disk or in the agent's context. The markers left behind are what the
 # LG-06 check counts — detection and redaction in a single pass.
 redact_log() {
-  sed -E \
+  # A PEM block spans lines, so the body and END marker must go too — replacing only the
+  # BEGIN marker leaves the key material in the snapshot. This range runs first.
+  sed -E '/-----BEGIN [A-Z ]*PRIVATE KEY-----/,/-----END [A-Z ]*PRIVATE KEY-----/c\
+<<REDACTED:private-key>>' \
+  | sed -E \
     -e 's/(AKIA|ASIA)[0-9A-Z]{16}/<<REDACTED:aws-access-key-id>>/g' \
     -e 's/eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/<<REDACTED:jwt>>/g' \
-    -e 's/-----BEGIN [A-Z ]*PRIVATE KEY-----/<<REDACTED:private-key>>/g' \
+    -e 's/(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/<<REDACTED:github-token>>/g' \
     -e 's#(postgres|postgresql|mysql|mongodb\+srv|mongodb|redis|amqp|amqps)://[^:@/[:space:]]+:[^@[:space:]]+@#\1://<<REDACTED:dsn-credentials>>@#g' \
     -e 's/(^|[^A-Za-z])([Bb]earer|[Bb]asic)[[:space:]]+[A-Za-z0-9._~+/=-]{16,}/\1\2 <<REDACTED:bearer>>/g' \
     -e 's/(^|[^A-Za-z])([Bb]earer|[Tt]oken|[Aa]uthorization)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9._~+/=-]{16,}/\1\2 <<REDACTED:bearer>>/g' \
     -e 's/(xox[abprs]-[A-Za-z0-9-]{10,})/<<REDACTED:slack-token>>/g' \
-    -e 's/(gh[pousr]_[A-Za-z0-9]{20,})/<<REDACTED:github-token>>/g' \
     -e 's/(sk-[A-Za-z0-9]{20,})/<<REDACTED:api-key>>/g' \
     -e 's/(arn:aws[a-z-]*:secretsmanager:[^[:space:]"]*)/<<ARN:secretsmanager>>/g' \
     -e 's/(([Pp]assword|[Pp]asswd|[Ss]ecret|[Aa]pi_?key)[[:space:]]*[:=][[:space:]]*)[^[:space:],;"'"'"']{6,}/\1<<REDACTED:inline-credential>>/g'
 }
 
-# api_get_redacted <path> <dest> — same as api_get but pipes the body through redact_log.
+# api_get_redacted <path> <dest> — like api_get, but the body is redacted IN THE STREAM.
+# The raw body must never reach a file: a temp file holding an unredacted credential, even
+# for a moment, is exactly the boundary this skill promises not to cross. Response headers
+# go to their own file (they carry the status, never the body), so nothing is lost.
 api_get_redacted() {
-  local path="$1" dest="$2" tmp
-  tmp="$(mktemp)"
-  api_get "$path" "$tmp"
+  local path="$1" dest="$2" code hdr
+  hdr="$(mktemp)"
+  refresh_auth
   mkdir -p "$(dirname "$dest")"
-  redact_log < "$tmp" > "$dest"
-  rm -f "$tmp"
+  curl -sS -D "$hdr" -X GET \
+    --connect-timeout 10 --max-time 120 --retry 2 --retry-connrefused \
+    -H "$AUTH_HEADER" \
+    -H "User-Agent: $UA" "${API}${path}" 2>>"$LOG" \
+    | redact_log > "$dest"
+  code=$(awk 'toupper($1) ~ /^HTTP/ {c=$2} END {print c+0}' "$hdr" 2>/dev/null)
+  [ -z "$code" ] && code=0
+  if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
+    printf 'OK    %s %s\n' "$code" "$path" >> "$LOG"
+  else
+    printf '{"_unreadable":true,"_status":%s,"_path":"%s"}\n' "$code" "$path" > "$dest"
+    printf 'MISS  %s %s\n' "$code" "$path" >> "$LOG"
+  fi
+  rm -f "$hdr"
 }
 
 say() { printf '  %s\n' "$1"; }

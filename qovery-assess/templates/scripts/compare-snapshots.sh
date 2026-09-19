@@ -74,7 +74,9 @@ for cdir in "$NEW"/raw/cluster/*/; do
 done
 
 hr "Environments & services"
-tsv_diff "environments"           "environments.json" '.results[]? | [.mode, .name] | @tsv'
+# cluster_id and project matter: an environment that keeps its name but moves cluster has
+# changed its isolation and production topology, and must not diff as unchanged.
+tsv_diff "environments"           "environments.json" '.results[]? | [.mode, .name, (.cluster_id // "-"), (.project.id // "-")] | @tsv'
 tsv_diff "service inventory"      "services.json"     '.results[]? | [.environment_name, .service_type, .name] | @tsv'
 
 # Per-environment service configuration — the fields findings are built on.

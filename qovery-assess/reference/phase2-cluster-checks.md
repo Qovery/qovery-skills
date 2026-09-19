@@ -174,13 +174,29 @@ is not the same as the estate being unmonitored, and reporting it that way is a 
 finding. Look for a third-party platform before scoring:
 
 ```bash
-# in-cluster agents
-for d in raw/env/*/; do jq -r '.results[]? | select(.service_type=="HELM" or .service_type=="CONTAINER")
-  | .name' "$d/services.json"; done | sort -u
-# and the variables that wire them up
-for d in raw/env/*/; do jq -r '.results[]?.key' "$d/variables.json" "$d/secret-keys.json" 2>/dev/null; done \
-  | grep -iE 'DD_|DATADOG|NEW_?RELIC|OTEL|SENTRY|GRAFANA|DYNATRACE|SPLUNK|HONEYCOMB|ELASTIC|SIGNOZ' | sort -u
+# Keep the environment, its cluster, and whether the key is a SECRET or a plain variable.
+# An agent in a development environment does not instrument a production cluster, and a
+# platform name in a plain variable is not the same evidence as its API key held as a secret.
+for d in raw/env/*/; do
+  E=$(jq -r '.name' "$d/environment.json"); M=$(jq -r '.mode' "$d/environment.json")
+  C=$(jq -r '.cluster_id' "$d/environment.json")
+  jq -r --arg e "$E" --arg m "$M" --arg c "$C" '.results[]?
+    | select(.service_type=="HELM" or .service_type=="CONTAINER")
+    | select(.name|test("datadog|newrelic|new-relic|grafana|dynatrace|splunk|honeycomb|elastic|signoz|otel|collector";"i"))
+    | [$e,$m,$c[0:8],"agent",.name] | @tsv' "$d/services.json"
+  jq -r --arg e "$E" --arg m "$M" --arg c "$C" '.results[]?.key
+    | select(test("^(DD_|DATADOG|NEW_?RELIC|OTEL_|SENTRY|GRAFANA|DYNATRACE|SPLUNK|HONEYCOMB|SIGNOZ)";"i"))
+    | [$e,$m,$c[0:8],"secret-key",.] | @tsv' "$d/secret-keys.json" 2>/dev/null
+  jq -r --arg e "$E" --arg m "$M" --arg c "$C" '.results[]?.key
+    | select(test("^(DD_|DATADOG|NEW_?RELIC|OTEL_|SENTRY|GRAFANA|DYNATRACE|SPLUNK|HONEYCOMB|SIGNOZ)";"i"))
+    | [$e,$m,$c[0:8],"plain-var",.] | @tsv' "$d/variables.json"
+done | sort -u | column -t -s$'\t'
 ```
+
+**Credit the check only for a cluster that actually has an agent.** Match the `cluster_id`
+column against the cluster being scored. An agent deployed only in a non-production
+environment leaves the production cluster uninstrumented, and crediting it there would be a
+false pass in the opposite direction from the one this paragraph is warning about.
 
 An agent deployed on the cluster plus its API key held as a secret is **coverage** — score
 the check accordingly and name the platform in the evidence. What the missing Qovery-native

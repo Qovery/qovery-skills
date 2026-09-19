@@ -1,4 +1,9 @@
-# Qovery Authentication
+<!-- Read-only variant of _shared/auth.md, for qovery-assess only.
+     It deliberately omits the token-creation path: creating an API token is a write and
+     leaves a raw credential on disk, both of which the assessment contract forbids.
+     Edit _shared/auth-readonly.md and run scripts/sync-shared.sh — never edit the copy. -->
+
+# Qovery Authentication — read-only assessment
 
 ## Security — Token Handling Rules
 
@@ -22,7 +27,7 @@
 - NEVER store tokens in shell variables via command substitution that the agent can read — always use them inline
 - NEVER include real token values in generated code, scripts, or config files — use env var references like `$QOVERY_API_TOKEN`
 - Prefer the `qovery` CLI directly (e.g., `qovery environment list`, `qovery log --service "name"`) over `curl` with tokens when possible — the CLI authenticates internally without exposing tokens
-- When running `qovery token create`, the command outputs the new token. Do NOT display it. Pipe it directly into a secure storage or env var file that is NOT read by the agent.
+- **NEVER run `qovery token create`.** Creating an API token is a write against the customer's account and leaves a raw credential on disk. This skill reads; it does not mint credentials. If no token and no authenticated CLI are available, stop and ask the user to authenticate.
 
 ## Qovery API Request Rules — User-Agent
 
@@ -73,14 +78,11 @@ If the CLI is authenticated, use `qovery auth token --print` **inline** within c
 curl -s -H "Authorization: Bearer $(qovery auth token --print)" https://api.qovery.com/organization
 ```
 
-Or generate a named API token for longer-running scripts. The token must be stored securely — do NOT display the output:
-
-```bash
-# Create the token and store it directly in .env (not displayed):
-qovery token create --name "skill-$(date +%Y%m%d-%H%M%S)" --duration 24h > .qovery-token.tmp
-# The user should manually export it or add it to their secure env config
-echo "API token created. Add QOVERY_API_TOKEN to your environment from .qovery-token.tmp"
-```
+**This skill never creates a token.** `qovery token create` writes a new organization API
+token — that is a write against the customer's account, and it leaves the raw value on disk.
+Both are outside the read-only contract, whatever the convenience. If neither an existing
+`QOVERY_API_TOKEN` nor an authenticated CLI is available, **stop and ask the user to
+authenticate**; do not mint a credential on their behalf.
 
 ## 3. Interactive login
 

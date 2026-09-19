@@ -21,7 +21,7 @@ DIR="${1:-.}"
 command -v python3 >/dev/null || { echo "ERROR: python3 required" >&2; exit 1; }
 
 python3 - "$DIR" <<'ENDOFPY'
-import json, glob, hashlib, collections, sys, os
+import json, glob, hashlib, collections, sys, os, re
 root = sys.argv[1]
 
 # Values that are shared legitimately: identifiers, endpoints, versions, region names.
@@ -49,64 +49,84 @@ def canon(key):
             k = k[:-1]; changed = True
         k = k.rstrip("_")
     return k
-rows = []
+def url_carries_a_secret(val):
+    """A URL is not a credential — unless it embeds one."""
+    return bool(re.search(r"://[^/@\s]*:[^/@\s]*@", val)      # user:pass@host
+                or re.search(r"[?&](token|key|secret|sig|signature|password|access_token)=", val, re.I))
+
+rows, unreadable = [], []
 for d in sorted(glob.glob(os.path.join(root, "raw/env/*/"))):
+    env_id = os.path.basename(d.rstrip("/"))       # the directory name IS the environment id
     try:
         env = json.load(open(d + "environment.json"))
-        vs = json.load(open(d + "variables.json")).get("results", [])
+        varsdoc = json.load(open(d + "variables.json"))
     except Exception:
-        continue
+        unreadable.append(env_id); continue
+    if varsdoc.get("_unreadable") or env.get("_unreadable"):
+        unreadable.append(env.get("name", env_id)); continue
+    vs = varsdoc.get("results", [])
     for v in vs:
         val = v.get("value")
         if not val or v.get("variable_type") != "VALUE":
             continue
         if len(val) < 12:                      # placeholders, flags, short config
             continue
-        if val.startswith(("http://", "https://")):   # URLs are not credentials
+        if val.startswith(("http://", "https://")) and not url_carries_a_secret(val):
             continue
-        if val.replace(".", "").replace("-", "").replace(" ", "").isdigit():
+        # Numeric-only values are usually ports, sizes or timeouts — but a long digit string
+        # can be a PIN or numeric token, so only skip the short ones.
+        if val.replace(".", "").replace("-", "").replace(" ", "").isdigit() and len(val) < 20:
             continue
+        # Group by environment ID, not display name: two projects can hold environments with
+        # the same name, and keying on the name would silently merge or hide their credentials.
         rows.append((hashlib.sha256(val.encode()).hexdigest()[:12],
-                     env["name"], env.get("mode", "?"), v["key"], len(val)))
+                     env_id, env.get("name", env_id), env.get("mode", "?"), v["key"], len(val)))
 
 groups = collections.defaultdict(list)
-for h, n, m, k, l in rows:
-    groups[h].append((n, m, k, l))
+for h, eid, name, m, k, l in rows:
+    groups[h].append((eid, name, m, k, l))
 
 def looks_like_identifier(keys):
     return all(any(canon(k).endswith(sfx) for sfx in IDENTIFIER) for k in keys)
 
 cred, ident = [], []
 for h, items in groups.items():
-    envs = {i[0] for i in items}
+    envs = {i[0] for i in items}          # environment IDs, not display names
     if len(envs) < 2:
         continue
-    keys = {i[2] for i in items}
+    keys = {i[3] for i in items}
     (ident if looks_like_identifier(keys) else cred).append((h, items, envs))
+
+if unreadable:
+    print("!!! UNREADABLE — these environments were NOT compared, so a shared credential")
+    print("!!! in them would not appear below. Do not read this output as clean:")
+    for u in unreadable:
+        print(f"      {u}")
+    print()
 
 print("=== Shared across environments — CREDENTIAL-SHAPED (triage each) ===")
 if not cred:
     print("  none")
 for h, items, envs in sorted(cred, key=lambda x: -len(x[1])):
-    modes = {i[1] for i in items}
+    modes = {i[2] for i in items}
     flag = "   *** PRODUCTION + NON-PRODUCTION ***" if "PRODUCTION" in modes and len(modes) > 1 else ""
-    print(f"\n  value#{h}  len={items[0][3]}  envs={sorted(envs)}{flag}")
-    for n, m, k, l in sorted(items):
-        print(f"      {n:<20} {k}")
+    print(f"\n  value#{h}  len={items[0][4]}  {len(envs)} environments{flag}")
+    for eid, name, m, k, l in sorted(items, key=lambda i: (i[1], i[3])):
+        print(f"      {name:<24} [{m:<11}] {k}")
 
 print("\n=== Shared across environments — identifier-shaped (usually correct) ===")
-print(f"  {len(ident)} value(s): " + ", ".join(sorted({k for _, items, _ in ident for _, _, k, _ in items})))
+print(f"  {len(ident)} value(s): " + ", ".join(sorted({k for _, items, _ in ident for _, _, _, k, _ in items})))
 
 print("\n=== Same value under different keys WITHIN one environment ===")
 found = False
 for h, items in groups.items():
     per = collections.defaultdict(set)
-    for n, m, k, l in items:
-        per[n].add(k)
-    for n, keys in per.items():
+    for eid, name, m, k, l in items:
+        per[name].add(k)
+    for name, keys in per.items():
         if len(keys) > 1:
             found = True
-            print(f"  {n}: value#{h} used as {sorted(keys)}")
+            print(f"  {name}: value#{h} used as {sorted(keys)}")
 if not found:
     print("  none")
 ENDOFPY

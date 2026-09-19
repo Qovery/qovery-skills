@@ -268,8 +268,9 @@ done | grep -oiE 'SIGTERM|graceful shutdown|shutting down|draining|forcefully|ki
   | sort | uniq -c | sort -rn
 
 # Against the configured budget:
-jq -r '.[] | {grace: ."deployment.termination_grace_period_seconds",
-              pre_stop: ."deployment.lifecycle.pre_stop_exec_command"}' \
+# advanced-settings.json is an OBJECT — `.[] |` would iterate its values and error.
+jq -r '{grace: ."deployment.termination_grace_period_seconds",
+        pre_stop: ."deployment.lifecycle.pre_stop_exec_command"}' \
   raw/service/<id>/advanced-settings.json
 ```
 

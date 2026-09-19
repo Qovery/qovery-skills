@@ -74,19 +74,37 @@ prefer `EXTERNAL_SECRET` so the value never lives in Qovery at all.
 
 **Severity:** Critical
 
-Secrets hide outside the variable list too:
+Secrets hide outside the variable list too — Helm `values_override` in particular is a
+common place for a database password to be pasted "just to get it working".
+
+**Classify; never print the field.** These fields are exactly where a credential is expected
+to be, so dumping them into the transcript is the one thing this check must not do. Match
+inside `jq` and emit the service name and the match class only:
 
 ```bash
-jq -r '.results[]? | select(.service_type=="HELM")
-  | [.name, (.values_override | tostring | .[0:160])] | @tsv' raw/env/<envId>/services.json
-
-jq -r '.results[]? | select(.service_type=="JOB" or .service_type=="CONTAINER")
-  | select((.arguments|length) > 0 or (.entrypoint // "") != "")
-  | [.name, ((.arguments // []) | join(" ")), (.entrypoint // "")] | @tsv' raw/env/<envId>/services.json
+# Helm values_override, job arguments and entrypoints — match classes, never content.
+for d in raw/env/*/; do
+  jq -r '.results[]?
+    | . as $s
+    | (( ($s.values_override | tostring) + " "
+       + (($s.arguments // []) | join(" ")) + " "
+       + ($s.entrypoint // "") )) as $blob
+    | select($blob | length > 2)
+    | [ $s.name, $s.service_type,
+        ([ (if $blob|test("(AKIA|ASIA)[0-9A-Z]{16}")            then "aws-access-key-id" else empty end),
+           (if $blob|test("-----BEGIN [A-Z ]*PRIVATE KEY")      then "private-key"       else empty end),
+           (if $blob|test("eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.") then "jwt"  else empty end),
+           (if $blob|test("gh[pousr]_[A-Za-z0-9]{20,}|github_pat_") then "github-token"  else empty end),
+           (if $blob|test("xox[abprs]-[A-Za-z0-9-]{10,}")        then "slack-token"      else empty end),
+           (if $blob|test("(postgres|mysql|mongodb|redis|amqp)://[^:@/]+:[^@]+@") then "dsn-with-password" else empty end),
+           (if $blob|test("(?i)(password|passwd|secret|api_?key|token)[[:space:]]*[:=][[:space:]]*[^[:space:]\"]{8,}") then "inline-credential" else empty end)
+         ] | if length==0 then "clean" else join(",") end) ] | @tsv' "$d/services.json"
+done | grep -v '\tclean$' | column -t -s$'\t'
 ```
 
-Scan the output for the same value patterns as `VS-01`. Helm `values_override` in
-particular is a common place for a database password to be pasted "just to get it working".
+**Fails when:** any row returns a class other than `clean`. Report the service name and the
+class. If the customer needs to see the value to act on it, that is theirs to look up in the
+Console — this document names the location, never the content.
 
 ---
 
@@ -150,7 +168,11 @@ for d in raw/env/*/; do
   jq -r --arg m "$M" --arg e "$E" '.results[]? | select(.variable_type=="VALUE")
     | select(.value != null)
     | select(.value | test("\\.svc\\.cluster\\.local|\\.qovery\\.io|:[0-9]{2,5}/|^https?://"))
-    | [$m, $e, .key, .scope, (.service_name // "-"), (.value|.[0:60])] | @tsv' "$d/variables.json"
+    # Strip userinfo and query string before printing: a URL VALUE can embed
+    # credentials (https://user:pass@host, ?token=...). The host is what this check needs.
+    | [$m, $e, .key, .scope, (.service_name // "-"),
+       (.value | sub("://[^/@]*@"; "://<<REDACTED:userinfo>>@") | sub("\\?.*$"; "?<<query>>") | .[0:60])
+      ] | @tsv' "$d/variables.json"
 done | column -t -s$'\t'
 
 # Clone-safety mechanisms already in use:
