@@ -48,11 +48,25 @@ noticed. That correlation is usually the most valuable sentence in this section.
 ```bash
 for d in raw/env/*/; do
   [ "$(jq -r .mode "$d/environment.json")" = "PRODUCTION" ] || continue
-  jq -r '.results[] | select(.service_type=="DATABASE" or ((.storage // []) | length) > 0)
-    | [.id, .name, (.mode // "-")] | @tsv' "$d/services.json"
-done | while IFS=$'\t' read -r id name mode; do
-  echo "$name	mode=$mode	backups=$(jq -r 'if ._unreadable then "n/a(\(._status))" else (.results|length|tostring) end' "raw/service/$id/backups.json" 2>/dev/null)"
-done | column -t
+  # NB: .storage is an ARRAY on applications/containers but a NUMBER (GB) on databases.
+  jq -r '.results[]
+    | select(.service_type=="DATABASE" or ((.storage|type)=="array" and (.storage|length)>0))
+    | [.id, .name, .service_type, (.mode // "-"),
+       (if (.storage|type)=="array" then (.storage | map(.size|tostring) | join("+"))
+        elif (.storage|type)=="number" then (.storage|tostring) else "?" end)] | @tsv' "$d/services.json"
+done | while IFS=$'\t' read -r id name stype mode disks; do
+  f="raw/service/$id/backups.json"
+  if [ ! -f "$f" ]; then
+    b="NO-BACKUP-API(persistent volume ${disks:-?}GB)"
+  else
+    b=$(jq -r 'if ._unreadable then "http-\(._status)" else (.results|length|tostring) end' "$f")
+    case "$mode:$b" in
+      CONTAINER:http-404) b="NO-BACKUP-EVIDENCE(container db)" ;;
+      MANAGED:http-404)   b="provider-managed(verify in console)" ;;
+    esac
+  fi
+  printf '%s\t%s\t%s\t%s\n' "$name" "$stype" "$mode" "$b"
+done | column -t -s$'\t'
 ```
 
 **Assess three things, and they are genuinely different:**
@@ -65,9 +79,26 @@ done | column -t
    compromise or a region event.
 3. **Automation** — scheduled, or someone's calendar reminder?
 
-A `404` from the backup endpoint on a managed database is expected — the cloud provider owns
-those. Do not report it as "no backups"; report it as "managed by AWS, verify retention and
-PITR window in the provider console" and mark `UNKNOWN` until confirmed.
+**A `404` means different things by `mode`, and conflating them hides the worst case.**
+
+- **`MANAGED` + 404 — expected.** The cloud provider owns those backups. Do not report it as
+  "no backups"; report "provider-managed, verify retention and PITR window in the provider
+  console" and mark `UNKNOWN` until confirmed.
+- **`CONTAINER` + 404 — not expected, and not excusable the same way.** A container database
+  is a pod on a persistent volume; there is no managed cloud service behind it whose
+  ownership could explain the 404. The assessment therefore has **no evidence any backup
+  exists**. Raise it explicitly rather than filing it under the managed-database exemption —
+  a container database in a production environment is the highest-consequence row this check
+  produces, and the literal reading of the managed-database rule would pass it silently.
+- **No `backups.json` at all** — the service is not a database, so no backup endpoint exists
+  for it. These are the persistent-volume rows. Their protection is a cloud-provider or CSI
+  snapshot concern outside Qovery, so the answer is never in this data: name each volume and
+  its size, and ask who snapshots it.
+
+**Do not let the persistent-volume rows render blank.** They are usually the majority of the
+output and they are the gap point 1 warns about — a volume-backed search index or database
+container with an empty cell reads as "nothing to see". The query above labels them
+explicitly for that reason.
 
 ---
 
