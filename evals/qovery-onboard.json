@@ -8,7 +8,8 @@
       "Recommends a managed cluster on AWS (or Scaleway if EU compliance is mentioned) — does NOT push BYOK on a beginner",
       "Recommends a 3-environment structure (development / staging / production) per reference/phase2-recommend-setup.md",
       "Bakes in security defaults (private DB, internal networking, secrets encryption) WITHOUT presenting them as options",
-      "Walks the user through cloud credential setup via reference/phase3-execute-setup.md and uses CloudFormation quick-create for AWS"
+      "Walks the user through cloud credential setup via reference/phase3-execute-setup.md and uses CloudFormation quick-create for AWS",
+      "Uses complete Console links with verified IDs for the cluster list and deployment rules, or falls back to the Console root with UI navigation when an ID is unavailable"
     ]
   },
   {
@@ -32,6 +33,17 @@
       "Uses `qovery env parse --heroku-json` to import config vars in bulk rather than one by one",
       "Recommends a phased migration (one app at a time, staging first) instead of a big bang",
       "Hands off to qovery-deploy once the platform is set up"
+    ]
+  },
+  {
+    "skills": ["qovery-onboard"],
+    "query": "Connect my GitHub organization to Qovery. My Qovery organization ID is 123e4567-e89b-12d3-a456-426614174000 — give me the direct Console link.",
+    "files": [],
+    "expected_behavior": [
+      "Uses the organization ID in the exact Console URL `https://console.qovery.com/organization/123e4567-e89b-12d3-a456-426614174000/settings/git-repository-access`",
+      "Recommends a GitHub organization token and does not recommend installing the deprecated Qovery GitHub App",
+      "Explains the required GitHub token permissions or links to the Git Repository Access documentation",
+      "Does not emit the invalid ID-less route `https://console.qovery.com/organization/settings/git-repository-access`"
     ]
   }
 ]
