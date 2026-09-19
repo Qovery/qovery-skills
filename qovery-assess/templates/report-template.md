@@ -224,11 +224,38 @@ is where the Qovery team works as an extension of yours:
 
 ## 7. Appendix
 
-### 7.1 Complete check results
+### 7.1 Every control that was run
 
-| ID | Check | Pillar | Severity | Result | Scope |
-|---|---|---|---|---|---|
-| {{id}} | {{title}} | {{pillar}} | {{severity}} | PASS / FAIL / N/A / UNKNOWN | {{scope}} |
+**Include all {{total_checks}} checks, not only the ones that failed.** This is the section
+that shows the assessment was thorough rather than selective, and it is what an auditor or a
+prospective customer's security reviewer asks for. In HTML, render one collapsible
+`<details>` block per domain, with a result-count summary on the closed state so the page
+stays scannable; in Markdown, one table per domain under its own heading.
+
+Per domain, summarise counts in the header line, then list every check:
+
+```
+CL · Cluster foundation — 16 checks · 11 pass · 2 partial · 2 fail · 1 unknown
+```
+
+| ID | Control | Result | Evidence / note |
+|---|---|---|---|
+| {{id}} | {{title}} | PASS / PARTIAL / FAIL / UNKNOWN / OBSERVATION / N/A | {{one line of evidence}} |
+
+**Six result values, and the distinctions matter:**
+
+| Result | Meaning |
+|---|---|
+| `PASS` | Every applicable instance satisfies the control |
+| `PARTIAL` | Some instances pass and some do not — the finding above names which |
+| `FAIL` | No applicable instance passes, or (for exposure checks) at least one fails |
+| `UNKNOWN` | The data was not readable, or the answer depends on the team. Excluded from scoring |
+| `OBSERVATION` | Info-severity: recorded, never scored |
+| `N/A` | Genuinely out of scope for this setup — say *why* in the note |
+
+**Give every row a note, including the passes.** "all 3 databases `PRIVATE`" is evidence the
+customer can verify; a bare `PASS` is a claim. A `PASS` with no note is the row a reviewer
+will ask about first.
 
 ### 7.2 Unknowns
 

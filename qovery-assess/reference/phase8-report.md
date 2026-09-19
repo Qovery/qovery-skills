@@ -64,7 +64,29 @@ detail, so the document is useful to someone who reads only the first page.
    finding: ID, severity, what was found, evidence, impact, recommendation, effort.
 5. **Remediation roadmap** — Now / Next / Later.
 6. **Where Qovery helps** — see below.
-7. **Appendix** — full check results including passes, inventory, limitations.
+7. **Appendix** — every control that was run, the unknowns, limitations, and the scoring method.
+
+### Show every control, not just the failures
+
+The findings section is the argument; the controls appendix is the proof that the argument
+is complete. Without it the reader cannot tell whether you ran 135 checks and 19 failed, or
+ran 19 checks and reported all of them.
+
+- **One collapsible block per domain**, closed by default, with counts visible on the closed
+  state (`SC · Security & Data Protection — 21 checks · 12 pass · 6 fail · 3 unknown`). The
+  reader skims twelve lines and opens only what they care about.
+- **Every row gets an evidence note**, passes included. `RL-13 PASS — 19 of 19 production
+  services have a pre-stop hook` tells a customer something true and verifiable about their
+  platform. A bare `PASS` tells them nothing and reads as filler.
+- **Never pad the pass column.** If a check was not actually evaluated, it is `UNKNOWN`, not
+  `PASS`. Inflating coverage here is the fastest way to make the whole document worthless —
+  and it is the one error a technical reader will catch immediately, because they know their
+  own system.
+- **Explain `N/A` in the note.** "no git-built services — all pre-built images" is a
+  reasonable exclusion. An unexplained `N/A` looks like a check that was skipped.
+
+The counts in this appendix must reconcile exactly with the coverage numbers in the Scope
+section. If they disagree, the scoring is wrong somewhere.
 
 ### Effort estimates
 
