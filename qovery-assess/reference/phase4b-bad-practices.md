@@ -154,8 +154,13 @@ jq -r '.results[]? | select(.service_type=="JOB" and .job_type=="CRON")
      "maxdur=\(.max_duration_seconds // "unset")",
      "restarts=\(.max_nb_restart // "-")"] | @tsv' raw/env/<envId>/services.json | column -t
 
-# Does Kubernetes already prevent the overlap? This is the deciding field.
-jq -r '{concurrency: ."cronjob.concurrency_policy",
+# Does Kubernetes already prevent the overlap? This is the deciding field — so check that
+# it was actually read. An unreadable advanced-settings payload yields `concurrency: null`,
+# which has no row in the table below and would be read as the "Allow" default, turning a
+# missing answer into a concrete FAIL.
+jq -e '._unreadable // false' raw/service/<jobId>/advanced-settings.json >/dev/null \
+  && echo "UNKNOWN — advanced settings unreadable for this job; do not score BP-05" \
+  || jq -r '{concurrency: ."cronjob.concurrency_policy",
         failed_history: ."cronjob.failed_jobs_history_limit",
         success_history: ."cronjob.success_jobs_history_limit",
         job_ttl: ."job.delete_ttl_seconds_after_finished"}' \
@@ -170,6 +175,7 @@ bound only matters when the policy allows a second run:
 | `Forbid` | **PASS.** Kubernetes skips the run while the previous one is active. The duration bound is still worth reporting, as Info, because a skipped run is a missed run. |
 | `Replace` | **PASS** for overlap. Flag separately if the job is not safely interruptible — `Replace` kills the running instance mid-work. |
 | `Allow` (the default) | Fall through to the duration test below. |
+| `null` / unreadable | **UNKNOWN.** The field was not read. It is not the default. |
 
 **Fails when:** the policy is `Allow` **and** `max_duration_seconds` is unset or exceeds
 the interval between runs.

@@ -66,7 +66,8 @@ tsv_diff "container registries"   "container-registries.json" '.results[]? | [.k
 tsv_diff "cloud credentials"      "cloud-credentials.json" \
   '.results[]? | [.credential.name, .credential.object_type, ((.clusters//[])|map(.name)|sort|join(","))] | @tsv'
 # SC-26: an invitation appearing or disappearing is an access change.
-tsv_diff "pending invitations"    "pending-invitations.json"  '.results[]? | [.email, .role, .invitation_status] | @tsv'
+tsv_diff "pending invitations"    "pending-invitations.json" \
+  '.results[]? | [.email, .role, (.role_name // "-"), .invitation_status] | @tsv'
 
 hr "Clusters"
 tsv_diff "cluster inventory"      "clusters.json" \

@@ -131,11 +131,12 @@ qovery-assessment/
 └── collect.log
 ```
 
-Two of those files are filtered at collection time rather than written verbatim.
-`pending-invitations.json` has its `invitation_link` removed in the stream, because that
-link is a usable credential. `cloud-credentials.json` keeps `access_key_id` — `SC-24`
-needs the credential *type* that sits beside it — but the key ID must never be copied
-into the report. `git-webhook-status.json` and `commits.json` appear only for services
+One of those files is filtered at collection time: `pending-invitations.json` has its
+`invitation_link` removed in the stream, because that link is a usable credential.
+`cloud-credentials.json` is **written verbatim**, `access_key_id` included — `SC-24` needs
+the credential type that sits beside it, and the key ID is an identifier rather than a
+secret. The constraint on it is report-time, not collection-time: it is on disk, it is in
+the snapshot you must treat as sensitive, and it must never be copied into the document. `git-webhook-status.json` and `commits.json` appear only for services
 that have a git source.
 
 `env/<envId>/services.json` already carries each service's full configuration —

@@ -36,10 +36,13 @@ the `TERRAFORM` services in `env/<envId>/services.json`.
 # Origin mix for configuration changes (not deploy triggers), PRODUCTION ONLY.
 # Resolve the production environment names in Phase 1 first — without this filter the
 # ratio pools staging and preview activity into a number the report calls "production".
-PROD_ENVS=$(jq -r '.results[]? | select(.mode == "PRODUCTION") | .name' raw/environments.json \
-            | sort -u | paste -sd'|' -)
-jq -r --arg prod "$PROD_ENVS" 'select(.environment_name != null)
-  | select(.environment_name | test("^(" + $prod + ")$"))
+# Set membership, not a regex built from data: an environment called `api.v2` or
+# `checkout (eu)` would make test() over-match or abort jq on an unbalanced paren, and with
+# no PRODUCTION environments an empty alternation matches the empty string.
+PROD_ENVS=$(jq -c '[.results[]? | select(.mode == "PRODUCTION") | .name]' raw/environments.json)
+[ "$PROD_ENVS" = "[]" ] && echo "No PRODUCTION environment — OP-01 is N/A" >&2
+jq -r --argjson prod "$PROD_ENVS" 'select(.environment_name != null)
+  | select(.environment_name as $n | $prod | index($n))
   | select(.event_type == "CREATE" or .event_type == "UPDATE" or .event_type == "DELETE")
   | [.environment_name, .origin, .target_type] | @tsv' raw/events.ndjson \
   | sort | uniq -c | sort -rn | head -25

@@ -72,9 +72,17 @@ Org-level and cluster-level checks have one instance, so the fraction is 1 or 0 
 
 ### Step 3 — Apply severity weight
 
-Use the **context-adjusted** severity — the per-mode adjustment stated in each phase
-file, plus the Phase 1.3 answers (a 99.99% availability target or a compliance
-obligation promotes a check by one level).
+Use the **context-adjusted** severity: the per-mode adjustment stated in each phase file,
+plus the two Phase 1.3 effects. They are narrower than "promote everything by one level",
+and the difference is the whole determinism of this file:
+
+| Phase 1.3 answer | Effect |
+|---|---|
+| Availability target 99.9% / 99.99% | Re-baselines **single-replica services** (`RL-01`, `BP-01`..`BP-04`) to Critical. It is a re-baseline, not a +1: `RL-01` is already Critical in production, so nothing moves there |
+| Availability target "best effort" | The same single-replica checks drop to Medium |
+| A stated compliance obligation | Promotes by one level **only** audit-logging, retention, encryption, SSO and network-restriction checks — the set named in `phase1-scope-inventory.md` section 1.3 — plus whatever the Phase 1b lens table names for the specific framework |
+
+Nothing else is promoted or demoted at this step.
 
 | Severity | Weight |
 |---|---|
@@ -93,8 +101,18 @@ cohort carry its own fraction and its own weight into the Step 4 sum:
 ```
 RL-01, 12 production services, 4 failing   → fraction 0.667, severity Critical, weight 10
 RL-01,  9 staging services,    6 failing   → fraction 0.333, severity High,     weight  6
-RL-01, 20 development services             → N/A, excluded
+RL-01, 20 development services             → N/A, excluded  (see the rule below)
 ```
+
+**When a cohort is `N/A` rather than a low-weight term.** Apply the phase file's own rule,
+stated at the top of Phase 4: mark `N/A` where the check is *meaningless* outside
+production, and score the dropped severity otherwise. For `RL-01` a development environment
+is meant to run one replica — a second would be waste, not resilience — so the cohort is
+`N/A`. For `RL-04` (readiness probe) a development service still needs one to deploy
+cleanly, so that cohort scores at the dropped severity instead. Decide it once per check,
+from that rule, and record which you chose in the appendix: a cohort silently included at
+weight 1 or silently dropped is exactly the two-ways-to-score problem this section exists to
+remove.
 
 Two cohorts, two terms in the pillar sum, no averaging across severities. This is what
 makes the score reproducible: pooling them leaves the weight dependent on which mode the

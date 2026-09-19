@@ -496,7 +496,28 @@ jq -r '.results[]? | select(.service_type == "JOB" and .job_type == "LIFECYCLE")
   raw/env/<envId>/services.json | column -t
 ```
 
-**Fails when:** a lifecycle job defines `on_start` but no `on_delete`.
+**Fails when:** a lifecycle job that **provisions something outside the environment**
+defines `on_start` and no `on_delete`.
+
+**`on_start` without `on_delete` is not the finding on its own.** A migration runner, a
+seed-data job, a cache warmer — all legitimately have a start action and nothing to tear
+down, and reporting them as leaked resources is noise that buries the real one. Establish
+what the job creates before scoring:
+
+| Evidence | Result |
+|---|---|
+| `lifecycle_type` is `TERRAFORM` or `CLOUDFORMATION` | **FAIL** — these exist to create infrastructure, and without `on_delete` the state file is orphaned with everything it tracks |
+| `GENERIC`, and the job's image, entrypoint or arguments name a provisioning action (`create-bucket`, `terraform apply`, `aws ...`, `gcloud ...`) | **FAIL**, with the evidence quoted |
+| `GENERIC`, and the team confirms it provisions an external resource | **FAIL** |
+| `GENERIC`, and nothing indicates provisioning | **UNKNOWN** — ask what `on_start` does. Do not infer from its existence |
+
+```bash
+# What the job actually runs, for the GENERIC case. Report the command, never a value.
+jq -r '.results[]? | select(.service_type=="JOB" and .job_type=="LIFECYCLE")
+  | [.name, (.schedule.lifecycle_type // "GENERIC"),
+     ((.schedule.on_start.entrypoint // "-") + " " + ((.schedule.on_start.arguments // []) | join(" ")))]
+  | @tsv' raw/env/<envId>/services.json | column -t
+```
 
 **Why it matters:** a lifecycle job is how an environment reaches outside itself — it
 creates the bucket, the queue, the DNS record, the managed database the environment needs.

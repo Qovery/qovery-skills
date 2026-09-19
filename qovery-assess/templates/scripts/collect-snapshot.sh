@@ -183,7 +183,7 @@ redact_log() {
     -e 's/(sk-[A-Za-z0-9]{20,})/<<REDACTED:api-key>>/g' \
     -e 's/(arn:aws[a-z-]*:secretsmanager:[^[:space:]"]*)/<<ARN:secretsmanager>>/g' \
     -e 's/(([Pp]assword|[Pp]asswd|[Ss]ecret|[Aa]pi_?key)[[:space:]]*[:=][[:space:]]*)[^[:space:],;"'"'"']{6,}/\1<<REDACTED:inline-credential>>/g' \
-    -e 's/(\\?"([Pp]assword|[Pp]asswd|[Ss]ecret|[Aa]pi_?[Kk]ey|[Aa]ccess_?[Kk]ey|[Pp]rivate_?[Kk]ey|[Tt]oken|[Aa]uthorization)\\?"[[:space:]]*:[[:space:]]*\\?")[^"\\]{6,}/\1<<REDACTED:inline-credential>>/g'
+    -e 's/(\\?"([Pp]assword|[Pp]asswd|[Ss]ecret|[Aa]pi_?[Kk]ey|[Aa]ccess_?[Kk]ey|[Pp]rivate_?[Kk]ey|[Tt]oken|[Aa]uthorization)\\?"[[:space:]]*:[[:space:]]*\\?")([^"\\]|\\.){6,}/\1<<REDACTED:inline-credential>>/g'
 }
 
 # The rule above matters more than it looks. The unquoted rule before it excludes `"` from
@@ -199,7 +199,7 @@ redact_log() {
 # could reach disk from this endpoint.
 redact_events() {
   redact_log \
-  | sed -E -e 's/(\\?"value\\?"[[:space:]]*:[[:space:]]*\\?")[^"\\]+/\1<<REDACTED:variable-value>>/g'
+  | sed -E -e 's/(\\?"value\\?"[[:space:]]*:[[:space:]]*\\?")([^"\\]|\\.)+/\1<<REDACTED:variable-value>>/g'
 }
 
 # api_get_redacted <path> <dest> [filter-fn] — like api_get, but the body is redacted IN

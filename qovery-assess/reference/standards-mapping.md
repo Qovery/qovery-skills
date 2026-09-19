@@ -214,7 +214,7 @@ for anyone with a federal or NIST-aligned obligation.
 | `SC-16` RBAC, `SC-03` API access, `SC-08` secrets | Orchestrator countermeasures |
 | `SC-10` `SC-11` runtime hardening | Container countermeasures |
 | `SC-13` instance metadata service, `SC-25` node SSH keys | Host OS countermeasures |
-| `DL-13` webhook integrity, `DL-14` deployed-commit provenance | Image countermeasures — provenance of what runs |
+| `DL-14` deployed-commit provenance | Image countermeasures — provenance of what runs |
 | `OP-07` Terraform service scope | Orchestrator countermeasures — least privilege for automation |
 
 **Not observable here:** image vulnerability scanning results, base-image provenance and

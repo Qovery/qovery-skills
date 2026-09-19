@@ -311,7 +311,10 @@ GET /application/{appId}/deploymentRestriction
 GET /application/{appId}/customDomain
 GET /application/{appId}/commit                               Last 100 commits on the branch (DL-14)
 GET /service/{serviceId}/gitWebhookStatus                     Webhook health at the git provider (DL-13)
-GET /{app,container,helm}/{id}/customDomain/{domainId}/status  Live domain validation state (SC-27)
+GET /{application,container}/{id}/customDomain/{domainId}/status
+                                                              Live domain validation state (SC-27).
+                                                              No helm variant exists — for a Helm
+                                                              service use the customDomain list only
 GET /container/{containerId}  (+ /advancedSettings)
 GET /job/{jobId}              (+ /advancedSettings)
 GET /helm/{helmId}            (+ /advancedSettings)

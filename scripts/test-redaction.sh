@@ -19,7 +19,16 @@ fail=0
 
 # leaks <name> <input> <string-that-must-not-survive> [filter]
 leaks() {
-  local out; out=$(printf '%s\n' "$2" | "${4:-redact_log}")
+  local out status
+  # A filter that dies, or emits nothing, would "pass" a test that only checks the forbidden
+  # string is absent — silence is not redaction. Reject both before searching.
+  out=$(printf '%s\n' "$2" | "${4:-redact_log}"); status=$?
+  if [ "$status" -ne 0 ]; then
+    printf 'FAIL  %s\n      filter exited %s\n' "$1" "$status"; fail=1; return
+  fi
+  if [ -z "$out" ]; then
+    printf 'FAIL  %s\n      filter produced no output\n' "$1"; fail=1; return
+  fi
   if printf '%s' "$out" | grep -qF -- "$3"; then
     printf 'FAIL  %s\n      leaked: %s\n' "$1" "$out"; fail=1
   else
@@ -55,6 +64,7 @@ leaks "JSON password field"    '{"password": "hunter2hunter2"}'                 
 leaks "JSON api key field"     '{"Api_Key":"abcdef1234567890"}'                        'abcdef1234567890'
 leaks "escaped JSON password"  '{"change":"{\"password\":\"hunter2hunter2\"}"}'        'hunter2hunter2'
 leaks "event change value"     '{"key":"DB_PASSWORD","value":"sup3rS3cretValue"}'      'sup3rS3cretValue' redact_events
+leaks "unicode-escaped value"  '{"password":"\u0068unter2hunter2"}'                    'unter2hunter2'
 leaks "escaped single-line PEM" '{"log":"-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAsecret\n-----END RSA PRIVATE KEY-----"}' 'MIIEowIBAAKCAQEAsecret'
 
 echo

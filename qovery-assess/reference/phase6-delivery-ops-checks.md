@@ -297,11 +297,15 @@ done | column -t
 # The git source sits at a different path per service type (.git_repository on an
 # application, .source.docker.git_repository on a job, .terraform_files_source.git
 # on a Terraform service), so match on shape rather than on path.
+# Match the git-source SHAPE — url plus a provider — not deployed_commit_id. That field is
+# absent until the first deployment, and `branch` is not required by the spec, so gating on
+# either hides the never-deployed and default-branch services these checks exist to catch.
 jq -r '.results[]? | . as $s
-  | ([.. | objects | select(has("branch") and has("deployed_commit_id"))][0] // null) as $g
+  | ([.. | objects | select(has("url") and has("provider"))][0] // null) as $g
   | select($g != null)
-  | [$s.name, $s.service_type, ($s.auto_deploy|tostring), $g.branch,
-     ($g.has_access|tostring), ($g.git_token_name // "account")] | @tsv' \
+  | [$s.name, $s.service_type, ($s.auto_deploy|tostring), ($g.branch // "<provider default>"),
+     ($g.has_access|tostring), ($g.git_token_name // "account"),
+     (if ($g.deployed_commit_id // "") == "" then "NEVER-DEPLOYED" else "deployed" end)] | @tsv' \
   raw/env/<envId>/services.json | column -t
 ```
 
@@ -346,26 +350,40 @@ revoked or has expired — fix it centrally (`SC-18`) rather than per service.
 ```bash
 # What is deployed, per service — same shape match as DL-13.
 jq -r '.results[]? | . as $s
-  | ([.. | objects | select(has("branch") and has("deployed_commit_id"))][0] // null) as $g
+  | ([.. | objects | select(has("url") and has("provider"))][0] // null) as $g
   | select($g != null)
-  | [$s.name, $s.service_type, $g.branch,
-     ($g.deployed_commit_id // "none")[0:8],
-     ($g.deployed_commit_date // "-")[0:10],
+  | [$s.name, $s.service_type, ($g.branch // "<provider default>"),
+     (($g.deployed_commit_id // "none")[0:8]),
+     (($g.deployed_commit_date // "-")[0:10]),
      ($g.deployed_commit_tag // "-")] | @tsv' \
   raw/env/<prodEnvId>/services.json | column -t
 
+# A service with no deployed_commit_id has never been deployed. That is a finding in its own
+# right — configured, wired to a branch, and not running that code — not a reason to skip it.
+
 # What the branch head actually is (the commit list is newest first).
-# A 404 here is EVIDENCE, not a gap in the data: the API answers
-# "Cannot get last commit on <owner>/<repo> <branch>. Verify that the repository or
-# branch still exists" — the service points at a repository or branch that is gone.
+# Branch on the status before reading the body. A 404 is EVIDENCE — the API answers
+# "Cannot get last commit on <owner>/<repo> <branch>. Verify that the repository or branch
+# still exists", so the service points at something that is gone. Any other non-2xx is
+# UNKNOWN: a 403 means the token lost access, a 500 means the provider is unavailable, and
+# rendering either as a missing repository invents a finding.
+jq -r 'if (._unreadable // false) then
+         (if ._status == 404 then "MISSING-REPO-OR-BRANCH" else "UNKNOWN(http \(._status))" end)
+       else "readable" end' raw/service/<id>/commits.json
 jq -r '.results[0] | [.git_commit_id[0:8], .created_at[0:10], .author_name] | @tsv' \
   raw/service/<id>/commits.json
 
 # How far behind: position of the deployed commit in the last 100.
 jq -r --arg dep "<deployed_commit_id>" \
   '[.results[]? | .git_commit_id] | index($dep) as $i
-   | if $i == null then "deployed commit not in the last 100 on this branch"
+   | if $i == null then "deployed commit is NOT in the last 100 commits: either more than 100 behind, or not on this branch at all"
      else "\($i) commits behind head" end' raw/service/<id>/commits.json
+
+# The endpoint returns at most 100 commits, so a null index conflates "very stale" with
+# "not on this branch" — the second is much sharper, and reporting it without evidence is a
+# false finding. Disambiguate before writing it up: page with `?startId=<oldest returned id>`
+# until either the deployed commit appears (very stale — report the real distance) or the
+# history is exhausted (genuinely not on the branch).
 ```
 
 **Fails when:** a production service is more than ~20 commits or ~30 days behind its

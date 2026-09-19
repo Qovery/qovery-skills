@@ -675,8 +675,10 @@ trust. It is a different failure from `SC-20`: that check asks whether the certi
 valid, this one asks whether the name should still be pointed here at all.
 
 **Live status, when the snapshot may be stale:**
-`GET /{applicationId|containerId|helmId}/customDomain/{customDomainId}/status` re-reads the
-same object from the API. Use it to confirm before reporting, since a domain mid-deployment
+`GET /{applicationId|containerId}/customDomain/{customDomainId}/status` re-reads the same
+object from the API. **There is no Helm variant** — the spec defines the sub-resource for
+applications and containers only — so a Helm service's custom domains are judged from the
+collected list alone; say so rather than marking them UNKNOWN for want of a live read. Use it to confirm before reporting, since a domain mid-deployment
 is legitimately pending for a few minutes.
 
 **Recommendation:** for each finding, either remove the custom domain in Qovery or remove
