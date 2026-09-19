@@ -37,18 +37,63 @@ worker-node files and cluster policies. Most of those are only observable from *
 cluster, with a kubeconfig, using a tool like `kube-bench`.
 
 **This skill deliberately never fetches a kubeconfig** — it is on the forbidden-endpoint
-list. So it observes the subset of controls Qovery surfaces through its API, which is a
-meaningful but partial slice, listed below.
+list, because a kubeconfig is a standing credential granting full cluster access. So the
+REST API alone observes only the subset of controls Qovery surfaces, listed below.
 
-**Never write or imply "CIS compliant", "CIS assessed", or a coverage percentage.** The
-correct sentence is:
+### Closing the gap: the Qovery MCP Server's cluster-state tool
 
-> "Of the CIS Kubernetes Benchmark controls observable through the Qovery API, N were
-> checked; the remainder require in-cluster assessment with kube-bench, which is a separate
-> exercise with different access requirements."
+**There is a second, better path, and it should be used when available.** The Qovery MCP
+Server exposes a **read-only cluster-state capability** that returns the live state of
+Kubernetes objects — pods, nodes, networking, certificates — either in full or scoped to an
+area. It is a fundamentally different risk profile from a kubeconfig:
 
-Offering that follow-up is a legitimate and useful next step — it is exactly the kind of
-work a platform partner does. Pretending this assessment already covers it is not.
+| | Kubeconfig | MCP cluster state |
+|---|---|---|
+| Credential | Standing, full-cluster, reusable | Brokered per call, no credential handled |
+| Scope | Everything the cert allows | Organization RBAC, read-only by default |
+| Audit | Nothing in Qovery | Every query appears in the Qovery audit log |
+
+So the rule is **not** "never look inside the cluster" — it is **never hold a cluster
+credential**. Using the MCP's read-only cluster-state tool is consistent with this skill's
+contract; fetching a kubeconfig is not.
+
+**How to use it — discover, do not assume.** Tool names and argument shapes change. At
+assessment time:
+
+1. Enumerate the MCP server's available tools rather than hardcoding a name.
+2. Confirm the connection is **read-only**. The server has a read/write mode
+   (`read_write=true`); this skill requires the default read-only mode. If the session is
+   connected read/write, use only the querying tools and never a tool that deploys,
+   updates, or triggers anything.
+3. Record in the report that in-cluster state was read via the MCP, so the customer can
+   reconcile it against their own audit log.
+
+**What it unlocks** — the controls the REST API cannot see:
+
+| Area | Controls it makes observable |
+|---|---|
+| Pod security | `privileged`, `hostPath`, `hostNetwork`, `hostPID`, `allowPrivilegeEscalation`, `runAsNonRoot`, dropped capabilities, seccomp profile — i.e. an actual Pod Security Standards position instead of two settings |
+| Network | NetworkPolicy objects present and scoped, or absent entirely |
+| Certificates | Real expiry dates, which `SC-20` could not determine from the REST API |
+| Nodes | Node count, conditions, and actual zone distribution — turning `RL-11` and `DR-05` from "the setting is off" into "replicas are in fact all in one zone" |
+| Workload reality | Running replica counts versus configured ones, restart counts, pending pods |
+
+Treat any findings from this path as a **distinct evidence class** in the report: mark them
+as in-cluster observations, because they are point-in-time runtime state rather than
+declared configuration, and the two can legitimately disagree.
+
+### Either way, never overclaim
+
+**Never write or imply "CIS compliant", "CIS assessed", or a coverage percentage.** Even
+with MCP cluster state, control-plane flags, etcd configuration and kubelet arguments remain
+outside reach — those are what `kube-bench` is for. The correct sentence is:
+
+> "Of the CIS Kubernetes Benchmark controls observable through the Qovery API {{and the MCP
+> cluster-state tool}}, N were checked; the remainder — control-plane flags, etcd and kubelet
+> configuration — require running kube-bench in-cluster, which is a separate exercise."
+
+Offering that follow-up is a legitimate next step. Pretending this assessment already covers
+it is not.
 
 **Do not pin version numbers into the report from this file.** Benchmarks are revised, and a
 stale version number ages the document badly. Check which revision is current at assessment

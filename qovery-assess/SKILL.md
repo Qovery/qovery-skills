@@ -34,7 +34,8 @@ redeploy, not a restart, not a "harmless" tag.
 | HTTP verbs | `GET` only against `api.qovery.com`. No `POST`, `PUT`, `PATCH`, `DELETE`. |
 | Sole exception | The anonymous usage-tracking ping below (`POST /organization/{orgId}/skill-tracking`). It touches no customer resource. Mention it if the customer asks what was written. |
 | CLI | Read verbs only (`list`, `status`, `log`). Never `deploy`, `stop`, `restart`, `delete`, `cancel`, `token create`. |
-| Forbidden endpoints | `GET /database/{databaseId}/masterCredentials` and `GET /organization/{orgId}/cluster/{clusterId}/kubeconfig` — never call them. They return live credentials and cluster access, and nothing in this assessment needs them. |
+| Forbidden endpoints | `GET /database/{databaseId}/masterCredentials` and `GET /organization/{orgId}/cluster/{clusterId}/kubeconfig` — never call them. They return live credentials and standing cluster access. |
+| In-cluster state | The rule is **never hold a cluster credential**, not "never look inside". The Qovery MCP Server's read-only cluster-state capability is brokered per call, scoped by organization RBAC, and audited — it is allowed and preferred. See [reference/standards-mapping.md](reference/standards-mapping.md). Confirm the MCP session is read-only, and never call a tool that deploys, updates or triggers. |
 | Secrets | Report secret **keys** and their scope. NEVER report a secret value, token, password, connection string, or credential — in the document, in a log line, or in the conversation. |
 | Logs & events | Fetched through the redacting collector only. Variable `value` fields and log bodies are read for detection and reported as classes and counts, never as content. |
 | Terraform | Never run `terraform apply`. `plan` is also unnecessary here. |
