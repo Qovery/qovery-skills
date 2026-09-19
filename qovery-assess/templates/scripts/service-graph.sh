@@ -20,6 +20,12 @@ set -uo pipefail
 DIR="${1:-.}"; WANT="${2:-}"
 [ -d "$DIR/raw/env" ] || { echo "ERROR: $DIR/raw/env not found" >&2; exit 1; }
 
+# The collector stores a failed endpoint as {"_unreadable":true,"_status":<code>}. Its
+# missing `.results` reads as an empty list in every jq filter below, which would draw a
+# confident, empty graph and report "0 SERVICE-scoped variables" — a stated fact where
+# there is no data. Nothing here may run against an unreadable file.
+unreadable() { [ ! -f "$1" ] || jq -e '._unreadable // false' "$1" >/dev/null 2>&1; }
+
 for d in "$DIR"/raw/env/*/; do
   [ -f "$d/environment.json" ] || continue
   E=$(jq -r '.name // "?"' "$d/environment.json")
@@ -29,6 +35,13 @@ for d in "$DIR"/raw/env/*/; do
   echo "ENVIRONMENT  $E  ($M)"
   echo "=============================================================="
 
+  if unreadable "$d/services.json"; then
+    echo "   UNKNOWN — services.json is unreadable for this environment (HTTP $(jq -r '._status // "?"' "$d/services.json" 2>/dev/null))."
+    echo "   No graph is drawn: an empty one would read as \"no services\" rather than \"not read\"."
+    echo ""
+    continue
+  fi
+
   echo "-- entry points (publicly routed) --"
   jq -r '.results[]? | . as $s | ($s.ports[]? | select(.publicly_accessible==true))
     | "   PUBLIC  \($s.name)  :\(.internal_port)->\(.external_port // 443)"' "$d/services.json" | sort -u
@@ -37,6 +50,14 @@ for d in "$DIR"/raw/env/*/; do
   jq -r '.results[]? | select(.service_type=="DATABASE")
     | "   \(.mode)  \(.name)  \(.type) \(.version // "")  accessibility=\(.accessibility)  encrypted=\(if has("disk_encrypted") then (.disk_encrypted|tostring) else "?" end)"' \
     "$d/services.json" | sort
+
+  if unreadable "$d/variables.json"; then
+    echo "-- targets referenced by an alias --"
+    echo "   UNKNOWN — variables.json is unreadable, so no edge can be derived or"
+    echo "   attributed. Mark the diagram's edges as unverified rather than absent."
+    echo ""
+    continue
+  fi
 
   echo "-- targets referenced by an alias (something in this env calls these) --"
   jq -r --slurpfile v "$d/variables.json" '

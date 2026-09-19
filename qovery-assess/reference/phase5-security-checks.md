@@ -329,9 +329,17 @@ whatever that role grants — the opposite of per-service scoping:
 jq -r '.results[] | [.name, "pod_identity=" + (.advanced_settings["aws.eks.enable_pod_identity_addon"]|tostring)] | @tsv' raw/clusters.json
 ```
 
-That settles the platform capability. Whether individual services then use a dedicated
-identity still needs the team, so the check can move from UNKNOWN to a partial rather than
-staying unanswerable.
+**Read that field narrowly.** `false` means the Pod Identity add-on is not installed. It
+does **not** mean every pod inherits the node role: IRSA (the older IAM-roles-for-service-accounts
+mechanism) grants per-service identities through a service-account annotation, needs no
+add-on, and is invisible to this API. Concluding "every pod shares the node role" from a
+disabled add-on is a false finding on any estate that standardised on IRSA.
+
+So: `true` moves the check to a partial pass on the platform half, `false` leaves it
+`UNKNOWN` until someone confirms how service accounts are bound. The MCP read-only
+cluster-state tools return `.status` only, so they cannot answer it either — the question
+is whether service accounts carry a role annotation, and that lives in `.spec`. Ask the
+team, or read it from their IaC.
 ### SC-13 — Instance metadata service is hardened (AWS)
 
 **Severity:** High
@@ -720,7 +728,15 @@ jq -r '.results[] | [.name, .cloud_provider,
   "production=" + (.production|tostring)] | @tsv' raw/clusters.json | column -t -s$'\t'
 ```
 
-**Fails when:** `aws.eks.encrypt_secrets_kms_key_arn` is unset on a production cluster.
+**Fails when:** `aws.eks.encrypt_secrets_kms_key_arn` is unset on a production **AWS**
+cluster.
+
+**`N/A` everywhere else.** The setting is an EKS one. On a GCP, Azure, Scaleway or
+on-premise cluster the field is absent because it does not exist, not because the control is
+missing, and scoring that as a failure is the same false-finding pattern as `SC-03`. Filter
+on `cloud_provider == "AWS"` before applying the rule, and state the equivalent control for
+the other providers (GKE application-layer secrets encryption, AKS KMS etcd encryption) as
+an `UNKNOWN` with an owner rather than inventing a verdict.
 
 **What this actually changes.** Kubernetes Secrets live in etcd. Without envelope encryption
 they are stored base64-encoded — which is an encoding, not encryption — protected only by

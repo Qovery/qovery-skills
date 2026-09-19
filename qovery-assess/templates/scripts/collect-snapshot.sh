@@ -112,13 +112,19 @@ refresh_auth() {
     AUTH_HEADER="Authorization: Token ${QOVERY_API_TOKEN}"
   else
     if [ -z "$AUTH_HEADER" ] || [ $((now - AUTH_TS)) -ge "$AUTH_TTL" ]; then
-      # The CLI states its own scheme. An OAuth login yields token_type "Bearer"; an
-      # opaque API token does not, and hardcoding Bearer around it fails every request.
-      # --json is piped straight into jq so only that one field is ever extracted.
-      local scheme
-      scheme=$(qovery auth token --json 2>/dev/null | jq -r '.token_type // "Bearer"')
-      [ -z "$scheme" ] || [ "$scheme" = "null" ] && scheme="Bearer"
-      AUTH_HEADER="Authorization: ${scheme} $(qovery auth token --print 2>/dev/null)"
+      # Let the CLI state its own scheme. An OAuth login yields "Bearer"; an opaque API
+      # token does not, and hardcoding Bearer around it fails every request.
+      local hdr scheme
+      hdr=$(qovery auth token --print --authorization-header 2>/dev/null)
+      if [ -n "$hdr" ]; then
+        AUTH_HEADER="Authorization: ${hdr}"
+      else
+        # Older CLI without that flag: read token_type rather than assuming one. --json is
+        # piped straight into jq so only that single field is ever extracted.
+        scheme=$(qovery auth token --json 2>/dev/null | jq -r '.token_type // "Bearer"')
+        case "$scheme" in ""|null) scheme="Bearer" ;; esac
+        AUTH_HEADER="Authorization: ${scheme} $(qovery auth token --print 2>/dev/null)"
+      fi
       AUTH_TS=$now
     fi
   fi

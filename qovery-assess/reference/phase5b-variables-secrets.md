@@ -77,6 +77,11 @@ prefer `EXTERNAL_SECRET` so the value never lives in Qovery at all.
 Secrets hide outside the variable list too — Helm `values_override` in particular is a
 common place for a database password to be pasted "just to get it working".
 
+> `values_override` is an **object**, so `tostring` renders it as JSON: `{"db_password":"…"}`.
+> The quote between the key and the colon is why the matcher below allows an optional `"` on
+> both sides of the separator. Without it the most common Helm case — the documented object
+> shape — matches nothing and the check reports `clean`.
+
 **Classify; never print the field.** These fields are exactly where a credential is expected
 to be, so dumping them into the transcript is the one thing this check must not do. Match
 inside `jq` and emit the service name and the match class only:
@@ -97,7 +102,7 @@ for d in raw/env/*/; do
            (if $blob|test("gh[pousr]_[A-Za-z0-9]{20,}|github_pat_") then "github-token"  else empty end),
            (if $blob|test("xox[abprs]-[A-Za-z0-9-]{10,}")        then "slack-token"      else empty end),
            (if $blob|test("(postgres|mysql|mongodb|redis|amqp)://[^:@/]+:[^@]+@") then "dsn-with-password" else empty end),
-           (if $blob|test("(?i)(password|passwd|secret|api_?key|token)[[:space:]]*[:=][[:space:]]*[^[:space:]\"]{8,}") then "inline-credential" else empty end)
+           (if $blob|test("(?i)(password|passwd|secret|api_?key|token)\"?[[:space:]]*[:=][[:space:]]*\"?[^[:space:]\"]{8,}") then "inline-credential" else empty end)
          ] | if length==0 then "clean" else join(",") end) ] | @tsv' "$d/services.json"
 done | grep -v '\tclean$' | column -t -s$'\t'
 ```

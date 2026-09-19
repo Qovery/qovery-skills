@@ -58,11 +58,17 @@ This applies to ALL curl commands targeting `api.qovery.com` — even when refer
 ## 1. Existing API token in environment
 
 ```bash
-# Check if a token is available (without printing it):
-test -n "${QOVERY_API_TOKEN:-${QOVERY_CLI_ACCESS_TOKEN:-}}" && echo "Token found" || echo "No token"
+# Check if a token is available (without printing it). Resolve ONE variable and reuse it:
+# testing the pair and then expanding only $QOVERY_API_TOKEN sends an empty header when
+# the environment carries QOVERY_CLI_ACCESS_TOKEN instead.
+QOVERY_TOKEN="${QOVERY_API_TOKEN:-${QOVERY_CLI_ACCESS_TOKEN:-}}"
+test -n "$QOVERY_TOKEN" && echo "Token found" || echo "No token"
 ```
 
-If a token is found, use it directly in curl commands as `Authorization: Token $QOVERY_API_TOKEN`. The env var is expanded by the shell at execution time — the agent never sees the actual value.
+If a token is found, use `$QOVERY_TOKEN` in curl commands as `Authorization: Token
+$QOVERY_TOKEN`. The variable is expanded by the shell at execution time — the agent never
+sees the actual value. An organization API token uses the `Token` scheme; `Bearer` is for
+the CLI's OAuth access token, and the two are not interchangeable.
 
 ## 2. CLI already authenticated (`qovery auth token`)
 
@@ -74,12 +80,22 @@ qovery auth token --json 2>/dev/null | jq -e -r '.token_type' >/dev/null \
   && echo "CLI authenticated" || echo "CLI not authenticated"
 ```
 
-If the CLI is authenticated, use `qovery auth token --print` **inline** within curl commands:
+If the CLI is authenticated, let the CLI state its own scheme rather than assuming one:
 
 ```bash
-# Token flows through the shell but is never visible to the agent:
-curl -s -H "Authorization: Bearer $(qovery auth token --print)" https://api.qovery.com/organization
+# PREFERRED — the CLI emits the complete header value, scheme included:
+curl -s -H "Authorization: $(qovery auth token --print --authorization-header)" \
+  https://api.qovery.com/organization
+
+# Fallback for a CLI without that flag — read the scheme instead of hardcoding it:
+QOVERY_SCHEME=$(qovery auth token --json 2>/dev/null | jq -r '.token_type // "Bearer"')
+curl -s -H "Authorization: ${QOVERY_SCHEME} $(qovery auth token --print)" \
+  https://api.qovery.com/organization
 ```
+
+`Bearer` is correct for an OAuth access token and wrong for an opaque API token, so
+hardcoding it fails authentication on some CLI configurations. Either form keeps the value
+inline: it flows through the shell and is never visible to the agent.
 
 **This skill never creates a token.** `qovery token create` writes a new organization API
 token — that is a write against the customer's account, and it leaves the raw value on disk.
@@ -87,14 +103,19 @@ Both are outside the read-only contract, whatever the convenience. If neither an
 `QOVERY_API_TOKEN` nor an authenticated CLI is available, **stop and ask the user to
 authenticate**; do not mint a credential on their behalf.
 
-## 3. Interactive login
+## 3. No credential — stop
 
-If neither of the above works, prompt the user:
+If neither of the above works, **stop and ask the user to authenticate, then rerun.** Do not
+run `qovery auth` on their behalf. A first OAuth login *creates a Qovery account*, which is
+account-state mutation, and this skill's contract is that it changes nothing. That the
+command is convenient does not make it read-only.
+
+Tell the user to run one of these themselves, in their own shell:
 
 ```bash
 qovery auth                      # interactive browser login
-# OR for headless:
-# The user sets QOVERY_CLI_ACCESS_TOKEN in their environment (not via the agent)
+qovery auth --headless           # headless environments
+# or set QOVERY_API_TOKEN / QOVERY_CLI_ACCESS_TOKEN in their environment
 ```
 
-After login, fall through to step 2 to obtain a token.
+Once they confirm, restart at step 1.

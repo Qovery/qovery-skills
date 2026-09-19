@@ -85,7 +85,7 @@ If a key is supplied, it is under the same rules as the Qovery token, and one mo
 
 | Rule | |
 |---|---|
-| Read it from the environment | `export DD_APP_KEY=…` in the user's own shell. Never from a chat message, never from a file you create |
+| Read it from the environment | The user sets it in their own shell, and never by typing the value into a command. `read -r -s DD_APP_KEY && export DD_APP_KEY` keeps it out of shell history; `export DD_APP_KEY=<value>` does not. Never from a chat message, never from a file you create |
 | Never print, echo or log it | Not in a command you show, not in an error, not in the report |
 | Never persist it | No config file, no snapshot directory, no shell history |
 | Use it for the stated queries only | The window and metrics you named when you asked. Not "while we are here" |
