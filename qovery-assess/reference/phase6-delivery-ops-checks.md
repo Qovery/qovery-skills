@@ -254,7 +254,9 @@ rollback has nothing to roll back to.
 **Severity:** Medium
 
 ```bash
-jq '{source: .source, values_override: (.values_override | keys?)}' raw/service/<helmId>/service.json
+jq -r --arg id "<helmId>" '.results[]? | select(.id == $id)
+  | {name, source, values_override: ((.values_override // {}) | keys)}' \
+  raw/env/<envId>/services.json
 ```
 
 **Fails when:** a Helm chart tracks a floating version or a Git branch rather than a

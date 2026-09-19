@@ -68,6 +68,23 @@ obligation promotes a check by one level).
 | Low | 1 |
 | Info | 0 — never scored, and never in the roadmap |
 
+**A check that spans environment modes is scored once per mode, not once overall.** Most
+`RL-` checks state a production severity and a "drop one level for staging, two for
+development" adjustment, so a single check run across 40 services has no one severity and
+therefore no defined weight. Split it into **cohorts by environment mode**, and let each
+cohort carry its own fraction and its own weight into the Step 4 sum:
+
+```
+RL-01, 12 production services, 4 failing   → fraction 0.667, severity Critical, weight 10
+RL-01,  9 staging services,    6 failing   → fraction 0.333, severity High,     weight  6
+RL-01, 20 development services             → N/A, excluded
+```
+
+Two cohorts, two terms in the pillar sum, no averaging across severities. This is what
+makes the score reproducible: pooling them leaves the weight dependent on which mode the
+reader happened to think of first. Report the finding once, grouped by check, with the
+per-mode counts beside it — the cohort split is a scoring mechanism, not a second finding.
+
 ### Step 4 — Compute each pillar
 
 ```

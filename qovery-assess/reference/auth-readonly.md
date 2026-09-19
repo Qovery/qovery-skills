@@ -68,7 +68,10 @@ If a token is found, use it directly in curl commands as `Authorization: Token $
 
 ```bash
 # Check if the CLI is authenticated (without printing the token):
-qovery auth token --json 2>/dev/null | jq -r '.type' && echo "CLI authenticated" || echo "CLI not authenticated"
+# jq -e sets a non-zero exit status when the field is null or missing, so the message
+# reflects reality; >/dev/null keeps the field value out of the conversation.
+qovery auth token --json 2>/dev/null | jq -e -r '.token_type' >/dev/null \
+  && echo "CLI authenticated" || echo "CLI not authenticated"
 ```
 
 If the CLI is authenticated, use `qovery auth token --print` **inline** within curl commands:

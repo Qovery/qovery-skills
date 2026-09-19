@@ -50,21 +50,38 @@ def canon(key):
             k = k[:-1]; changed = True
         k = k.rstrip("_")
     return k
-def is_public_identifier(val):
-    """Values that are public by construction, whatever the key is called.
+PUBLIC_KEY_NAME = re.compile(
+    r"ADDRESS|CONTRACT|SELECTOR|CHAIN_?ID|BLOCK|TX_?HASH|ACCOUNT_?ID|PROJECT_?ID|TENANT_?ID",
+    re.I)
+
+
+def is_public_identifier(val, key=""):
+    """Values that are public by construction — but only where the KEY agrees.
 
     On-chain addresses are the common false positive in fintech estates: an ERC-20
     contract address is 0x + 40 hex, it is published on a block explorer, and keys like
     LINK_TOKEN_ADDRESS or CHAINLINK_TOKEN_POOL_ADDRESSES read as credentials to a
     name-based filter. Reporting them as shared secrets destroys trust in the real ones.
+
+    The shapes below are ambiguous in both directions, which is why the key name has to
+    agree before anything is dropped:
+
+      * 0x + 64 hex is a transaction hash. It is ALSO the exact shape of an EVM private
+        key, a 32-byte HMAC secret, and a hex-encoded signing key. Dropping it on shape
+        alone is a silent blind spot in exactly the estates this script was written for.
+      * a 15-25 digit run is a chain selector or a numeric account id. It is ALSO the
+        shape of a numeric API token or a PIN.
+
+    A 40-hex EVM address is the one case narrow enough to drop on shape alone: it is too
+    short to be a modern key and it is derived from a public key by construction.
     """
     v = val.strip()
-    if re.fullmatch(r"0x[0-9a-fA-F]{40}", v):          # EVM address
+    if re.fullmatch(r"0x[0-9a-fA-F]{40}", v):          # EVM address — public by construction
         return True
-    if re.fullmatch(r"0x[0-9a-fA-F]{64}", v):          # tx / block hash
-        return True
-    if re.fullmatch(r"[0-9]{15,25}", v):               # chain selector / numeric id
-        return True
+    if re.fullmatch(r"0x[0-9a-fA-F]{64}", v):          # tx hash OR 32-byte key
+        return bool(PUBLIC_KEY_NAME.search(key))
+    if re.fullmatch(r"[0-9]{15,25}", v):               # chain selector OR numeric token
+        return bool(PUBLIC_KEY_NAME.search(key))
     return False
 
 
@@ -94,9 +111,9 @@ for d in sorted(glob.glob(os.path.join(root, "raw/env/*/"))):
             continue
         # Numeric-only values are usually ports, sizes or timeouts — but a long digit string
         # can be a PIN or numeric token, so only skip the short ones.
-        if val.replace(".", "").replace("-", "").replace(" ", "").isdigit() and len(val) < 20:
+        if val.replace(".", "").replace("-", "").replace(" ", "").isdigit() and len(val) < 15:
             continue
-        if is_public_identifier(val):
+        if is_public_identifier(val, v.get("key", "")):
             continue
         # Group by environment ID, not display name: two projects can hold environments with
         # the same name, and keying on the name would silently merge or hide their credentials.

@@ -19,12 +19,12 @@ levels (Critical→Medium, High→Low, Medium→Info).
 
 ```bash
 jq -r '.results[] | [.cluster_id, .status, .is_deployed, .last_deployment_date,
-  (.reason // "-"), (.cluster_lock.lock_reason // "-")] | @tsv' raw/cluster-status.json
+  (.reason // "-"), (.cluster_lock.reason // "-")] | @tsv' raw/cluster-status.json
 jq -r '.results[] | [.name, .status, .deployment_status] | @tsv' raw/clusters.json
 ```
 
 **Fails when:** `status` is any error state (`DEPLOYMENT_ERROR`, `BUILD_ERROR`,
-`STOP_ERROR`, `DELETE_ERROR`, `INVALID_CREDENTIALS`) or `deployment_status` shows the
+`STOP_ERROR`, `DELETE_ERROR`, `RESTART_ERROR`, `INVALID_CREDENTIALS`) or `deployment_status` shows the
 cluster is out of date with its desired configuration.
 
 **Why it matters:** a cluster stuck in an error state means Qovery cannot reconcile

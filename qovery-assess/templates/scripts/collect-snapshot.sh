@@ -68,6 +68,12 @@ UA="QoverySkill/qovery-assess (version:${SKILLS_VERSION}; https://github.com/Qov
 
 RAW="$OUT_DIR/raw"
 LOG="$OUT_DIR/collect.log"
+
+# A second run into the same directory must not inherit the first one's resources. These
+# three subtrees are keyed by resource ID and fully re-derived on every run, so a deleted
+# environment or service would otherwise survive here and be read by every later phase,
+# which globs raw/env/*/ and raw/service/*/. Clear them rather than merging.
+rm -rf "$RAW/env" "$RAW/service" "$RAW/cluster"
 mkdir -p "$RAW" "$RAW/cluster" "$RAW/env" "$RAW/service" "$RAW/default"
 : > "$LOG"
 
@@ -98,7 +104,13 @@ refresh_auth() {
     AUTH_HEADER="Authorization: Token ${QOVERY_API_TOKEN}"
   else
     if [ -z "$AUTH_HEADER" ] || [ $((now - AUTH_TS)) -ge "$AUTH_TTL" ]; then
-      AUTH_HEADER="Authorization: Bearer $(qovery auth token --print 2>/dev/null)"
+      # The CLI states its own scheme. An OAuth login yields token_type "Bearer"; an
+      # opaque API token does not, and hardcoding Bearer around it fails every request.
+      # --json is piped straight into jq so only that one field is ever extracted.
+      local scheme
+      scheme=$(qovery auth token --json 2>/dev/null | jq -r '.token_type // "Bearer"')
+      [ -z "$scheme" ] || [ "$scheme" = "null" ] && scheme="Bearer"
+      AUTH_HEADER="Authorization: ${scheme} $(qovery auth token --print 2>/dev/null)"
       AUTH_TS=$now
     fi
   fi
@@ -149,15 +161,33 @@ redact_log() {
     -e 's/(xox[abprs]-[A-Za-z0-9-]{10,})/<<REDACTED:slack-token>>/g' \
     -e 's/(sk-[A-Za-z0-9]{20,})/<<REDACTED:api-key>>/g' \
     -e 's/(arn:aws[a-z-]*:secretsmanager:[^[:space:]"]*)/<<ARN:secretsmanager>>/g' \
-    -e 's/(([Pp]assword|[Pp]asswd|[Ss]ecret|[Aa]pi_?key)[[:space:]]*[:=][[:space:]]*)[^[:space:],;"'"'"']{6,}/\1<<REDACTED:inline-credential>>/g'
+    -e 's/(([Pp]assword|[Pp]asswd|[Ss]ecret|[Aa]pi_?key)[[:space:]]*[:=][[:space:]]*)[^[:space:],;"'"'"']{6,}/\1<<REDACTED:inline-credential>>/g' \
+    -e 's/(\\?"([Pp]assword|[Pp]asswd|[Ss]ecret|[Aa]pi_?[Kk]ey|[Aa]ccess_?[Kk]ey|[Pp]rivate_?[Kk]ey|[Tt]oken|[Aa]uthorization)\\?"[[:space:]]*:[[:space:]]*\\?")[^"\\]{6,}/\1<<REDACTED:inline-credential>>/g'
 }
 
-# api_get_redacted <path> <dest> — like api_get, but the body is redacted IN THE STREAM.
+# The rule above matters more than it looks. The unquoted rule before it excludes `"` from
+# the value, so it matches `password=hunter2` and NOT `"password": "hunter2"` — and every
+# payload this filter guards is JSON. The `\\?"` prefix also covers the escaped form,
+# because the event stream embeds a serialized JSON document inside a JSON string field.
+
+# redact_events — redact_log, plus every `value` field.
+# The audit event `change` payload carries variable values keyed by a SEPARATE `key` field,
+# so no key-name rule can reach them: {"key":"DB_PASSWORD","value":"<the credential>"}.
+# The OP checks read event_type, origin, target_name and triggered_by, never `value`, so
+# blanking it costs the assessment nothing and closes the only path by which a credential
+# could reach disk from this endpoint.
+redact_events() {
+  redact_log \
+  | sed -E -e 's/(\\?"value\\?"[[:space:]]*:[[:space:]]*\\?")[^"\\]+/\1<<REDACTED:variable-value>>/g'
+}
+
+# api_get_redacted <path> <dest> [filter-fn] — like api_get, but the body is redacted IN
+# THE STREAM. The filter defaults to redact_log; the events endpoint passes redact_events.
 # The raw body must never reach a file: a temp file holding an unredacted credential, even
 # for a moment, is exactly the boundary this skill promises not to cross. Response headers
 # go to their own file (they carry the status, never the body), so nothing is lost.
 api_get_redacted() {
-  local path="$1" dest="$2" code hdr
+  local path="$1" dest="$2" filter="${3:-redact_log}" code hdr
   hdr="$(mktemp)"
   refresh_auth
   mkdir -p "$(dirname "$dest")"
@@ -165,7 +195,7 @@ api_get_redacted() {
     --connect-timeout 10 --max-time 120 --retry 2 --retry-connrefused \
     -H "$AUTH_HEADER" \
     -H "User-Agent: $UA" "${API}${path}" 2>>"$LOG" \
-    | redact_log > "$dest"
+    | "$filter" > "$dest"
   code=$(awk 'toupper($1) ~ /^HTTP/ {c=$2} END {print c+0}' "$hdr" 2>/dev/null)
   [ -z "$code" ] && code=0
   if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
@@ -266,9 +296,9 @@ for page in 1 2 3 4 5; do
   # The `change` field embeds full variable payloads INCLUDING VALUES, so the page is
   # redacted before anything is written.
   if [ -z "$EV_TOKEN" ]; then
-    api_get_redacted "/organization/${ORG_ID}/events?pageSize=100" "$RAW/.events-page.json"
+    api_get_redacted "/organization/${ORG_ID}/events?pageSize=100" "$RAW/.events-page.json" redact_events
   else
-    api_get_redacted "/organization/${ORG_ID}/events?pageSize=100&continueToken=${EV_TOKEN}" "$RAW/.events-page.json"
+    api_get_redacted "/organization/${ORG_ID}/events?pageSize=100&continueToken=${EV_TOKEN}" "$RAW/.events-page.json" redact_events
   fi
   jq -c '(.events // .results // [])[]?' "$RAW/.events-page.json" >> "$RAW/events.ndjson" 2>/dev/null
   EV_TOKEN=$(jq -r '.links.next // empty' "$RAW/.events-page.json" 2>/dev/null | sed -n 's/.*continueToken=\([^&]*\).*/\1/p')

@@ -5,7 +5,7 @@ breach waiting for an audience; a hardcoded hostname is an environment clone tha
 talks to production.
 
 Data sources: `env/<envId>/variables.json`, `env/<envId>/secret-keys.json`,
-`env/<envId>/services.json`, `service/<id>/service.json`.
+`env/<envId>/services.json`.
 
 > **The hard rule, again.** `GET /environment/{envId}/environmentVariable` returns the
 > `value` field. You need it for `VS-01`, `VS-03` and `VS-05`. **Never print a value, never
@@ -143,13 +143,23 @@ two break at 3am, and the failure looks like an application bug.
 **Severity:** Medium
 
 ```bash
-jq -r '.results[]? | select(.variable_type=="OVERRIDE")
-  | [.key, .scope, (.service_name // "-"),
-     (.overridden_variable.scope // "?")] | @tsv' raw/env/<envId>/variables.json
+# The failure is a key that exists at a broad scope AND is re-declared as a fresh VALUE at
+# a narrower one. Selecting OVERRIDE rows finds the opposite — the case that is already
+# correct — so the two sets have to be compared.
+jq -r '[.results[]? | select(.variable_type=="VALUE")] as $v
+  | ($v | map(select(.scope=="ENVIRONMENT" or .scope=="PROJECT")) | map(.key)) as $parent
+  | $v[] | select(.scope=="APPLICATION" or .scope=="CONTAINER" or .scope=="JOB"
+                  or .scope=="HELM")
+  | select(.key as $k | $parent | index($k))
+  | [.key, .scope, (.service_name // "-"), "REDECLARED"] | @tsv' \
+  raw/env/<envId>/variables.json | sort | column -t
+
+# For contrast, the overrides that were done properly — report the ratio, not just the bad rows.
+jq -r '[.results[]? | select(.variable_type=="OVERRIDE")] | length' raw/env/<envId>/variables.json
 ```
 
-**Fails when:** a service redefines an inherited key as a fresh `VALUE` rather than an
-`OVERRIDE`. Both work; only the override records that it is a deliberate deviation and keeps
+**Fails when:** the first query returns rows — a service redefines an inherited key as a
+fresh `VALUE` rather than an `OVERRIDE`. Both work; only the override records that it is a deliberate deviation and keeps
 the link to the parent. A plain redeclaration is indistinguishable from a copy-paste
 mistake, and it silently stops tracking the parent when that changes.
 

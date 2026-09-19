@@ -156,7 +156,7 @@ however good its average looks.
 jq -r '.results[] | select(.service_type=="DATABASE") | [.name, .storage, .disk_type] | @tsv' \
   raw/env/<envId>/services.json
 jq -r '.results[] | select(((.storage // []) | length) > 0)
-  | [.name, ((.storage | map("\(.mount_point):\(.size_in_gib)GiB")) | join(","))] | @tsv' \
+  | [.name, ((.storage | map("\(.mount_point):\(.size)GB")) | join(","))] | @tsv' \
   raw/env/<envId>/services.json
 jq '{registry_retention: ."registry.image_retention_time"}' raw/cluster/<clusterId>/advanced-settings.json
 ```

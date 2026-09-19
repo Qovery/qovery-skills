@@ -104,7 +104,7 @@
       "If observability is disabled, marks CE-07/CE-08/CE-09/CE-11 as UNKNOWN, excludes them from scoring, and makes enabling observability the headline recommendation rather than guessing at waste",
       "If enabled, prefers the server-side 'qovery cluster analysis cost-recommendation' over hand-rolled metric queries",
       "Never states a euro or dollar savings figure that was not measured, and defers quantified estimates to qovery-optimize",
-      "For CE-10, recommends spot only for clusters hosting non-production environments, and explicitly excludes production, stateful services with RWO volumes, single-replica services and singleton brokers",
+      "For CE-10, recommends spot only for clusters that host non-production environments exclusively, never for a cluster shared with any production environment, and explicitly excludes production, stateful services with RWO volumes, single-replica services and singleton brokers",
       "Correlates memory reduction candidates against LG-04 OOMKilled signals and never recommends shrinking a service that has been OOM-killed"
     ]
   },

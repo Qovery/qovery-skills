@@ -4,8 +4,8 @@ This is the core of the assessment. Run every check against every service, then
 report findings **grouped by check**, not by service — "14 production services run a
 single replica" lands; fourteen separate findings do not.
 
-Data sources: `env/<envId>/services.json`, `service/<id>/service.json`,
-`service/<id>/advanced-settings.json`, `service/<id>/backups.json`,
+Data sources: `env/<envId>/services.json`, `service/<id>/advanced-settings.json`,
+`service/<id>/backups.json`,
 `env/<envId>/deployment-history.json`, `default/application-advanced-settings.json`.
 
 **Severity convention:** severities below are for services in a `PRODUCTION`
@@ -189,9 +189,10 @@ never in liveness (kill the pod).
 **Severity:** High
 
 ```bash
-jq '{liveness_delay: .healthchecks.liveness_probe.initial_delay_seconds,
+jq -r --arg id "<serviceId>" '.results[]? | select(.id == $id)
+  | {name, liveness_delay: .healthchecks.liveness_probe.initial_delay_seconds,
      readiness_delay: .healthchecks.readiness_probe.initial_delay_seconds}' \
-  raw/service/<id>/service.json
+  raw/env/<envId>/services.json
 ```
 
 **Fails when:** the delay is shorter than the application's real cold start. Compare
@@ -413,7 +414,7 @@ come from the cluster metrics API when observability is enabled.
 jq -r '.results[] | select(.service_type=="CONTAINER" or .service_type=="APPLICATION")
   | select((.storage // []) | length > 0)
   | [.name, .min_running_instances,
-     ((.storage | map("\(.mount_point):\(.size_in_gib)GiB")) | join(","))] | @tsv' \
+     ((.storage | map("\(.mount_point):\(.size)GB")) | join(","))] | @tsv' \
   raw/env/<envId>/services.json | column -t
 ```
 
@@ -433,7 +434,8 @@ managed service, an RWX volume, or object storage instead.
 **Severity:** Medium
 
 ```bash
-jq '{max_nb_restart, max_duration_seconds, schedule: .schedule}' raw/service/<jobId>/service.json
+jq -r --arg id "<jobId>" '.results[]? | select(.id == $id)
+  | {name, max_nb_restart, max_duration_seconds, schedule}' raw/env/<envId>/services.json
 ```
 
 **Fails when:** `max_duration_seconds` is unset or longer than the cron interval — runs
@@ -446,7 +448,8 @@ overlap, pile up, and contend for the same rows or the same API quota.
 **Severity:** Medium
 
 ```bash
-jq '{timeout_sec, allow_cluster_wide_resources}' raw/service/<helmId>/service.json
+jq -r --arg id "<helmId>" '.results[]? | select(.id == $id)
+  | {name, timeout_sec, allow_cluster_wide_resources}' raw/env/<envId>/services.json
 ```
 
 **Why it matters:** `allow_cluster_wide_resources: true` lets a chart create

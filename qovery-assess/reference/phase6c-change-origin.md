@@ -33,11 +33,19 @@ the `TERRAFORM` services in `env/<envId>/services.json`.
 **Severity:** High
 
 ```bash
-# Origin mix for configuration changes (not deploy triggers) in production environments:
-jq -r 'select(.environment_name != null)
+# Origin mix for configuration changes (not deploy triggers), PRODUCTION ONLY.
+# Resolve the production environment names in Phase 1 first — without this filter the
+# ratio pools staging and preview activity into a number the report calls "production".
+PROD_ENVS=$(jq -r '.results[]? | select(.mode == "PRODUCTION") | .name' raw/environments.json \
+            | sort -u | paste -sd'|' -)
+jq -r --arg prod "$PROD_ENVS" 'select(.environment_name != null)
+  | select(.environment_name | test("^(" + $prod + ")$"))
   | select(.event_type == "CREATE" or .event_type == "UPDATE" or .event_type == "DELETE")
   | [.environment_name, .origin, .target_type] | @tsv' raw/events.ndjson \
   | sort | uniq -c | sort -rn | head -25
+
+# Environment names are not unique across projects. Where two projects both have a
+# `production`, this pools them; split by project before quoting a per-team ratio.
 
 # Overall origin distribution:
 jq -r '.origin' raw/events.ndjson | sort | uniq -c | sort -rn

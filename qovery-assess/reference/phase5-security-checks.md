@@ -6,8 +6,7 @@ penetration test, not an application security review, and not a cloud-account au
 Say so in the report's Limitations section so the customer does not mistake a good
 score here for a clean bill of health.
 
-Data sources: `env/<envId>/services.json`, `service/<id>/service.json`,
-`service/<id>/advanced-settings.json`, `cluster/<id>/advanced-settings.json`,
+Data sources: `env/<envId>/services.json`, `service/<id>/advanced-settings.json`, `cluster/<id>/advanced-settings.json`,
 `members.json`, `custom-roles.json`, `api-tokens.json`, `policy-tokens.json`,
 `sso.json`, `cloud-credentials.json`, `pending-invitations.json`, `clusters.json`,
 `service/<id>/custom-domains.json`, `env/<envId>/variables.json`,
@@ -74,20 +73,36 @@ silently become an exposure.
 **Severity:** Critical
 
 ```bash
-jq '{api_cidrs: ."k8s.api.allowed_public_access_cidrs"}' raw/cluster/<clusterId>/advanced-settings.json
-```
-
-**Check `._unreadable` first.** If the cluster advanced-settings request failed, the CIDR
-field is absent because nothing was read — not because the list is empty. Treating that as a
-Critical exposure is a false finding:
-
-```bash
 jq -e '._unreadable // false' raw/cluster/<clusterId>/advanced-settings.json >/dev/null \
   && echo "UNKNOWN — advanced settings unreadable" \
-  || jq '{cidrs: ."k8s.api.allowed_public_access_cidrs"}' raw/cluster/<clusterId>/advanced-settings.json
+  || jq '{static_ip_mode: ."qovery.static_ip_mode",
+          custom_cidrs:   ."k8s.api.allowed_public_access_cidrs"}' \
+       raw/cluster/<clusterId>/advanced-settings.json
 ```
 
-**Fails when:** the list is empty, absent, or contains `0.0.0.0/0`.
+**Check `._unreadable` first.** If the cluster advanced-settings request failed, both fields
+are absent because nothing was read, not because nothing is set. Treating that as a Critical
+exposure is a false finding.
+
+**An empty CIDR list is the platform default and means nothing on its own.** This is the
+trap in this check, and getting it wrong produces a false Critical on nearly every
+organization. `GET /defaultClusterAdvancedSettings` returns
+`k8s.api.allowed_public_access_cidrs: []`, and the API describes the field as "set **custom**
+sources to public access endpoint" — it is the custom allow-list that accompanies
+`qovery.static_ip_mode`, not a record of how the endpoint is exposed. An empty list says the
+customer has not added custom sources. It does not say the API server is open.
+
+| Evidence | Result |
+|---|---|
+| list contains `0.0.0.0/0` | **FAIL** — explicitly open to the internet |
+| list is non-empty and specific | **PASS** — access is restricted to named ranges |
+| list is empty or absent | **UNKNOWN** — the platform default. Report it as unknown and give the customer the action below; never score it as a pass or a fail |
+
+**Resolving the `UNKNOWN`** takes one read the API does not expose: the cluster endpoint's
+public-access configuration in the cloud console (EKS "API server endpoint access", or the
+equivalent). If the customer confirms it, record the answer and say where it came from. This
+is the same posture the skill takes everywhere else — an unreadable answer is disclosed, not
+guessed.
 
 **Why it matters:** an internet-reachable API server turns any leaked kubeconfig,
 service-account token, or CI credential into full cluster access from anywhere.

@@ -40,8 +40,20 @@ for f in raw/env/*/deployment-logs/*.json; do
     | select(.error != null)
     | [(.timestamp // "-"), (.error.user_log_message // .error.tag // "error"),
        (.error.hint_message // "-")] | @tsv' "$f" 2>/dev/null
-done | sort | uniq -c | sort -rn | head -20
+done | grep -v '<<REDACTED:' | sort | uniq -c | sort -rn | head -20
+
+# Errors that carried a redaction marker are counted, never printed — the surrounding
+# text is what names the credential and where it came from. They belong to LG-06.
+for f in raw/env/*/deployment-logs/*.json; do
+  jq -r 'if type=="array" then .[] else . end | select(.error != null)
+    | [(.error.user_log_message // ""), (.error.hint_message // "")] | @tsv' "$f" 2>/dev/null
+done | grep -o '<<REDACTED:[a-z-]*>>' | sort | uniq -c
 ```
+
+**The `grep -v` is not optional.** Rule 2 of the log-safety contract is that a line sitting
+next to a redaction marker is never printed: the marker hides the credential, the text
+around it still names the service, the variable, and the command that leaked it. Count the
+marker classes, report them under `LG-06`, and leave the line where it is.
 
 **Fails when:** the same error recurs across executions, even where the deployment
 eventually succeeded. Qovery's `hint_message` usually names the fix — quote it in the
