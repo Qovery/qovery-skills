@@ -370,6 +370,39 @@ relies on a certificate nobody is renewing.
 
 ---
 
+### SC-22 — Control-plane audit logging is enabled and retained
+
+**Severity:** High (Critical under a compliance obligation)
+
+```bash
+jq '{cp_audit_days: ."aws.cloudwatch.eks_logs_retention_days",
+     flow_logs: ."aws.vpc.enable_s3_flow_logs",
+     flow_days: ."aws.vpc.flow_logs_retention_days"}' \
+  raw/cluster/<clusterId>/advanced-settings.json
+```
+
+**Fails when:** control-plane audit log retention is unset or zero.
+
+**Why it matters — and why it is separate from `SC-19`.** Three different logs answer three
+different questions, and teams routinely have one and assume they have all three:
+
+| Log | Answers | Check |
+|---|---|---|
+| Control-plane audit | *Who called the Kubernetes API, and what did they change?* | `SC-22` |
+| VPC flow | *What talked to what over the network?* | `SC-19` |
+| Application (Loki) | *What did the service itself report?* | `CL-10` |
+
+The control-plane audit log is the one an incident responder needs first and the one a
+benchmark explicitly requires — it is the record of API-level actions against the cluster.
+Report all three retention figures together so the customer can see which question they
+cannot currently answer.
+
+**Standards:** this is a named control in the CIS Kubernetes Benchmark's managed-service
+logging section and in the NSA/CISA guide's audit-logging area. See
+`standards-mapping.md` — and read its coverage caveat before citing either.
+
+---
+
 ### SC-21 — Ownership is traceable on cloud resources
 
 **Severity:** Info

@@ -123,12 +123,12 @@ LG-04  LG-05
 DR-02  DR-03  DR-05
 ```
 
-### Security & Data Protection (weight 0.30 — 35 checks)
+### Security & Data Protection (weight 0.30 — 36 checks)
 
 ```
 CP-02  CP-03
 CL-02  CL-10  CL-11
-SC-01 … SC-21
+SC-01 … SC-22
 VS-01  VS-02  VS-07
 LG-06  LG-07
 OP-03  OP-04  OP-06

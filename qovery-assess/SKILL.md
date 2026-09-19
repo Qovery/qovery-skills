@@ -123,11 +123,12 @@ Qovery Assessment Progress:
 | Auth | [reference/auth.md](reference/auth.md) | API token flow and token-handling rules |
 | Phase 1 | [reference/phase1-scope-inventory.md](reference/phase1-scope-inventory.md) | Scoping questions, GET-only allowlist, snapshot collection |
 | Phase 1b | [reference/phase1b-compliance-profile.md](reference/phase1b-compliance-profile.md) | CP-01..CP-04 — public compliance claims, severity lens, badge mapping |
+| Standards | [reference/standards-mapping.md](reference/standards-mapping.md) | Maps checks to CIS Kubernetes Benchmark, Pod Security Standards, NSA/CISA and NIST SP 800-190 — with the coverage caveat |
 | Phase 2 | [reference/phase2-cluster-checks.md](reference/phase2-cluster-checks.md) | CL-01..CL-16 — cluster health, sizing, version, observability, retention |
 | Phase 3 | [reference/phase3-environment-topology.md](reference/phase3-environment-topology.md) | TP-01..TP-11 — tier presence, mode hygiene, isolation, parity |
 | Phase 4 | [reference/phase4-reliability-checks.md](reference/phase4-reliability-checks.md) | RL-01..RL-22 — replicas, probes, anti-affinity, rollout, databases |
 | Phase 4b | [reference/phase4b-bad-practices.md](reference/phase4b-bad-practices.md) | BP-01..BP-08 — singleton brokers, DB without replica/backup, cron overlap, env bleed |
-| Phase 5 | [reference/phase5-security-checks.md](reference/phase5-security-checks.md) | SC-01..SC-21 — exposure, K8s API, ingress, RBAC, SSO, IMDS |
+| Phase 5 | [reference/phase5-security-checks.md](reference/phase5-security-checks.md) | SC-01..SC-22 — exposure, K8s API, ingress, RBAC, SSO, IMDS, audit logging |
 | Phase 5b | [reference/phase5b-variables-secrets.md](reference/phase5b-variables-secrets.md) | VS-01..VS-08 — secret values, aliases, overrides, interpolation, scope |
 | Phase 6 | [reference/phase6-delivery-ops-checks.md](reference/phase6-delivery-ops-checks.md) | DL-01..DL-12 — stages, alerting, IaC, image tags, webhooks |
 | Phase 6b | [reference/phase6b-log-analysis.md](reference/phase6b-log-analysis.md) | LG-01..LG-10 — deployment/runtime log errors, secrets in logs, startup & stop time |
@@ -159,14 +160,14 @@ track remediation across reassessments.
 | `TP-` | Topology & environments | 3 | 11 |
 | `RL-` | Reliability & resilience | 4 | 22 |
 | `BP-` | Anti-patterns | 4b | 8 |
-| `SC-` | Security & data protection | 5 | 21 |
+| `SC-` | Security & data protection | 5 | 22 |
 | `VS-` | Variables & secrets | 5b | 8 |
 | `DL-` | Delivery & operations | 6 | 12 |
 | `LG-` | Logs, correlation & timing | 6b | 10 |
 | `OP-` | Change origin & governance | 6c | 6 |
 | `CE-` | Cost efficiency | 6d | 11 |
 | `DR-` | Disaster recovery | 6e | 6 |
-| | **Total** | | **135** |
+| | **Total** | | **136** |
 
 Each check resolves to exactly one of:
 
