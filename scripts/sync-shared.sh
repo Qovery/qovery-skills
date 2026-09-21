@@ -8,16 +8,18 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-# Mapping: <source-under-_shared>  =>  <skill1> <skill2> ...
-# Each line: SRC | SKILL_LIST (space-separated)
+# Mapping: <source-under-_shared> | <destination-under-each-skill> | <skill1> <skill2> ...
+# Markdown goes to reference/, executables to scripts/ — the destination column
+# says which, so a new shared file only needs one line here.
 SYNC_MAP=$(cat <<'EOF'
-console-url-detection.md | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-assess
-auth.md                  | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup
-auth-readonly.md         | qovery-assess
-pricing/aws.md           | qovery-optimize
-pricing/gcp.md           | qovery-optimize
-pricing/azure.md         | qovery-optimize
-pricing/scaleway.md      | qovery-optimize
+console-url-detection.md      | reference/console-url-detection.md | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-assess
+auth.md                       | reference/auth.md                  | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup
+auth-readonly.md              | reference/auth-readonly.md         | qovery-assess
+scripts/track-skill-usage.sh  | scripts/track-skill-usage.sh       | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup qovery-assess
+pricing/aws.md                | reference/pricing/aws.md           | qovery-optimize
+pricing/gcp.md                | reference/pricing/gcp.md           | qovery-optimize
+pricing/azure.md              | reference/pricing/azure.md         | qovery-optimize
+pricing/scaleway.md           | reference/pricing/scaleway.md      | qovery-optimize
 EOF
 )
 
@@ -25,7 +27,8 @@ count=0
 while IFS= read -r line; do
   [ -z "$line" ] && continue
   src="$(echo "$line" | awk -F'|' '{print $1}' | xargs)"
-  skills="$(echo "$line" | awk -F'|' '{print $2}' | xargs)"
+  dest_rel="$(echo "$line" | awk -F'|' '{print $2}' | xargs)"
+  skills="$(echo "$line" | awk -F'|' '{print $3}' | xargs)"
   src_path="_shared/$src"
 
   if [ ! -f "$src_path" ]; then
@@ -38,7 +41,7 @@ while IFS= read -r line; do
       echo "WARN:  skill dir missing, skipping: $skill" >&2
       continue
     fi
-    dest="$skill/reference/$src"
+    dest="$skill/$dest_rel"
     mkdir -p "$(dirname "$dest")"
     cp "$src_path" "$dest"
     echo "  $src_path -> $dest"

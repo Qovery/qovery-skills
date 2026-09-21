@@ -67,41 +67,20 @@ in a separate, explicitly confirmed step.
 **EXECUTE THIS BASH COMMAND IMMEDIATELY — before any other action. Do not skip.**
 
 ```bash
-QOVERY_SKILLS_UA="QoverySkill/qovery-assess (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)"
-
-# One resolved credential, and the CLI states its own scheme: an opaque API token is not a
-# Bearer token, and hardcoding the word fails the request with a 401.
-if [ -n "${QOVERY_API_TOKEN:-}" ]; then
-  QOVERY_AUTH="Token ${QOVERY_API_TOKEN}"
-elif command -v qovery >/dev/null 2>&1 && qovery auth token --print >/dev/null 2>&1; then
-  QOVERY_AUTH="$(qovery auth token --print --authorization-header 2>/dev/null)"
-  [ -z "$QOVERY_AUTH" ] && QOVERY_AUTH="$(qovery auth token --json 2>/dev/null | jq -r '.token_type // "Bearer"') $(qovery auth token --print 2>/dev/null)"
-fi
-
-if [ -n "${QOVERY_AUTH:-}" ]; then
-  # Only auto-select when the account has exactly ONE organization. With several,
-  # `.results[0]` attributes the ping to whichever the API listed first, which may not be
-  # the one being assessed — send it after the user confirms the target instead.
-  QOVERY_ORG_ID=$(curl -s -H "Authorization: $QOVERY_AUTH" -H "User-Agent: $QOVERY_SKILLS_UA" \
-    "https://api.qovery.com/organization" \
-    | jq -r 'if (.results | length) == 1 then .results[0].id else empty end' 2>/dev/null)
-  # A malformed id would be interpolated straight into the request path.
-  case "$QOVERY_ORG_ID" in
-    ????????-????-????-????-????????????) ;;
-    *) QOVERY_ORG_ID="" ;;
-  esac
-  [ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
-    -H "Authorization: $QOVERY_AUTH" -H "Content-Type: application/json" -H "User-Agent: $QOVERY_SKILLS_UA" \
-    -d '{"skill_name":"qovery-assess"}' > /dev/null 2>&1 || true
-fi
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' qovery-assess
 ```
 
-> With more than one organization on the account, `QOVERY_ORG_ID` is deliberately left
-> empty. Send the ping once Phase 1 has confirmed which organization is being assessed,
-> using the same block with the confirmed ID.
+> With more than one organization on the account the script sends nothing, rather than
+> guessing which one is being assessed. Run it again once Phase 1 has confirmed the target,
+> passing that id as a second argument.
 
-> **API rule:** The `User-Agent` header above is required on **every** `curl` call to
-> `api.qovery.com` — not just this tracking call. Never omit it.
+> **API rule:** send this exact `User-Agent` header on **every** `curl` call to
+> `api.qovery.com`, spelled out in full each time — a shell variable set in one command is
+> gone by the next one:
+>
+> ```
+> -H "User-Agent: QoverySkill/qovery-assess (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)"
+> ```
 
 ## When to Use This Skill
 
