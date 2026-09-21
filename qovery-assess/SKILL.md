@@ -11,7 +11,18 @@ metadata:
 # Qovery Assess Skill
 
 This skill audits a Qovery organization's **entire configuration** and produces a
-gap analysis document that can be handed to the customer as-is.
+gap analysis document.
+
+**The full report is an internal qualification artifact. It is not the customer
+deliverable.** It is written to be readable by the customer — evidence, no blame, no
+padding — because it may end up in front of them, and because writing for that reader is
+what keeps it honest. But it is not what you send. A complete assessment routinely surfaces
+forty-plus findings across six pillars, and handing that to a team that has not seen it
+before does not inform them, it buries them: they cannot tell the public production database
+from the variable-interpolation nit, so they act on neither. What goes to the customer is a
+**derived briefing** — the five or six findings that actually matter for them, each paired
+with a concrete offer of help. Phase 8c builds it, and it is what Phase 9 reviews — the full
+report is the backing evidence behind it, not the thing on the table.
 
 It answers three questions:
 
@@ -22,7 +33,11 @@ It answers three questions:
 
 The output is a consulting-grade deliverable, not a raw config dump. It is also the
 basis for showing where Qovery helps **beyond the platform** — as an extension of the
-customer's team.
+customer's team. That posture is the point of the exercise: an assessment that lands as
+"here is everything wrong with your setup" pushes a team toward finding someone else to fix
+it. The same findings delivered as "we have visibility into this, here is what we would fix
+first, and here is us doing it with you" is the same technical content and the opposite
+commercial outcome.
 
 ## READ-ONLY — this is a hard invariant
 
@@ -116,7 +131,7 @@ An assessment may **recommend** those skills in its roadmap. It never runs them 
 
 ```
 Qovery Assessment Progress:
-- [ ] Phase 1  — Scope, auth, and read-only inventory snapshot
+- [ ] Phase 1  — Scope, auth, output format (HTML / Markdown / raw), read-only snapshot
 - [ ] Phase 1b — Compliance profile: public claims → severity lens + finding badges
 - [ ] Phase 2  — Cluster assessment (CL)
 - [ ] Phase 3  — Environment topology & tier separation (TP)
@@ -133,9 +148,11 @@ Qovery Assessment Progress:
 - [ ] Phase 6e — Disaster recovery & continuity (DR)
 - [ ] Phase 6f — *Optional, opt-in:* measured data from an external observability platform
 - [ ] Phase 7  — Score each pillar and assign a maturity level
-- [ ] Phase 8  — Write the customer-facing gap analysis + findings CSV
+- [ ] Phase 8  — Write the gap analysis in the format chosen at 1.3b + findings CSV
 - [ ] Phase 8b — If a previous snapshot exists, diff it and report the delta per pillar
-- [ ] Phase 9  — Review with the user, then offer hand-off skills (no changes applied)
+- [ ] Phase 8c — Derive the customer briefing: 5–6 priorities + a concrete help plan
+- [ ] Phase 9  — Review the briefing with the user (report as backing), then offer hand-off
+                skills (no changes applied)
 ```
 
 ## Reference materials (load on demand)
@@ -144,12 +161,12 @@ Qovery Assessment Progress:
 |---|---|---|
 | Console URL | [reference/console-url-detection.md](reference/console-url-detection.md) | Extract org/project/env IDs from a Console URL |
 | Auth | [reference/auth-readonly.md](reference/auth-readonly.md) | API token flow and token-handling rules — read-only variant; this skill never creates a token |
-| Phase 1 | [reference/phase1-scope-inventory.md](reference/phase1-scope-inventory.md) | Scoping questions, GET-only allowlist, snapshot collection |
+| Phase 1 | [reference/phase1-scope-inventory.md](reference/phase1-scope-inventory.md) | Scoping questions, the output-format question (1.3b), GET-only allowlist, snapshot collection |
 | Phase 1b | [reference/phase1b-compliance-profile.md](reference/phase1b-compliance-profile.md) | CP-01..CP-04 — public compliance claims, severity lens, badge mapping |
 | Standards | [reference/standards-mapping.md](reference/standards-mapping.md) | Maps checks to CIS Kubernetes Benchmark, Pod Security Standards, NSA/CISA and NIST SP 800-190 — with the coverage caveat |
-| Phase 2 | [reference/phase2-cluster-checks.md](reference/phase2-cluster-checks.md) | CL-01..CL-17 — cluster health, sizing, version, observability, retention, advanced-settings sweep, overcommit |
+| Phase 2 | [reference/phase2-cluster-checks.md](reference/phase2-cluster-checks.md) | CL-01..CL-18 — cluster health, sizing, version, observability, retention, advanced-settings sweep, overcommit, idle-node reclamation |
 | Phase 3 | [reference/phase3-environment-topology.md](reference/phase3-environment-topology.md) | TP-01..TP-11 — tier presence, mode hygiene, isolation, parity |
-| Phase 4 | [reference/phase4-reliability-checks.md](reference/phase4-reliability-checks.md) | RL-01..RL-23 — replicas, probes, anti-affinity, rollout, databases, lifecycle-job cleanup |
+| Phase 4 | [reference/phase4-reliability-checks.md](reference/phase4-reliability-checks.md) | RL-01..RL-24 — replicas, probes, anti-affinity, rollout, databases, burstable DB classes, lifecycle-job cleanup |
 | Phase 4b | [reference/phase4b-bad-practices.md](reference/phase4b-bad-practices.md) | BP-01..BP-08 — singleton brokers, DB without replica/backup, cron overlap, env bleed |
 | Phase 5 | [reference/phase5-security-checks.md](reference/phase5-security-checks.md) | SC-01..SC-27 — exposure, K8s API, ingress, RBAC, SSO, IMDS, audit logging, Secrets encryption, cloud credentials, dangling domains |
 | Phase 5b | [reference/phase5b-variables-secrets.md](reference/phase5b-variables-secrets.md) | VS-01..VS-08 — secret values, aliases, overrides, interpolation, scope |
@@ -161,7 +178,8 @@ Qovery Assessment Progress:
 | Phase 6e | [reference/phase6e-disaster-recovery.md](reference/phase6e-disaster-recovery.md) | DR-01..DR-06 — RPO/RTO, backups, tested restore, rebuild, runbook |
 | Phase 6f | [reference/phase6f-external-metrics.md](reference/phase6f-external-metrics.md) | *Optional.* Resolves CE-03/07/08/09/11 and RL-14 from Datadog, New Relic, Grafana or CloudWatch. Opt-in, never using a credential found in the estate |
 | Phase 7 | [reference/phase7-scoring.md](reference/phase7-scoring.md) | Deterministic scoring formula, pillar weights, maturity bands |
-| Phase 8 | [reference/phase8-report.md](reference/phase8-report.md) | How to assemble and write the deliverable |
+| Phase 8 | [reference/phase8-report.md](reference/phase8-report.md) | How to assemble and write the deliverable, in HTML, Markdown or raw |
+| Phase 8c | [reference/phase8c-customer-briefing.md](reference/phase8c-customer-briefing.md) | Derive the 5–6 priority customer briefing and the help plan from the full report |
 
 ## Templates
 
@@ -174,7 +192,9 @@ Qovery Assessment Progress:
 | [templates/scripts/detect-observability-access.sh](templates/scripts/detect-observability-access.sh) | **Run it** before Phase 6f. Reports which local CLIs are already authenticated against the customer's observability platform. Reads no credential. |
 | [templates/scripts/service-graph.sh](templates/scripts/service-graph.sh) | **Run it** before drawing the architecture diagram. Resolves Qovery built-in host variables to service names and reports whether edges are attributable per service. Local files only. |
 | [templates/scripts/cluster-settings-sweep.sh](templates/scripts/cluster-settings-sweep.sh) | **Run it** for `CL-13`. Surfaces the ~25 of ~120 cluster advanced settings that carry weight, and flags where the customer's own clusters diverge. Local files only. |
-| [templates/report-template.md](templates/report-template.md) | **Read & copy**, then fill every `{{placeholder}}`. The customer-facing deliverable. |
+| [templates/report.html](templates/report.html) | **Read & copy** when the format is HTML (the default). Self-contained single-file report: Qovery-branded, light/dark, filterable control appendix, prints to PDF. Fill every `{{placeholder}}`; never add an external script, stylesheet or image. |
+| [templates/report-template.md](templates/report-template.md) | **Read & copy** when the format is Markdown. Same content, same rules, plain `.md`. The full internal report — written so the customer *could* read it, but not what is sent. |
+| [templates/customer-briefing.md](templates/customer-briefing.md) | **Read & copy** for Phase 8c. The 5–6 item briefing that is actually delivered to the customer. |
 | [templates/findings.csv](templates/findings.csv) | **Read & copy** the header, then append one row per finding. |
 | [examples/executive-summary-excerpt.md](examples/executive-summary-excerpt.md) | Tone and density reference for the executive summary (fictional data). |
 
@@ -186,9 +206,9 @@ track remediation across reassessments.
 | Prefix | Family | Phase | Count |
 |---|---|---|---|
 | `CP-` | Compliance profile | 1b | 4 |
-| `CL-` | Cluster foundation | 2 | 17 |
+| `CL-` | Cluster foundation | 2 | 18 |
 | `TP-` | Topology & environments | 3 | 11 |
-| `RL-` | Reliability & resilience | 4 | 23 |
+| `RL-` | Reliability & resilience | 4 | 24 |
 | `BP-` | Anti-patterns | 4b | 8 |
 | `SC-` | Security & data protection | 5 | 27 |
 | `VS-` | Variables & secrets | 5b, 5c | 9 |
@@ -197,7 +217,7 @@ track remediation across reassessments.
 | `OP-` | Change origin & governance | 6c | 7 |
 | `CE-` | Cost efficiency | 6d | 11 |
 | `DR-` | Disaster recovery | 6e | 6 |
-| | **Total** | | **147** |
+| | **Total** | | **149** |
 
 Each check resolves to exactly one of these four. The report prints two further labels,
 `PARTIAL` and `OBSERVATION`, which are renderings of the same resolutions — the mapping is

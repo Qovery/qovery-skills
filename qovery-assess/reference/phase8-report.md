@@ -1,7 +1,41 @@
 ## Phase 8: Writing the Deliverable
 
-The report is the product. It goes to a customer, is read by people who were not in the
-session, and is often forwarded to a CTO or an auditor. Write it accordingly.
+The report is the product. Write it as though it goes to a customer, is read by people who
+were not in the session, and is forwarded to a CTO or an auditor — because writing for that
+reader is what keeps it evidenced and free of padding.
+
+**But it is not what gets sent.** The full report is an internal qualification artifact: it
+finds everything and proves each one, which is exactly what makes it the wrong thing to hand
+to a team seeing it for the first time. The customer deliverable is the derived briefing —
+five or six findings, each with a concrete offer of help — built in **Phase 8c** (`reference/phase8c-customer-briefing.md`, reached from `SKILL.md`).
+Finish this phase first; the briefing is a selection from it and cannot be written without it.
+
+### Pick up the format answered in Phase 1.3b
+
+Three formats, three different artifacts. If Phase 1.3b was skipped, ask now before
+writing a word — the choice decides which template gets filled, and discovering it after
+forty findings are written means writing them twice.
+
+| Answer | Fill | Ships alongside |
+|---|---|---|
+| **HTML** (default when unanswered) | `templates/report.html` | `findings.csv` |
+| **Markdown** | `templates/report-template.md` | `findings.csv` |
+| **Raw** | nothing — deliver `findings.csv` plus the `raw/` snapshot as collected | — |
+
+```bash
+mkdir -p qovery-assessment
+# HTML — the default
+cp templates/report.html qovery-assessment/qovery-assessment-{{organization_name}}.html
+# Markdown — when it goes into a repo, a wiki or a review with diffs
+cp templates/report-template.md qovery-assessment/qovery-assessment-{{organization_name}}.md
+```
+
+**Raw is a real answer, not a cop-out.** When the caller is piping this into their own
+tooling, prose is overhead. Deliver the CSV and the snapshot, state the coverage numbers
+in the conversation, and stop. Do not write a report nobody asked for.
+
+Whichever format, the content rules below are the same — they are about the argument, not
+the markup. The HTML-specific structure is in **The HTML deliverable** further down.
 
 Copy `templates/report-template.md` (linked from `SKILL.md`) and fill every
 `{{placeholder}}`. Copy `templates/findings.csv` and append **one row per defined check** —
@@ -12,8 +46,6 @@ that does not reconcile with the coverage line is a bug in the deliverable. Leav
 findings; the example rows in the template show both shapes.
 
 ```bash
-mkdir -p qovery-assessment
-cp templates/report-template.md qovery-assessment/qovery-assessment-{{organization_name}}.md
 head -n 1 templates/findings.csv > qovery-assessment/findings.csv   # header only — the
                                                                      # template's rows are examples
 ```
@@ -61,6 +93,14 @@ The template implements this order. It is deliberate: risk first, roadmap before
 detail, so the document is useful to someone who reads only the first page.
 
 1. **Executive summary** — scorecard, maturity level, top 5 risks, what is already strong.
+
+   **The top-risks table cross-references findings; it does not restate them.** Every row is
+   an ID that appears in full under its pillar, and the row carries the one-line risk and
+   impact only. Written any other way the table becomes a second, shorter set of findings —
+   "no SSO", "shared API tokens", "no alerting" appearing once here and again under Security
+   and Delivery — and a reader who notices the duplication starts counting findings twice and
+   trusting the document less. If a row cannot be reduced to a pointer plus one line, the
+   finding it points at is underwritten; fix it there.
 2. **Scope & method** — what was assessed, when, the read-only statement, the Phase 1.3
    assumptions, and the check coverage numbers.
 3. **Platform topology** — clusters, projects, environments, services. A table and, where
@@ -101,6 +141,29 @@ the finding, set a `viewBox` and let CSS scale it, and put the figure in the sam
 `overflow-x` container as the tables so it survives a phone. Give the `<svg>` `role="img"`
 and an `aria-label` that states the same claim as the caption. Label every arrow — `calls`,
 `transcribes`, `read / write` — an unlabelled arrow only says "related somehow".
+
+**Reconcile the figure against the deployed set before you publish it.** The graph script
+builds edges from declared variables, so a service that declares none — or one added after
+the snapshot — can be absent from the drawing while running perfectly well in the
+environment. A customer who spots their own service missing from your architecture diagram
+stops believing the findings too, and they are right to. Diff it:
+
+```bash
+# Everything actually deployed in the environment...
+jq -r '.results[] | select(.service_type != "DATABASE") | .name' raw/env/<envId>/services.json | sort > /tmp/deployed.txt
+# ...against every node the diagram draws. Anything only on the left is a service the
+# figure silently dropped: draw it as an unconnected box, or say in the caption why not.
+comm -23 /tmp/deployed.txt /tmp/diagram-nodes.txt
+```
+
+**Draw the utility and external services too, not only the request path.** Object storage,
+queues, mail and payment providers, the analytics sink — these are where the data actually
+comes to rest, and an architecture figure that stops at the cluster boundary hides the part
+of the estate with the longest retention and the least review. `dependency-surface.sh` and
+the Phase 5c dependency map already enumerate them from variable keys; put the ones on the
+data path in the figure, at the edge, with a labelled arrow saying what crosses. It is also
+what makes the storage conversation possible: a service writing to a persistent volume
+*and* to a bucket is usually one of the two by mistake.
 
 **Caption what it proves, and what it does not.** This is the part that is easy to skip and
 expensive to get wrong. Service existence, public exposure and datastore wiring are read
@@ -223,3 +286,106 @@ Then offer — do not perform — the hand-off:
 Note at the end of the report that re-running `qovery-assess` after remediation
 produces a comparable score, since check IDs and the formula are stable. That is what
 makes the number worth anything.
+
+---
+
+## The HTML deliverable
+
+`templates/report.html` is the structure. It is a complete, working document already —
+header, hero, scoreband, table of contents, every section shell, the appendix filter and
+the theme toggle. Fill the `{{placeholders}}`, repeat the blocks marked `REPEAT`, and
+delete the sections that do not apply. Do not restyle it, and do not regenerate the CSS:
+it is Qovery's design system, it is already correct in light and dark, and a hand-rolled
+variant will not be.
+
+### The rule that matters most: one file
+
+No build step, no local assets, no second file to send. This document gets forwarded as an
+email attachment, dropped in Slack, and opened months later from a Downloads folder — every
+one of those breaks the moment it depends on something outside itself. The only permitted
+external reference is the Google Fonts link already in the head, and the page is designed
+to degrade to system fonts without it. Never add a script tag pointing at a URL, never add
+a stylesheet link, never reference an image file. Inline SVG is how a figure gets in.
+
+### Structure
+
+The fourteen sections in the table of contents, in that order. It is the Markdown structure
+with three additions that only work in a browser, and each earns its place:
+
+| Section | Notes |
+|---|---|
+| Hero + scoreband | The whole verdict above the fold: score, level, per-pillar meters, and the estate in one line of facts |
+| Executive summary | Prose, a `callout` for what to act on first, and the coverage chips |
+| Top risks | `article.finding` blocks — the same component used everywhere |
+| What is already strong | `ul.strengths` with ticks |
+| Scope, method, compliance | Public claims table, severity lens, assumptions |
+| Platform topology | Cluster table, two `grid2` cards, the architecture diagram |
+| One section per pillar | Score chip in the heading, then findings |
+| Blast radius | How the findings combine |
+| Roadmap | Now / Next / Later, one table each |
+| Where Qovery helps | |
+| Appendix | Every control, filterable |
+| Unknowns & method | Grouped unknowns, limitations, scoring formula |
+
+### The finding component
+
+Every finding in the document — Top risks and every pillar section — is one
+`article.finding`. Same markup, same four `<dt>` labels in the same order: **Finding,
+Impact, Fix, Effort**. The `f-scope` span carries how many instances and which aggregation
+applied (`4 of 12 services · partial`, `all-or-nothing`, `organization-wide`), which is
+what lets a reader check the score without opening the CSV.
+
+Do not invent a second finding layout for the "smaller" findings. A visually distinct
+component reads as a different *kind* of claim, and the reader starts ranking by styling
+instead of by severity.
+
+### The appendix filter
+
+Each row carries `data-result="PASS|FAIL|PARTIAL|UNKNOWN|N/A|OBSERVATION"`, and the buttons
+read exactly that string. Three ways to break it, all silent:
+
+- A `data-result` that does not match the chip in the same row. The filter and the eye
+  disagree and the filter wins.
+- A value outside the six. The row becomes invisible to every filter including `All`.
+- Counts in the button labels that do not reconcile with the rows. The filter shows the
+  truth and the label shows the typo.
+
+Every row needs an evidence note, including the passes. A `PASS` with an empty evidence
+cell is indistinguishable from a check that was never run, which is the exact thing the
+appendix exists to rule out.
+
+### Accessibility and print, briefly
+
+Both are already handled by the template; the failure mode is undoing them.
+
+- The meters are `role="img"` with an `aria-label` stating the number and the low-evidence
+  caveat. A bar with no label is decoration.
+- Colour is never the only signal — every chip carries its word (`FAIL`, not a red dot).
+- The print stylesheet drops the nav, the ToC and the buttons, and avoids breaking a
+  finding across pages. "Print to PDF" is how this becomes an attachment, so check it.
+- Tables live inside `div.tablewrap` so they scroll rather than overflow on a phone. A
+  table pasted outside one breaks the layout at narrow widths.
+
+### Before shipping
+
+```bash
+# 1. No placeholder survived.
+grep -o '{{[^}]*}}' qovery-assessment/*.html | sort -u
+
+# 2. Nothing external crept in. Must return nothing.
+#    Written without a negative lookahead on purpose: `grep -P` is not portable, and the
+#    template's own favicon is a data: URI, so a naive "any link tag" check false-positives.
+grep -noE '<script[^>]+src=[^ >]*|<link[^>]+href=[^ >]*|<img[^>]+src=[^ >]*' \
+  qovery-assessment/*.html | grep -vE 'href="(data:|https://fonts\.(googleapis|gstatic)\.com)'
+
+# 3. data-result values are all in the allowed six.
+grep -o 'data-result="[^"]*"' qovery-assessment/*.html | sort | uniq -c
+
+# 4. The appendix row count reconciles with the coverage line. If it does not,
+#    the deliverable is wrong — fix the rows, never the coverage line.
+grep -c 'data-result=' qovery-assessment/*.html
+```
+
+Then open it. The theme toggle, the filter buttons and the table-of-contents highlight are
+real behaviour, and a broken one is visible in about five seconds — which is five seconds
+less than the customer will take to find it.

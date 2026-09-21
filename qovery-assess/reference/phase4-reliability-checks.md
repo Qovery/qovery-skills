@@ -404,6 +404,66 @@ come from the cluster metrics API when observability is enabled.
 
 ---
 
+### RL-24 — Production databases do not run on a burstable instance class
+
+**Severity:** High (Critical on a primary production datastore with no read replica)
+
+> Numbered after the existing series but belonging to the **data layer** above: it reads
+> the same `instance_type` column as `RL-16` and `RL-18`.
+
+```bash
+# Every database, with the mode and the instance class that actually carries the load.
+for d in raw/env/*/; do
+  E=$(jq -r '.name'  "$d/environment.json"); M=$(jq -r '.mode' "$d/environment.json")
+  jq -r --arg e "$E" --arg m "$M" '.results[]? | select(.service_type == "DATABASE")
+    | [$e, $m, .name, .mode, .type, (.instance_type // "-"), (.storage | tostring)] | @tsv' \
+    "$d/services.json"
+done | column -t -s$'\t'
+```
+
+**Fails when:** a database in a `PRODUCTION` environment runs on a burstable class:
+
+| Cloud | Burstable classes |
+|---|---|
+| AWS | `db.t2.*`, `db.t3.*`, `db.t4g.*`, and `cache.t*` for ElastiCache |
+| Azure | `B_*` / `Standard_B*` |
+| GCP | `db-f1-micro`, `db-g1-small`, and any shared-core machine type |
+
+**Why it matters:** a burstable instance runs at a **baseline** fraction of its vCPU and
+earns credits to exceed it. Sustained load above the baseline spends credits faster than
+they accrue, and when the balance reaches zero the instance is throttled *down to the
+baseline* — often a single-digit percentage of the CPU the size implies. On a primary
+production database that is not a slowdown, it is an outage: queries queue, the connection
+pool saturates, and every service behind it fails with it.
+
+The timing is what makes this worse than an ordinary sizing mistake. Credits are exhausted
+by sustained load, so the instance degrades **at the traffic peak** — the moment with the
+least headroom to react — and it recovers only by waiting for credits to re-accrue. This is
+not hypothetical: a Qovery customer's primary production database was throttled to baseline
+mid-day after exhausting its burst credits, and it became a major production incident.
+
+**Do not report this as "the database is currently throttled".** The instance class is
+readable from the Qovery API; the CPU credit balance is not — it is a cloud-provider metric
+(`CPUCreditBalance` on CloudWatch). The class alone proves the **exposure**, not that it is
+being hit. Where **Phase 6f** is in play and the customer's AWS session reaches CloudWatch,
+read `CPUCreditBalance` over the longest window available and say which it is: a balance
+that is flat and near maximum is a database that fits comfortably inside its baseline, and
+the finding drops to Low. A balance with a downward sawtooth is the incident, scheduled.
+
+**Where it does not apply, and say so:** development and staging databases. Burstable is
+the *correct* choice for an idle dev datastore, and flagging it there turns a real
+production finding into noise. Resolve those instances `N/A`, not `FAIL`.
+
+**Recommendation:** move the primary production database to a fixed-performance class —
+`db.m*` / `db.r*` on AWS, `Standard_D*` / `E*` on Azure, `db-custom-*` or an `n2` machine
+type on GCP. It costs more, and the report should state the delta rather than imply the
+change is free. Where the workload genuinely is bursty and the class must stay, two
+mitigations are real: enable unlimited / sustained mode **with a spend ceiling**, and alert
+on `CPUCreditBalance` before it reaches zero rather than after — which needs `DL-05`
+alerting to exist at all, so pair the two findings.
+
+---
+
 ### RL-19 — Single-replica stateful services are intentional
 
 **Severity:** High

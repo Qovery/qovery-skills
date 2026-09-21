@@ -97,11 +97,30 @@ window is 55" — and leave currency to `qovery-optimize` and the customer's own
 > the numbers from instance types or request settings — an invented waste figure is the
 > fastest way to lose a cost conversation.
 
-First confirm metrics are available:
+First confirm metrics are available — and read the sub-features, not just the top-level
+flag, because they are the difference between "no observability" and "observability with a
+switch left off":
 
 ```bash
-jq -r '.results[] | [.name, (.metrics_parameters.enabled|tostring)] | @tsv' raw/clusters.json
+jq -r '.results[] | [.name,
+  "metrics=\(.metrics_parameters.enabled // false)",
+  # `false // "-"` is "-" in jq: the alternative operator treats false as empty, so a
+  # sub-feature that is explicitly DISABLED renders identically to one the API did not
+  # report. That is the exact distinction this check exists to make — test for null.
+  "alerting=\(.metrics_parameters.configuration.alerting.enabled | if . == null then "not-reported" else tostring end)",
+  "cloudwatch=\(.metrics_parameters.configuration.cloud_watch_export_config.enabled | if . == null then "not-reported" else tostring end)"] | @tsv' \
+  raw/clusters.json | column -t -s$'\t'
 ```
+
+> **Attribute the gap to the switch, never to the data.** An early adopter can have
+> observability enabled from before `alerting` and CloudWatch export existed as options, and
+> still be sitting on their defaults years later — the stack is deployed, the sub-features
+> were never turned on, and nobody was told. A report that says "metrics could not be
+> retrieved" in that situation is wrong in the way that costs the most credibility: the
+> reader knows the stack is installed, so the report reads as broken rather than as a
+> finding. Write the cause instead — "observability is enabled on `<cluster>`; alerting and
+> CloudWatch export are off, which is why `DL-05` has no alert path and why <X> is
+> UNKNOWN" — and file it under `CL-08`, which already reads these fields.
 
 **If `false` on every cluster:** mark `CE-07`–`CE-09` and `CE-11` as `UNKNOWN`, exclude them
 from scoring, and make this the headline of the cost section:
@@ -180,6 +199,20 @@ which grows forever and is invisible on most cost reviews.
 Provisioned volumes only shrink by recreation, so a finding here is usually "right-size at
 the next migration", not "change it now". Registry retention is a one-line fix.
 
+**Ask whether the volume should exist before asking how big it should be.** A persistent
+volume attached to a stateless service is often not durable storage at all — it is scratch
+space for uploads, exports or temp files that are buffered locally and then written
+somewhere else. Teams reach for a volume because a path needs to be writable, not because
+the data needs to survive the pod, and the cost of that reflex is larger than the disk: an
+RWO volume pins the pod to a node, blocks `CE-10` spot capacity, and turns `RL-19` into a
+single point of failure for data nobody intended to keep.
+
+The assessment cannot tell durable from scratch by reading the mount point, so do not
+assert it. Put it to the team as a question per volume — *what is on this, and does it need
+to outlive the pod?* — and note that object storage answers the scratch case without the
+scheduling constraints. A volume they can explain is a pass; one nobody can account for is
+the finding.
+
 ### CE-10 — Spot or equivalent capacity on non-production clusters
 
 **Severity:** Medium
@@ -224,3 +257,31 @@ Compare total requested CPU and memory with the node pool's capacity
   large or requests are inflated (`CE-07`).
 - **Requests near capacity** — no room for a rolling update's surge pods or for a node
   failure. This is a reliability finding wearing a cost costume; pair it with `CL-07`.
+
+**Requests are not utilization, and the distinction decides what you may recommend.** The
+sum above is what services *asked for*. It bounds the problem in one direction only: a pool
+whose requests come to a fraction of its capacity is provably carrying nodes nothing has
+claimed, and that is worth reporting on its own. It says nothing about the opposite case —
+requests near capacity with real usage far below it is the commonest shape of all, and it
+looks identical here.
+
+So separate the two sentences the report can make:
+
+| Evidence available | What the report may say |
+|---|---|
+| Requests only | "The production pool provisions N nodes; workloads request X% of their capacity. Nodes are running that nothing has scheduled onto." Report it, name the gap, stop there |
+| Requests **and** node utilization over time | "…and measured utilization over the last 30 days peaked at Y%." Only now is a sizing recommendation defensible |
+
+**A reduction recommendation needs a time series, never a snapshot.** A pool sized for a
+nightly batch, a weekly report run, or a seasonal peak is indistinguishable from an
+oversized pool at any single instant — and the code freeze or the peak trading week is
+precisely when a wrong recommendation gets acted on. Where the series is unavailable,
+resolve `UNKNOWN` with the reason, state what was observed, and name the data that would
+settle it. `CL-18` covers the mechanism side of the same waste: whether anything is
+configured to reclaim the idle nodes at all.
+
+**When node-level series are not exposed, say which it is.** "Not measured" and "measured
+elsewhere, not readable here" are different findings with different fixes, and collapsing
+them into one sentence is the failure mode this file warns about throughout. If cluster
+observability is on but exposes pod series and not node series, that is the sentence to
+write — not a silent fallback to requests, and not a claim that the estate is unmonitored.

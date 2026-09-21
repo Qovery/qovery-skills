@@ -95,6 +95,29 @@ If the user does not answer, assume: mode-based criticality, a 99.9% production
 target, no formal compliance obligation, engineering audience. **State the
 assumptions in the report's Scope section** so the customer can correct them.
 
+### 1.3b Ask which output format to produce
+
+One more question, and it is not an assumption you may make silently — the three
+formats are different artifacts, not three renderings of one file, and picking wrong
+means writing the deliverable twice.
+
+> **How would you like the report? HTML, Markdown, or raw?**
+>
+> - **HTML** — one self-contained file. Qovery-branded, light and dark, filterable
+>   control appendix, prints to PDF. The one to send or present.
+> - **Markdown** — plain `.md`. Best when it goes into a repo, a wiki, a Notion page,
+>   or through review with diffs.
+> - **Raw** — the findings CSV and the JSON snapshot, no prose. For piping into
+>   another tool, a dashboard, or a spreadsheet.
+
+**Default to HTML if there is no answer**, and say that you are defaulting. It is the
+only one of the three that is useful without a second step, and the Markdown is
+recoverable from it in seconds if the choice turns out wrong.
+
+Ask now rather than at Phase 8: the answer costs nothing here and changes which
+template gets filled once forty findings are already written. More than one is a
+legitimate answer — the CSV ships alongside HTML or Markdown anyway.
+
 ### 1.4 Collect the snapshot
 
 Run the collector — it issues GET calls only and writes one JSON file per resource:

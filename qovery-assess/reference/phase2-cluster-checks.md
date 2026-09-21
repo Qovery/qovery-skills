@@ -184,10 +184,14 @@ jq -r '.results[] | [.name,
   (.metrics_parameters.enabled|tostring),
   (.metrics_parameters.configuration.kind // "-"),
   (.metrics_parameters.configuration.resource_profile // "-"),
-  "ha=\(.metrics_parameters.configuration.high_availability // "-")",
-  "alerting=\(.metrics_parameters.configuration.alerting.enabled // "-")",
-  "cloudwatch=\(.metrics_parameters.configuration.cloud_watch_export_config.enabled // "-")",
-  "netmon=\(.metrics_parameters.configuration.internal_network_monitoring.enabled // "-")"] | @tsv' \
+  # Every field below is a boolean, so `// "-"` is wrong: jq's alternative operator treats
+  # `false` as empty and would render an explicitly DISABLED sub-feature exactly like one
+  # the API never reported. The difference between "never turned on" and "we could not
+  # read it" is the whole finding here — test for null instead.
+  "ha=\(.metrics_parameters.configuration.high_availability | if . == null then "not-reported" else tostring end)",
+  "alerting=\(.metrics_parameters.configuration.alerting.enabled | if . == null then "not-reported" else tostring end)",
+  "cloudwatch=\(.metrics_parameters.configuration.cloud_watch_export_config.enabled | if . == null then "not-reported" else tostring end)",
+  "netmon=\(.metrics_parameters.configuration.internal_network_monitoring.enabled | if . == null then "not-reported" else tostring end)"] | @tsv' \
   raw/clusters.json | column -t
 ```
 
@@ -437,3 +441,60 @@ that quietly disarms them.
 
 **Do not report either as a finding on a non-production cluster** — overcommit is a
 legitimate way to pack a development cluster, and that is usually the intent.
+
+---
+
+### CL-18 — Idle node capacity is reclaimed, not merely provisioned
+
+**Severity:** Medium (High where the production pool is both over-provisioned and
+consolidation is off, because the two compound)
+
+```bash
+# Karpenter's node-pool parameters live in the cluster `features` array. Dump the whole
+# value rather than reaching through a fixed path: the shape carries fields this assessment
+# does not model, and a hardcoded path that misses returns null — which reads exactly like
+# "consolidation is disabled" and would turn a data gap into a finding.
+jq -r '.results[] | select(.production == true)
+  | [.name, .instance_type, "\(.min_running_nodes)-\(.max_running_nodes)",
+     ([.features[]? | select((.id // "") | test("karpenter";"i")) | .value_object.value] | tostring)]
+  | @tsv' raw/clusters.json | column -t -s$'\t'
+
+# Then read the consolidation block out of whatever nesting it arrived in:
+jq -r '.results[] | select(.production == true) | .name as $n
+  | [.features[]? | .value_object.value? | .. | objects | select(has("consolidation"))]
+  | if length == 0 then "\($n)\tconsolidation=not-reported"
+    else "\($n)\tconsolidation=\(.)" end' raw/clusters.json
+```
+
+**Fails when:** a production node pool has consolidation disabled *and* the pool is running
+materially more capacity than the workloads request. Either alone is not the finding —
+consolidation is legitimately switched off on clusters with workloads that cannot tolerate
+eviction, and a pool with headroom is what `CL-07` asks for.
+
+**Why it matters:** without consolidation, nodes that scaled out for a spike stay allocated
+after the spike drains. The pool ratchets upward — it never comes back down — so the cluster
+converges on its historical peak as its permanent floor. The symptom is a stable node pool
+with several nodes at a token utilization and no mechanism that will ever remove them, and
+it is invisible on the Qovery bill because it lands on the cloud provider's.
+
+**Never recommend a capacity reduction from a point-in-time reading.** A snapshot showing
+nodes at 10% is a snapshot of *this minute*, and a pool sized for a nightly batch window or
+a weekly peak looks identical to a pool that is simply too big. A reduction recommendation
+requires utilization **over time**; without it this check resolves `UNKNOWN`, with the
+reason stated, and the report says the pool *appears* over-provisioned and names the data
+needed to confirm it. That is a genuinely useful finding — it is not the same sentence as
+"shrink the pool", and the difference is the customer's next outage.
+
+**Where the time series comes from, in order of preference:**
+
+| Source | How |
+|---|---|
+| Qovery cluster observability (`CL-08`) | The metrics stack scrapes **pod and container** series. Whether **node**-level utilization is exposed to the customer varies by stack configuration — check before asserting it, and if node series are absent, say so plainly and record it as a platform gap rather than silently falling back to requests |
+| **Phase 6f** — the customer's own platform | CloudWatch Container Insights, Datadog, Grafana. If they run one, node utilization over weeks is already there and this is the shortest path |
+| Requested resources (`CE-11`) | The fallback, and a weak one: requests are what services *asked for*, not what they used. Sufficient to show a pool that cannot possibly be full; never sufficient to size one down |
+
+**Recommendation:** enable consolidation on the pools whose workloads tolerate
+rescheduling — which is the set where `RL-01`, `RL-10` and `RL-11` already pass, the same
+set `CE-10` identifies for spot. Exclude the stateful and singleton workloads explicitly
+rather than disabling consolidation pool-wide to protect them. Pair with `CE-11`; report
+the waste once, under Cost, and cross-reference it here.

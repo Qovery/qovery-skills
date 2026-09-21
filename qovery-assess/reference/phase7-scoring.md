@@ -249,6 +249,8 @@ Resolving these to PASS without evidence is the most damaging error this skill c
 |---|---|
 | `RL-07`, `LG-09` semantics | What the liveness endpoint actually touches — ask the team |
 | `RL-14`, `CE-03`, `CE-07`, `CE-08`, `CE-09`, `CE-11` | Cluster observability (`CL-08`). Without it these are UNKNOWN, and enabling it is the recommendation |
+| `CL-18` | Node utilization **over time**. A point-in-time reading cannot distinguish an oversized pool from one sized for a nightly or seasonal peak — resolve UNKNOWN and name the data needed |
+| `RL-24` severity | `CPUCreditBalance` from the cloud provider. The burstable *class* is readable and proves the exposure; only the credit history says whether it is being hit |
 | `RL-17`, `DR-02` | Backup coverage for managed databases lives in the cloud provider |
 | `DR-01`, `DR-03`, `DR-06` | Objectives, rehearsal history and runbooks exist outside any API |
 | `BP-03` multi-AZ | A cloud-provider setting Qovery does not expose |

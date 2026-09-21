@@ -1,0 +1,956 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%0A%3Cpath%20d%3D%22M20.25%206.4094L12.75%202.19574C12.2856%201.93475%2011.7138%201.93475%2011.25%202.19574L3.75%206.4094C3.2862%206.6698%203%207.15205%203%207.67343V16.1008C3%2016.6221%203.2856%2017.1038%203.75%2017.3648L12%2022V17.3648C12%2017.1038%2012.1428%2016.8633%2012.375%2016.7325L16.5%2014.4152V19.4713L20.25%2017.3648C20.7144%2017.1038%2021%2016.6221%2021%2016.1008V7.67343C21%207.15205%2020.7144%206.67039%2020.25%206.4094ZM11.625%2012.0979L7.50001%2014.4152V9.77996C7.50001%209.519%207.64279%209.27844%207.87501%209.14766L11.625%207.04112C11.8572%206.91092%2012.1428%206.91092%2012.375%207.04112L16.125%209.14766C16.3572%209.27785%2016.5%209.519%2016.5%209.77996V14.4152L12.375%2012.0979C12.1428%2011.9677%2011.8572%2011.9677%2011.625%2012.0979Z%22%20fill%3D%22%23642DFF%22/%3E%0A%3C/svg%3E">
+<title>Qovery Platform Assessment — {{organization_name}}</title>
+<meta name="description" content="Read-only Qovery configuration assessment of {{organization_name}}: {{total_checks}} checks, {{overall_score}}/100, Level {{level_n}} {{level_name}}.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root[data-theme='light'],
+:root.light,
+[data-theme='light'] {
+  color-scheme: light;
+
+  /* Background */
+  --background-1: hsla(0, 0%, 100%, 1);
+  --background-2: hsla(270, 20%, 98%, 1);
+  --background-overlay: hsla(0, 0%, 0%, 0.8);
+  --background-invert-1: hsla(270, 6%, 3%, 1);
+
+  /* Neutral */
+  --neutral-1: hsla(300, 100%, 100%, 1);
+  --neutral-2: hsla(270, 20%, 98%, 1);
+  --neutral-3: hsla(285, 14%, 95%, 1);
+  --neutral-4: hsla(276, 12%, 92%, 1);
+  --neutral-5: hsla(274, 12%, 89%, 1);
+  --neutral-6: hsla(263, 11%, 86%, 1);
+  --neutral-7: hsla(258, 11%, 82%, 1);
+  --neutral-8: hsla(249, 10%, 75%, 1);
+  --neutral-9: hsla(249, 6%, 57%, 1);
+  --neutral-10: hsla(250, 5%, 53%, 1);
+  --neutral-11: hsla(252, 5%, 41%, 1);
+  --neutral-12: hsla(257, 10%, 14%, 1);
+
+  --field: hsla(300, 100%, 100%, 1);
+  --contrast: hsla(300, 100%, 100%, 1);
+  --contrast-inverted: hsla(257, 10%, 14%, 1);
+
+  /* Neutral invert */
+  --neutral-invert-1: hsla(270, 6%, 7%, 1);
+  --neutral-invert-2: hsla(270, 4%, 10%, 1);
+  --neutral-invert-3: hsla(260, 4%, 14%, 1);
+  --neutral-invert-6: hsla(270, 5%, 24%, 1);
+  --neutral-invert-11: hsla(258, 7%, 72%, 1);
+  --neutral-invert-12: hsla(300, 100%, 100%, 1);
+
+  /* Brand */
+  --brand-1: hsla(240, 100%, 100%, 1);
+  --brand-2: hsla(233, 100%, 98%, 1);
+  --brand-3: hsla(233, 100%, 97%, 1);
+  --brand-4: hsla(236, 100%, 95%, 1);
+  --brand-5: hsla(237, 100%, 92%, 1);
+  --brand-6: hsla(239, 100%, 90%, 1);
+  --brand-7: hsla(239, 100%, 85%, 1);
+  --brand-alpha-7: hsla(238, 100%, 40%, 0.3);
+  --brand-8: hsla(243, 100%, 79%, 1);
+  --brand-9: hsla(256, 100%, 59%, 1);
+  --brand-10: hsla(256, 78%, 51%, 1);
+  --brand-11: hsla(254, 86%, 57%, 1);
+  --brand-12: hsla(252, 64%, 29%, 1);
+
+  /* Positive */
+  --positive-1: hsla(140, 60%, 99%, 1);
+  --positive-2: hsla(137, 47%, 97%, 1);
+  --positive-3: hsla(139, 47%, 93%, 1);
+  --positive-4: hsla(140, 49%, 89%, 1);
+  --positive-5: hsla(142, 44%, 84%, 1);
+  --positive-6: hsla(144, 41%, 77%, 1);
+  --positive-7: hsla(146, 40%, 68%, 1);
+  --positive-alpha-7: hsla(146, 100%, 28%, 0.44);
+  --positive-8: hsla(151, 40%, 54%, 1);
+  --positive-9: hsla(151, 55%, 42%, 1);
+  --positive-10: hsla(152, 56%, 39%, 1);
+  --positive-11: hsla(154, 60%, 32%, 1);
+  --positive-12: hsla(155, 40%, 16%, 1);
+
+  /* Positive invert */
+  --positive-invert-11: hsla(151, 65%, 54%, 1);
+
+  /* Warning */
+  --warning-1: hsla(40, 60%, 99%, 1);
+  --warning-2: hsla(51, 91%, 95%, 1);
+  --warning-3: hsla(52, 100%, 88%, 1);
+  --warning-4: hsla(50, 100%, 81%, 1);
+  --warning-5: hsla(50, 94%, 73%, 1);
+  --warning-6: hsla(46, 84%, 70%, 1);
+  --warning-7: hsla(42, 75%, 65%, 1);
+  --warning-alpha-7: hsla(42, 100%, 43%, 0.62);
+  --warning-8: hsla(38, 75%, 55%, 1);
+  --warning-9: hsla(42, 100%, 62%, 1);
+  --warning-10: hsla(42, 100%, 55%, 1);
+  --warning-11: hsla(35, 100%, 34%, 1);
+  --warning-12: hsla(24, 40%, 22%, 1);
+
+  /* Warning Invert */
+  --warning-invert-11: hsla(46, 100%, 54%, 1);
+
+  /* Negative */
+  --negative-1: hsla(0, 100%, 99%, 1);
+  --negative-2: hsla(8, 100%, 98%, 1);
+  --negative-3: hsla(10, 92%, 95%, 1);
+  --negative-4: hsla(12, 100%, 91%, 1);
+  --negative-5: hsla(11, 100%, 88%, 1);
+  --negative-6: hsla(11, 95%, 84%, 1);
+  --negative-7: hsla(10, 82%, 78%, 1);
+  --negative-alpha-7: hsla(10, 100%, 45%, 0.4);
+  --negative-8: hsla(10, 75%, 70%, 1);
+  --negative-9: hsla(10, 78%, 54%, 1);
+  --negative-10: hsla(10, 73%, 51%, 1);
+  --negative-11: hsla(10, 82%, 45%, 1);
+  --negative-12: hsla(8, 50%, 24%, 1);
+
+  /* Negative invert */
+  --negative-invert-2: hsla(10, 24%, 10%, 1);
+  --negative-invert-3: hsla(5, 48%, 15%, 1);
+  --negative-invert-6: hsla(7, 55%, 28%, 1);
+  --negative-invert-11: hsla(12, 100%, 75%, 1);
+
+  /* Info */
+  --info-1: hsla(210, 100%, 99%, 1);
+  --info-2: hsla(207, 100%, 98%, 1);
+  --info-3: hsla(205, 92%, 95%, 1);
+  --info-4: hsla(203, 100%, 92%, 1);
+  --info-5: hsla(206, 100%, 88%, 1);
+  --info-6: hsla(207, 93%, 83%, 1);
+  --info-7: hsla(207, 85%, 76%, 1);
+  --info-alpha-7: hsla(207, 100%, 46%, 0.44);
+  --info-8: hsla(206, 82%, 65%, 1);
+  --info-9: hsla(206, 100%, 50%, 1);
+  --info-10: hsla(207, 96%, 48%, 1);
+  --info-11: hsla(208, 88%, 43%, 1);
+  --info-12: hsla(216, 71%, 23%, 1);
+
+  /* Info invert */
+  --info-invert-11: hsla(210, 100%, 72%, 1);
+
+  /* Accent */
+  --accent-3: hsla(341, 100%, 96%, 1);
+  --accent-6: hsla(338, 69%, 85%, 1);
+  --accent-9: hsla(336, 80%, 58%, 1);
+  --accent-11: hsla(336, 75%, 45%, 1);
+
+  /* ArgoCD */
+  --argocd-2: hsla(15, 80%, 96%, 1);
+  --argocd-6: hsla(15, 84%, 93%, 1);
+  --argocd-11: hsla(14, 83%, 62%, 1);
+}
+
+:root[data-theme='dark'],
+:root.dark,
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Background */
+  --background-1: hsla(270, 6%, 3%, 1);
+  --background-2: hsla(270, 6%, 7%, 1);
+  --background-overlay: hsla(0, 0%, 0%, 0.8);
+  --background-invert-1: hsla(0, 0%, 100%, 1);
+
+  /* Neutral */
+  --neutral-1: hsla(270, 6%, 7%, 1);
+  --neutral-2: hsla(270, 4%, 10%, 1);
+  --neutral-3: hsla(260, 4%, 14%, 1);
+  --neutral-4: hsla(270, 5%, 17%, 1);
+  --neutral-5: hsla(264, 5%, 20%, 1);
+  --neutral-6: hsla(270, 5%, 24%, 1);
+  --neutral-7: hsla(257, 5%, 29%, 1);
+  --neutral-8: hsla(258, 5%, 39%, 1);
+  --neutral-9: hsla(251, 5%, 45%, 1);
+  --neutral-10: hsla(251, 4%, 50%, 1);
+  --neutral-11: hsla(258, 7%, 72%, 1);
+  --neutral-12: hsla(300, 100%, 100%, 1);
+  --field: hsla(270, 4%, 10%, 1);
+  --contrast: hsla(300, 100%, 100%, 1);
+  --contrast-inverted: hsla(257, 10%, 14%, 1);
+
+  /* Neutral invert */
+  --neutral-invert-1: hsla(300, 100%, 100%, 1);
+  --neutral-invert-2: hsla(270, 20%, 98%, 1);
+  --neutral-invert-3: hsla(285, 14%, 95%, 1);
+  --neutral-invert-6: hsla(263, 11%, 86%, 1);
+  --neutral-invert-11: hsla(252, 5%, 41%, 1);
+  --neutral-invert-12: hsla(257, 10%, 14%, 1);
+
+  /* Brand */
+  --brand-1: hsla(257, 33%, 8%, 1);
+  --brand-2: hsla(254, 29%, 12%, 1);
+  --brand-3: hsla(258, 41%, 19%, 1);
+  --brand-4: hsla(260, 47%, 25%, 1);
+  --brand-5: hsla(259, 43%, 29%, 1);
+  --brand-6: hsla(258, 39%, 34%, 1);
+  --brand-7: hsla(258, 36%, 41%, 1);
+  --brand-alpha-7: hsla(258, 100%, 74%, 0.56);
+  --brand-8: hsla(258, 37%, 51%, 1);
+  --brand-9: hsla(256, 100%, 79%, 1);
+  --brand-10: hsla(256, 81%, 75%, 1);
+  --brand-11: hsla(258, 100%, 82%, 1);
+  --brand-12: hsla(252, 100%, 93%, 1);
+
+  /* Positive */
+  --positive-1: hsla(154, 20%, 7%, 1);
+  --positive-2: hsla(153, 20%, 9%, 1);
+  --positive-3: hsla(152, 41%, 13%, 1);
+  --positive-4: hsla(154, 55%, 15%, 1);
+  --positive-5: hsla(154, 52%, 19%, 1);
+  --positive-6: hsla(153, 46%, 23%, 1);
+  --positive-7: hsla(152, 44%, 28%, 1);
+  --positive-alpha-7: hsla(152, 98%, 65%, 0.37);
+  --positive-8: hsla(151, 45%, 34%, 1);
+  --positive-9: hsla(151, 55%, 42%, 1);
+  --positive-10: hsla(151, 55%, 45%, 1);
+  --positive-11: hsla(151, 65%, 54%, 1);
+  --positive-12: hsla(144, 70%, 82%, 1);
+
+  /* Positive invert */
+  --positive-invert-11: hsla(154, 60%, 32%, 1);
+
+  /* Warning */
+  --warning-1: hsla(36, 29%, 7%, 1);
+  --warning-2: hsla(39, 32%, 9%, 1);
+  --warning-3: hsla(36, 71%, 11%, 1);
+  --warning-4: hsla(37, 100%, 12%, 1);
+  --warning-5: hsla(37, 100%, 15%, 1);
+  --warning-6: hsla(39, 90%, 19%, 1);
+  --warning-7: hsla(37, 64%, 27%, 1);
+  --warning-alpha-7: hsla(37, 100%, 57%, 0.4);
+  --warning-8: hsla(36, 60%, 35%, 1);
+  --warning-9: hsla(42, 100%, 62%, 1);
+  --warning-10: hsla(50, 100%, 52%, 1);
+  --warning-11: hsla(46, 100%, 54%, 1);
+  --warning-12: hsla(41, 100%, 85%, 1);
+
+  /* Warning Invert */
+  --warning-invert-11: hsla(35, 100%, 34%, 1);
+
+  /* Negative */
+  --negative-1: hsla(0, 17%, 8%, 1);
+  --negative-2: hsla(10, 24%, 10%, 1);
+  --negative-3: hsla(5, 48%, 15%, 1);
+  --negative-4: hsla(4, 64%, 19%, 1);
+  --negative-5: hsla(5, 62%, 23%, 1);
+  --negative-6: hsla(7, 55%, 28%, 1);
+  --negative-7: hsla(9, 49%, 35%, 1);
+  --negative-alpha-7: hsla(9, 98%, 64%, 0.49);
+  --negative-8: hsla(10, 50%, 45%, 1);
+  --negative-9: hsla(10, 78%, 54%, 1);
+  --negative-10: hsla(11, 82%, 59%, 1);
+  --negative-11: hsla(12, 100%, 75%, 1);
+  --negative-12: hsla(10, 86%, 89%, 1);
+
+  /* Negative invert */
+  --negative-invert-2: hsla(8, 100%, 98%, 1);
+  --negative-invert-3: hsla(10, 92%, 95%, 1);
+  --negative-invert-6: hsla(11, 95%, 84%, 1);
+  --negative-invert-11: hsla(10, 82%, 45%, 1);
+
+  /* Info */
+  --info-1: hsla(215, 42%, 9%, 1);
+  --info-2: hsla(218, 39%, 11%, 1);
+  --info-3: hsla(212, 69%, 16%, 1);
+  --info-4: hsla(209, 100%, 19%, 1);
+  --info-5: hsla(207, 100%, 23%, 1);
+  --info-6: hsla(209, 79%, 30%, 1);
+  --info-7: hsla(211, 66%, 37%, 1);
+  --info-alpha-7: hsla(211, 99%, 58%, 0.6);
+  --info-8: hsla(211, 65%, 45%, 1);
+  --info-9: hsla(206, 100%, 50%, 1);
+  --info-10: hsla(210, 100%, 62%, 1);
+  --info-11: hsla(210, 100%, 72%, 1);
+  --info-12: hsla(205, 100%, 88%, 1);
+
+  /* Info invert */
+  --info-invert-11: hsla(208, 88%, 43%, 1);
+
+  /* Accent */
+  --accent-3: hsla(333, 45%, 15%, 1);
+  --accent-6: hsla(333, 49%, 29%, 1);
+  --accent-9: hsla(336, 80%, 58%, 1);
+  --accent-11: hsla(345, 100%, 79%, 1);
+
+  /* ArgoCD */
+  --argocd-2: hsla(14, 25%, 10%, 1);
+  --argocd-6: hsla(14, 29%, 17%, 1);
+  --argocd-11: hsla(14, 100%, 74%, 1);
+}
+
+/* Follow the OS unless the reader picks a theme explicitly. */
+:root { color-scheme: light dark; }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: Roboto, sans-serif;
+  font-size: .875rem;            /* text-sm is the default, not a "small" size */
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--neutral-12);
+  background: var(--background-1);
+}
+code, .mono, th, .num { font-family: 'Roboto Mono', monospace; }
+
+/* --- type scale: 24 / 16 / 14 / 13 / 12, weights 400 and 500 only --- */
+h1 { font-size: 1.5rem;   font-weight: 500; line-height: 1.3; margin: 0; letter-spacing: -.01em; }
+h2 { font-size: 1rem;     font-weight: 500; line-height: 1.4; margin: 0; }
+h3 { font-size: .875rem;  font-weight: 500; line-height: 1.4; margin: 0; }
+p  { margin: 0 0 12px; }
+p:last-child { margin-bottom: 0; }
+.ssm  { font-size: .8125rem; color: var(--neutral-11); }
+.meta { font-size: .75rem;  color: var(--neutral-11); }
+
+a { color: var(--brand-11); text-decoration: none; border-bottom: 1px solid var(--brand-6); }
+a:hover { border-bottom-color: var(--brand-9); }
+:focus-visible { outline: 2px solid var(--brand-9); outline-offset: 2px; border-radius: 4px; }
+
+code {
+  font-size: .8125em;
+  background: var(--neutral-3);
+  color: var(--neutral-12);
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--neutral-6);
+  white-space: nowrap;
+}
+strong { font-weight: 500; }
+
+/* --- shell --- */
+.wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+header.top {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--background-1);
+  border-bottom: 1px solid var(--neutral-6);
+}
+.top-in { display: flex; align-items: center; gap: 12px; height: 56px; }
+.brandmark { display: inline-flex; align-items: center; border: 0; color: var(--neutral-12); }
+.brandmark:hover { opacity: .8; }
+.qlogo { height: 22px; width: auto; display: block; }
+.top-sep { color: var(--neutral-7); }
+.top-title { color: var(--neutral-11); font-size: .8125rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+.btn {
+  font: inherit; font-size: .8125rem; font-weight: 500;
+  height: 32px; padding: 0 12px;
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 6px; cursor: pointer;
+  background: var(--neutral-1); color: var(--neutral-12);
+  border: 1px solid var(--neutral-7);
+}
+.btn:hover { background: var(--neutral-3); }
+.btn[aria-pressed="true"] { background: var(--brand-9); border-color: var(--brand-9); color: var(--neutral-1); }
+
+/* --- hero --- */
+.hero { padding: 48px 0 32px; border-bottom: 1px solid var(--neutral-6); }
+.eyebrow { font-size: .75rem; font-weight: 500; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--brand-11); margin-bottom: 8px; }
+.hero h1 { margin-bottom: 8px; }
+.hero-sub { color: var(--neutral-11); max-width: 70ch; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.fact {
+  font-size: .75rem; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--neutral-6); background: var(--neutral-2); color: var(--neutral-11);
+}
+.fact .num { color: var(--neutral-12); font-weight: 500; }
+
+/* --- score band --- */
+.scoreband { display: grid; grid-template-columns: 200px 1fr; gap: 32px; align-items: center;
+  padding: 24px; margin-top: 24px;
+  border: 1px solid var(--neutral-6); border-radius: 12px; background: var(--neutral-2); }
+.bigscore { text-align: center; }
+.bigscore .val { font-family: 'Roboto Mono', monospace; font-size: 3.5rem; font-weight: 500;
+  line-height: 1; color: var(--brand-11); }
+.bigscore .den { font-size: 1rem; color: var(--neutral-11); }
+.bigscore .lvl { margin-top: 8px; font-size: .75rem; font-weight: 500;
+  padding: 4px 10px; border-radius: 999px; display: inline-block;
+  background: var(--warning-3); color: var(--warning-11); border: 1px solid var(--warning-6); }
+
+.pillars { display: grid; gap: 12px; }
+.pillar { display: grid; grid-template-columns: 300px 1fr 92px; gap: 12px; align-items: center; }
+.pillar-name { font-size: .8125rem; }
+.meter { height: 8px; border-radius: 999px; background: var(--neutral-3); overflow: hidden; }
+.meter > i { display: block; height: 100%; border-radius: 999px; background: var(--brand-9); }
+.meter.is-low  > i { background: var(--negative-9); }
+.meter.is-mid  > i { background: var(--warning-9); }
+.meter.is-high > i { background: var(--positive-9); }
+/* Low scored weight: the bar must not read as a strong result. */
+.meter.is-thin > i { background: repeating-linear-gradient(135deg,
+  var(--neutral-9) 0 4px, var(--neutral-7) 4px 8px); }
+.pillar-val.is-thin { color: var(--neutral-11); }
+.pillar-val { font-family: 'Roboto Mono', monospace; font-size: .8125rem; text-align: right; }
+.pillar-val .w { color: var(--neutral-11); font-size: .75rem; }
+
+/* --- layout with sidebar --- */
+.shell { display: grid; grid-template-columns: 216px 1fr; gap: 40px; padding: 32px 0 80px; }
+/* Grid items default to min-width:auto, so a wide table widens the track. */
+.shell > * { min-width: 0; }
+main section.block { min-width: 0; }
+nav.toc { position: sticky; top: 72px; align-self: start; max-height: calc(100vh - 96px); overflow-y: auto; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; }
+nav.toc a { display: block; padding: 5px 10px; border-radius: 6px; font-size: .8125rem;
+  color: var(--neutral-11); border: 0; border-left: 2px solid transparent; }
+nav.toc a:hover { background: var(--neutral-3); color: var(--neutral-12); }
+nav.toc a.active { color: var(--brand-11); border-left-color: var(--brand-9); background: var(--brand-2); }
+nav.toc .grp { font-size: .6875rem; font-weight: 500; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--neutral-9); padding: 14px 10px 4px; }
+
+main section.block { scroll-margin-top: 72px; margin-bottom: 48px; }
+main section.block > h2 { padding-bottom: 8px; border-bottom: 1px solid var(--neutral-6); margin-bottom: 16px; }
+main h3 { margin: 24px 0 8px; }
+
+/* --- cards: only for distinct content, never nested --- */
+.card { border: 1px solid var(--neutral-6); border-radius: 12px; background: var(--neutral-1);
+  overflow: hidden; }            /* clips the attached section to the radius */
+.card > .card-body { padding: 16px; }
+.card > .card-foot { border-top: 1px solid var(--neutral-6); padding: 12px 16px;
+  background: var(--neutral-2); font-size: .8125rem; color: var(--neutral-11); }
+
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+.strengths { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.strengths li { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: start; }
+.tick { color: var(--positive-11); font-weight: 500; line-height: 1.6; }
+
+/* --- finding blocks --- */
+.finding { border: 1px solid var(--neutral-6); border-radius: 12px; overflow: hidden;
+  margin-bottom: 16px; background: var(--neutral-1); }
+.finding > .f-head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap;
+  padding: 12px 16px; border-bottom: 1px solid var(--neutral-6); background: var(--neutral-2); }
+.finding > .f-body { padding: 16px; }
+.f-id { font-family: 'Roboto Mono', monospace; font-size: .8125rem; font-weight: 500; }
+.f-title { font-size: .875rem; font-weight: 500; }
+.f-scope { margin-left: auto; font-size: .75rem; color: var(--neutral-11); }
+.f-body dl { display: grid; grid-template-columns: 116px 1fr; gap: 8px 16px; margin: 0 0 12px; }
+.f-body dt { font-size: .75rem; font-weight: 500; color: var(--neutral-11); }
+.f-body dd { margin: 0; }
+.f-body dl:last-child { margin-bottom: 0; }
+.badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.badge { font-size: .6875rem; padding: 2px 7px; border-radius: 4px;
+  background: var(--neutral-3); color: var(--neutral-11); border: 1px solid var(--neutral-6); }
+
+/* --- status chips: always carry a text label, never colour alone --- */
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: .6875rem; font-weight: 500;
+  padding: 2px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.chip::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
+.chip-positive { background: var(--positive-3); color: var(--positive-11); border-color: var(--positive-6); }
+.chip-warning  { background: var(--warning-3);  color: var(--warning-11);  border-color: var(--warning-6); }
+.chip-negative { background: var(--negative-3); color: var(--negative-11); border-color: var(--negative-6); }
+.chip-info     { background: var(--info-3);     color: var(--info-11);     border-color: var(--info-6); }
+.chip-neutral  { background: var(--neutral-3);  color: var(--neutral-11);  border-color: var(--neutral-6); }
+.chip-brand    { background: var(--brand-3);    color: var(--brand-11);    border-color: var(--brand-6); }
+
+/* --- tables --- */
+.tablewrap { overflow-x: auto; border: 1px solid var(--neutral-6); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: .8125rem; }
+th { font-size: .75rem; font-weight: 500; text-align: left; color: var(--neutral-11);
+  background: var(--neutral-2); padding: 8px 12px;
+  border-bottom: 1px solid var(--neutral-6); white-space: nowrap; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--neutral-3); vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--neutral-2); }
+.cell-id { white-space: nowrap; }
+.cell-ev { color: var(--neutral-11); min-width: 280px; }
+
+/* --- appendix filter --- */
+.filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 16px; }
+.filters .lbl { font-size: .75rem; color: var(--neutral-11); margin-right: 4px; }
+.fbtn { font: inherit; font-size: .6875rem; font-weight: 500; cursor: pointer;
+  padding: 3px 10px; border-radius: 999px;
+  background: var(--neutral-1); color: var(--neutral-11); border: 1px solid var(--neutral-6); }
+.fbtn:hover { background: var(--neutral-3); }
+.fbtn[aria-pressed="true"] { background: var(--brand-9); border-color: var(--brand-9); color: var(--neutral-1); }
+.fam { margin-bottom: 24px; }
+.fam.hidden { display: none; }
+.fam-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; margin-bottom: 8px; }
+.fam-code { font-family: 'Roboto Mono', monospace; color: var(--brand-11); }
+.fam-counts { margin-left: auto; display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.fam-total { font-size: .75rem; color: var(--neutral-11); margin-right: 4px; }
+
+/* --- callout: one accent element per surface --- */
+.callout { border: 1px solid var(--neutral-6); border-left: 3px solid var(--brand-9);
+  border-radius: 8px; padding: 12px 16px; background: var(--brand-2); }
+.callout.is-negative { border-left-color: var(--negative-9); background: var(--negative-2); }
+.callout.is-warning  { border-left-color: var(--warning-9);  background: var(--warning-2); }
+
+.diagram { border: 1px solid var(--neutral-6); border-radius: 10px; padding: 16px;
+  background: var(--neutral-2); overflow-x: auto; }
+.diagram pre { margin: 0; font-size: .75rem; line-height: 1.5; color: var(--neutral-12); }
+
+footer.foot { border-top: 1px solid var(--neutral-6); padding: 24px 0 48px;
+  color: var(--neutral-11); font-size: .75rem; }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; gap: 0; }
+  nav.toc { display: none; }
+  .scoreband { grid-template-columns: 1fr; gap: 20px; }
+  .pillar { grid-template-columns: 120px 1fr 80px; }
+  .grid2 { grid-template-columns: 1fr; }
+}
+@media print {
+  header.top, nav.toc, .top-actions, .filters { display: none !important; }
+  .shell { grid-template-columns: 1fr; }
+  .fam.hidden { display: block !important; }
+  body { font-size: 10pt; }
+  .finding, .card, .tablewrap { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<!-- ======================================================================
+     Qovery Platform Assessment — HTML deliverable skeleton.
+
+     Fill every {{placeholder}}. Delete every section that does not apply
+     rather than shipping it empty. Blocks marked REPEAT are one instance of a
+     pattern: copy the block, do not invent a different shape for the second one.
+
+     Self-contained by design: one file, no build step, no local assets. It has
+     to survive being forwarded as an email attachment, so keep it that way —
+     never add a script tag pointing at a URL, or a stylesheet link to anything
+     but the Google font above.
+     ====================================================================== -->
+
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brandmark" href="https://www.qovery.com"><svg class="qlogo" role="img" aria-label="Qovery" viewBox="0 0 333 96" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M130.437 26.9482C145.751 26.9482 154.104 37.3894 154.104 52.0071C154.104 58.2718 152.712 62.4483 151.32 65.2326V66.6248L153.408 68.713V75.6739L152.712 76.3699H147.839L145.055 73.5856H144.359C140.878 75.6739 136.006 77.066 130.437 77.066C115.124 77.066 106.771 66.6248 106.771 52.0071C106.771 37.3894 115.124 26.9482 130.437 26.9482ZM130.437 68.713C133.918 68.713 136.006 68.017 137.398 67.3209V65.9287L131.133 59.664V53.3993L131.829 52.7032H136.702L138.094 53.3993L142.967 58.2718H143.663C144.359 56.1836 144.359 54.0954 144.359 52.0071C144.359 42.262 140.182 35.3012 130.437 35.3012C120.692 35.3012 116.516 42.262 116.516 52.0071C116.516 61.7522 120.692 68.713 130.437 68.713Z" fill="currentColor"/> <path d="M176.381 77.0658C165.94 77.0658 158.979 70.105 158.979 58.9677C158.979 47.8304 165.94 40.8696 176.381 40.8696C186.822 40.8696 193.783 47.8304 193.783 58.9677C193.783 70.105 186.822 77.0658 176.381 77.0658ZM176.381 49.2226C171.508 49.2226 168.724 52.703 168.724 58.9677C168.724 65.2324 171.508 68.7128 176.381 68.7128C181.254 68.7128 184.038 65.2324 184.038 58.9677C184.038 52.703 181.254 49.2226 176.381 49.2226Z" fill="currentColor"/> <path d="M218.146 75.6738L217.45 76.3699H209.793L209.097 75.6738L197.264 49.2228V42.262L197.96 41.5659H204.224L204.921 42.262L213.274 63.8405H213.97L222.323 42.262L223.019 41.5659H229.283L229.979 42.262V49.2228L218.146 75.6738Z" fill="currentColor"/> <path d="M266.875 61.752L266.179 62.4481H244.6L243.904 63.1442C243.904 64.5364 245.296 68.7128 250.865 68.7128C252.953 68.7128 255.041 68.0168 255.737 66.6246L256.434 65.9285H264.786L265.483 66.6246C264.786 70.8011 261.306 77.0658 250.865 77.0658C239.032 77.0658 233.463 68.7128 233.463 58.9677C233.463 49.2226 239.032 40.8696 250.169 40.8696C261.306 40.8696 266.875 49.2226 266.875 58.9677V61.752ZM256.434 54.7912C256.434 54.0952 255.737 49.2226 250.169 49.2226C244.6 49.2226 243.904 54.0952 243.904 54.7912L244.6 55.4873H255.737L256.434 54.7912Z" fill="currentColor"/> <path d="M295.414 49.9189H290.541C284.973 49.9189 282.884 52.7032 282.884 58.9679V75.6738L282.188 76.3699H273.835L273.139 75.6738V42.262L273.835 41.5659H281.492L282.188 42.262L282.884 44.3502H283.58C285.042 42.3316 287.966 41.5659 291.237 41.5659H295.414L296.11 42.262V49.2228L295.414 49.9189Z" fill="currentColor"/> <path d="M321.169 77.066C318.384 84.0268 315.6 88.2033 305.855 88.2033H302.375L301.679 87.5072V80.5464L302.375 79.8503H305.855C309.335 79.8503 310.032 79.1542 310.728 77.066V76.3699L299.59 49.2228V42.262L300.286 41.5659H306.551L307.247 42.262L315.6 65.9287H316.296L324.649 42.262L325.345 41.5659H331.61L332.306 42.262V49.2228L321.169 77.066Z" fill="currentColor"/> <path d="M80.3554 21.4078L45.5514 1.31333C43.3963 0.0687351 40.7428 0.0687351 38.5906 1.31333L3.78655 21.4078C1.63427 22.6496 0.306152 24.9494 0.306152 27.4358V67.6247C0.306152 70.1111 1.63149 72.4082 3.78655 73.6528L42.071 95.7575V73.6528C42.071 72.4082 42.7336 71.261 43.8112 70.6373L62.9534 59.5864V83.6986L80.3554 73.6528C82.5104 72.4082 83.8358 70.1111 83.8358 67.6247V27.4358C83.8358 24.9494 82.5104 22.6524 80.3554 21.4078ZM40.3308 48.5354L21.1886 59.5864V37.4816C21.1886 36.2371 21.8512 35.0899 22.9288 34.4662L40.3308 24.4204C41.4083 23.7995 42.7336 23.7995 43.8112 24.4204L61.2132 34.4662C62.2907 35.0871 62.9534 36.2371 62.9534 37.4816V59.5864L43.8112 48.5354C42.7336 47.9145 41.4083 47.9145 40.3308 48.5354Z" fill="var(--brand-9)"/> </svg></a>
+    <span class="top-sep" aria-hidden="true">/</span>
+    <span class="top-title">Platform Assessment · {{organization_name}}</span>
+    <div class="top-actions">
+      <button class="btn" id="themeBtn" type="button" aria-pressed="false">Dark</button>
+      <button class="btn" onclick="window.print()" type="button">Print</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="eyebrow">Read-only configuration assessment</div>
+    <h1>{{organization_name}}</h1>
+    <p class="hero-sub">{{total_checks}} checks across six pillars against Qovery organization
+      <code>{{organization_id}}</code>. GET requests only.
+      Nothing in the environment was changed.</p>
+    <div class="facts">
+      <span class="fact"><span class="num">{{n_clusters}}</span> clusters</span>
+      <span class="fact"><span class="num">{{n_environments}}</span> environments</span>
+      <span class="fact"><span class="num">{{n_services}}</span> {{service_kind}} services</span>
+      <span class="fact"><span class="num">{{n_members}}</span> members</span>
+      <span class="fact">Assessed <span class="num">{{assessment_date}}</span></span>
+      <span class="fact">Plan <span class="num">{{plan}}</span></span>
+    </div>
+
+    <div class="scoreband">
+      <div class="bigscore">
+        <div><span class="val">{{overall_score}}</span><span class="den">/100</span></div>
+        <div class="lvl">Level {{level_n}} · {{level_name}}</div>
+      </div>
+      <div class="pillars">
+        <!-- REPEAT per pillar. `is-high` ≥75, `is-mid` 50–74, `is-low` <50, `is-thin` when the
+             scored weight is small enough that the number should not be read as a measurement.
+             The aria-label must state the same thing the bar shows, including the thin caveat. -->
+        <div class="pillar">
+          <span class="pillar-name">{{pillar_name}}{{if_thin: <span class="chip chip-neutral">low evidence</span>}}</span>
+          <span class="meter is-{{high|mid|low|thin}}" role="img"
+                aria-label="{{pillar_name}}: {{score}} out of 100{{if_thin:, low evidence, only {{weight}} points of scored weight}}">
+            <i style="width:{{score}}%"></i>
+          </span>
+          <span class="pillar-val{{if_thin: is-thin}}">{{score}}<span class="w"> / {{weight}}w</span></span>
+        </div>
+      </div>
+    </div>
+    <p class="meta" style="margin-top:12px">
+      {{scoring_note: what capped the level if anything, what the arithmetic produced
+      independently, and what the scored-weight number after each pillar means. If a pillar
+      rests on little weight, say here that it should be read as unmeasured.}}
+    </p>
+  </div>
+</div>
+
+<div class="wrap shell">
+  <nav class="toc" aria-label="Contents"><div class="grp">Contents</div><ol>
+    <li><a href="#summary">Executive summary</a></li>
+    <li><a href="#risks">Top risks</a></li>
+    <li><a href="#strengths">What is strong</a></li>
+    <li><a href="#scope">Scope &amp; compliance</a></li>
+    <li><a href="#topology">Platform topology</a></li>
+    <li><a href="#security">Security findings</a></li>
+    <li><a href="#reliability">Reliability findings</a></li>
+    <li><a href="#delivery">Delivery findings</a></li>
+    <li><a href="#cost">Cost &amp; performance</a></li>
+    <li><a href="#blast">Blast radius</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#qovery">Where Qovery helps</a></li>
+    <li><a href="#appendix">All {{total_checks}} controls</a></li>
+    <li><a href="#unknowns">Unknowns &amp; method</a></li>
+  </ol></nav>
+  <main>
+
+  <section class="block" id="summary">
+    <h2>Executive summary</h2>
+    <p>{{what_they_run_and_what_is_genuinely_good: two to four sentences. Lead with the
+      accurate picture, not the problems — a reader who does not recognise their own estate
+      in the first paragraph stops trusting the rest.}}</p>
+    <p>{{where_the_gaps_concentrate: name the pattern, not a list. "The gaps sit almost
+      entirely in one place: …" beats an enumeration the roadmap repeats later.}}</p>
+    <div class="callout">
+      <p><strong>Act on this first.</strong> {{one_or_two_sentences_naming_the_finding_ids}}</p>
+    </div>
+    <h3>Coverage</h3>
+    <div class="card">
+      <div class="card-body">
+        <div class="filters" style="margin:0">
+          <span class="chip chip-positive">{{passed}} pass</span>
+          <span class="chip chip-warning">{{partial}} partial</span>
+          <span class="chip chip-negative">{{failed}} fail</span>
+          <span class="chip chip-info">{{observations}} observations</span>
+          <span class="chip chip-neutral">{{not_applicable}} not applicable</span>
+          <span class="chip chip-neutral">{{unknown}} undetermined</span>
+        </div>
+      </div>
+      <div class="card-foot">
+        {{total_checks}} checks defined, {{evaluated}} evaluated. {{if_many_unknown: name the
+        dominant cause of the undetermined count in one sentence. Disclosed rather than guessed.}}
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="risks">
+    <h2>Top {{n}} risks</h2>
+    <!-- REPEAT <article class="finding"> per risk. This is THE component of the report:
+         every finding anywhere in the document uses exactly this markup. The four <dt>
+         labels are fixed — Finding, Impact, Fix, Effort — and appear in that order. -->
+    <article class="finding">
+      <div class="f-head">
+        <span class="f-id">{{check_id}}</span>
+        <span class="f-title">{{one_line_claim_in_plain_words}}</span>
+        <span class="chip chip-{{negative|warning|info}}">{{Critical|High|Medium|Low}}</span>
+        <span class="f-scope">{{n of m services · partial | all-or-nothing | organization-wide}}</span>
+      </div>
+      <div class="f-body">
+        <!-- Omit the badges div entirely when no compliance profile applies. -->
+        <div class="badges" style="margin-bottom:12px">
+          <span class="badge">{{framework §clause}}</span>
+        </div>
+        <dl>
+          <dt>Finding</dt><dd>{{the configuration value that produced this, named. Wrap keys and service names in a code element.}}</dd>
+          <dt>Impact</dt><dd>{{the consequence in their terms — what breaks, who sees it, when}}</dd>
+          <dt>Fix</dt><dd>{{the actual change. Where there is a real choice, give both and the trade-off.}}</dd>
+          <dt>Effort</dt><dd>{{S | M | L, with the qualifier if one matters}}</dd>
+        </dl>
+      </div>
+    </article>
+  </section>
+
+  <section class="block" id="strengths">
+    <h2>What is already strong</h2>
+    <p class="ssm">Not padding. This is what the team should not regress.</p>
+    <div class="card"><div class="card-body">
+      <ul class="strengths">
+        <!-- REPEAT. Bold lead, evidence, then the check IDs that back it. -->
+        <li><span class="tick" aria-hidden="true">✓</span><span><strong>{{claim}}.</strong>
+          {{evidence}} <code>{{check_ids}}</code></span></li>
+      </ul>
+    </div></div>
+  </section>
+
+  <section class="block" id="scope">
+    <h2>Scope, method and compliance profile</h2>
+    <p>{{how_and_when: GET only, the date and UTC window, the check count and family count,
+      that IDs are stable so a reassessment is comparable, and that logs were redacted at
+      collection.}}</p>
+
+    <!-- Drop this whole sub-block when Phase 1b found no public claims. -->
+    <h3>Public claims that set the bar</h3>
+    <p class="ssm">Correlation of public statements with observable configuration.
+      Not a legal opinion, and not an audit against any framework.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Source</th><th>Claim, verbatim</th></tr></thead>
+      <tbody>
+        <tr><td><a href="{{url}}">{{page}}</a> <span class="meta">{{date}}</span></td><td>&ldquo;{{verbatim}}&rdquo;</td></tr>
+      </tbody>
+    </table></div>
+    <p style="margin-top:16px"><strong>Severity lens applied:</strong> {{which_tier_and_what_it_promoted}}</p>
+
+    <h3>Assumptions</h3>
+    <p class="ssm">Correct any that are wrong. They change the severity ratings.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Assumption</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Business-critical environments</td><td>{{value}}</td></tr>
+        <tr><td>Availability target</td><td>{{value, and whether it was confirmed}}</td></tr>
+        <tr><td>Report audience</td><td>{{value}}</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="block" id="topology">
+    <h2>Platform topology</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Cluster</th><th>Account / region</th><th>K8s</th><th>Nodes</th><th>Capacity</th><th>Observability</th></tr></thead>
+      <tbody>
+        <tr><td>{{name}}</td><td class="mono">{{account}} · {{region}}</td><td class="mono">{{version}}</td>
+            <td class="mono">{{min}} → {{max}}</td><td>{{capacity_note}}</td>
+            <td><span class="chip chip-{{positive|negative}}">{{on|off}}</span></td></tr>
+      </tbody>
+    </table></div>
+    <p class="ssm" style="margin-top:8px">{{what_is_common_across_clusters}}</p>
+
+    <h3>Environments and services</h3>
+    <div class="grid2">
+      <!-- Two cards. Each states one fact about the shape of the estate and puts the
+           number in the foot. Use them for the two things a reader needs to know before
+           the findings make sense. -->
+      <div class="card">
+        <div class="card-body">
+          <h3 style="margin:0 0 8px">{{headline}}</h3>
+          <p class="ssm">{{detail}}</p>
+        </div>
+        <div class="card-foot">{{the counts}}</div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <h3 style="margin:0 0 8px">{{headline}}</h3>
+          <p class="ssm">{{detail}}</p>
+        </div>
+        <div class="card-foot">{{the consequence for this report}}</div>
+      </div>
+    </div>
+    {{if_anything_is_currently_broken:
+    <div class="callout is-warning" style="margin-top:16px">
+      <p><strong>{{headline}}</strong> {{what is in a failed or never-deployed state right now}}</p>
+    </div>}}
+
+    <!-- The architecture diagram goes here. Hand-authored inline SVG, `currentColor` for
+         strokes and text, ONE literal colour reserved for the element carrying the finding,
+         a viewBox, role="img" and an aria-label that states the same claim as the caption.
+         Wrap it in <div class="diagram"> so it scrolls on a phone like the tables do.
+         Reconcile it against the deployed service list before shipping — see Phase 8. -->
+    {{if_more_than_a_handful_of_services:
+    <div class="diagram">{{inline_svg}}</div>
+    <p class="ssm">{{caption: what the figure proves from configuration, and which edges are
+      inferred rather than attributed. A diagram that overstates its evidence undermines
+      every number beside it.}}</p>}}
+  </section>
+
+  <!-- == Pillar sections =──────────────────────────────────────────────────
+       One <section class="block"> per pillar, in the order of the ToC. Each opens with
+       the pillar score as a chip in the <h2>, one or two sentences of orientation, then
+       <article class="finding"> blocks — the same component as Top risks. Findings already
+       shown in Top risks are NOT repeated; link back to #risks and carry on with the rest.
+       Delete any pillar section with nothing to report rather than shipping "no findings". -->
+  <section class="block" id="security">
+    <h2>Security &amp; Data Protection <span class="chip chip-{{warning|negative|positive}}">{{score}} / 100</span></h2>
+    <p>{{orientation}} {{if_criticals_are_above: The {{n}} Critical findings are in
+      <a href="#risks">Top risks</a> above; the rest follow.}}</p>
+    <!-- <article class="finding"> … -->
+  </section>
+
+  <section class="block" id="reliability">
+    <h2>Reliability &amp; Resilience <span class="chip chip-{{...}}">{{score}} / 100</span></h2>
+  </section>
+
+  <section class="block" id="delivery">
+    <h2>Delivery &amp; Operations <span class="chip chip-{{...}}">{{score}} / 100</span></h2>
+  </section>
+
+  <section class="block" id="cost">
+    <h2>Cost &amp; Performance <span class="chip chip-{{...}}">{{score}} / 100</span></h2>
+  </section>
+
+  <section class="block" id="blast">
+    <h2>Blast radius</h2>
+    <p class="ssm">{{why_this_section_exists: the rest of the report is independent findings a
+      reader can rank one at a time. This is the only section that says how they combine.}}</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>If this is compromised</th><th>It reaches</th><th>By what mechanism</th><th>What breaks the chain</th></tr></thead>
+      <tbody>
+        <tr><td>{{entry point}}</td><td>{{reach}}</td><td class="cell-ev">{{mechanism}}</td><td>{{the single fix}}</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="block" id="roadmap">
+    <h2>Remediation roadmap</h2>
+    <p class="ssm">Sequenced by risk reduced per unit of effort, not by severity alone.</p>
+    <!-- REPEAT the table for each of: "Now, this week" / "Next, this quarter" / "Later". -->
+    <h3>Now, this week</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>ID</th><th>Action</th><th>Effort</th><th>Owner</th><th>Risk removed</th></tr></thead>
+      <tbody>
+        <tr><td class="cell-id"><code>{{id}}</code></td><td>{{imperative action, specific enough to execute}}</td>
+            <td><span class="chip chip-neutral">{{S|M|L}}</span></td><td class="cell-ev">{{owner}}</td>
+            <td>{{what stops being true once it is done}}</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Next, this quarter</h3>
+    <h3>Later</h3>
+  </section>
+
+  <section class="block" id="qovery">
+    <h2>Where Qovery helps</h2>
+    <p>{{what_Qovery_does_with_them_rather_than_to_them. Concrete and staffed — an offer that
+      cannot be delivered is worse than no offer. This section is why the assessment exists.}}</p>
+  </section>
+
+  <section class="block" id="appendix">
+    <h2>Every control that was run</h2>
+    <p class="ssm">All {{total_checks}} checks, not only the ones that failed. Every row has an
+      evidence note, including the passes.</p>
+    <div class="filters" role="group" aria-label="Filter controls by result">
+      <span class="lbl">Filter</span>
+      <button class="fbtn" type="button" data-f="ALL" aria-pressed="true">All {{total_checks}}</button>
+      <button class="fbtn" type="button" data-f="FAIL" aria-pressed="false">Fail {{failed}}</button>
+      <button class="fbtn" type="button" data-f="PARTIAL" aria-pressed="false">Partial {{partial}}</button>
+      <button class="fbtn" type="button" data-f="PASS" aria-pressed="false">Pass {{passed}}</button>
+      <button class="fbtn" type="button" data-f="UNKNOWN" aria-pressed="false">Unknown {{unknown}}</button>
+      <button class="fbtn" type="button" data-f="N/A" aria-pressed="false">N/A {{not_applicable}}</button>
+      <button class="fbtn" type="button" data-f="OBSERVATION" aria-pressed="false">Observation {{observations}}</button>
+      <span class="meta" id="filterCount" aria-live="polite"></span>
+    </div>
+
+    <!-- REPEAT <section class="fam"> per check family, in catalog order:
+         CP CL TP RL BP SC VS DL LG OP CE DR.
+         `data-result` on every <tr> is what the filter buttons read — it must be exactly
+         one of PASS FAIL PARTIAL UNKNOWN N/A OBSERVATION, matching the chip in the row.
+         Every row carries an evidence note, including the passes: that is what makes the
+         appendix proof of coverage rather than a list of labels. -->
+    <section class="fam" id="fam-{{XX}}">
+      <div class="fam-head">
+        <h3><span class="fam-code">{{XX}}</span> {{family name}}</h3>
+        <div class="fam-counts">
+          <span class="fam-total">{{n}} checks</span>
+          <span class="chip chip-positive">{{n}} pass</span>
+          <span class="chip chip-negative">{{n}} fail</span>
+        </div>
+      </div>
+      <div class="tablewrap"><table class="controls">
+        <thead><tr><th>ID</th><th>Control</th><th>Result</th><th>Evidence / note</th></tr></thead>
+        <tbody>
+          <tr data-result="{{PASS|FAIL|PARTIAL|UNKNOWN|N/A|OBSERVATION}}">
+            <td class="cell-id"><code>{{id}}</code></td>
+            <td>{{control name}}</td>
+            <td><span class="chip chip-{{positive|negative|warning|neutral|info}}">{{RESULT}}</span></td>
+            <td class="cell-ev">{{the value that produced the result}}</td>
+          </tr>
+        </tbody>
+      </table></div>
+    </section>
+  </section>
+
+  <section class="block" id="unknowns">
+    <h2>Unknowns, limitations and method</h2>
+    <h3>The {{unknown}} undetermined checks</h3>
+    <p class="ssm">Grouped by cause, each with the one action that closes all of it. A large
+      undetermined count is not a failed assessment. It is an honest one.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Group</th><th>Checks</th><th>Why</th><th>What would resolve it</th></tr></thead>
+      <tbody>
+        <tr><td>{{group}}</td><td class="num">{{n}}</td><td class="cell-ev">{{why}}</td><td>{{what closes it}}</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Limitations</h3>
+    <div class="card"><div class="card-body">
+      <ul class="strengths">
+        <!-- Same list component as strengths, with a neutral dot instead of a tick. -->
+        <li><span class="tick" aria-hidden="true" style="color:var(--neutral-9)">·</span><span>{{limitation}}</span></li>
+        <li><span class="tick" aria-hidden="true" style="color:var(--neutral-9)">·</span><span>No change was made. The only write was an anonymous skill-usage ping that touches no customer resource.</span></li>
+      </ul>
+    </div></div>
+
+    <h3>Scoring method</h3>
+    <p>{{resolutions_and_aggregation: the four resolutions, partial credit, and the
+      all-or-nothing exposure checks named by ID with the one-line reason.}}</p>
+    <p>{{weights_and_formula: severity weights, the per-pillar formula, the overall pillar
+      weighting, truncation, what is excluded, and the unresolved-Critical cap.}}</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Overall</th><th>Level</th></tr></thead>
+      <tbody>
+        <tr><td class="num">90–100</td><td>4, Optimized: resilient, observable and cost-aware by default</td></tr>
+        <tr><td class="num">75–89</td><td>3, Defined: solid production posture with known, scoped gaps</td></tr>
+        <tr><td class="num">55–74</td><td>2, Managed: it works, but reliability depends on people not being asleep</td></tr>
+        <tr><td class="num">&lt; 55</td><td>1, Ad hoc: an incident is a matter of time</td></tr>
+      </tbody>
+    </table></div>
+    <!-- Bold the band the organization actually landed in. -->
+  </section>
+
+  </main>
+</div>
+
+<footer class="foot"><div class="wrap">
+  Qovery Platform Assessment · {{organization_name}} · organization <code>{{organization_id}}</code> ·
+  {{assessment_date}} · read-only, GET requests only, nothing was changed.
+</div></footer>
+
+<script>
+(function () {
+  // Theme: follow the OS, remember an explicit choice.
+  var root = document.documentElement, btn = document.getElementById('themeBtn');
+  var stored = null;
+  try { stored = localStorage.getItem('qv-theme'); } catch (e) {}
+  var dark = stored ? stored === 'dark'
+                    : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  function apply() {
+    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    btn.textContent = dark ? 'Light' : 'Dark';
+    btn.setAttribute('aria-pressed', String(dark));
+  }
+  apply();
+  btn.addEventListener('click', function () {
+    dark = !dark; apply();
+    try { localStorage.setItem('qv-theme', dark ? 'dark' : 'light'); } catch (e) {}
+  });
+
+  // Appendix filter.
+  var fbtns = [].slice.call(document.querySelectorAll('.fbtn'));
+  var count = document.getElementById('filterCount');
+  fbtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      var f = b.dataset.f;
+      fbtns.forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+      var shown = 0;
+      [].forEach.call(document.querySelectorAll('.fam'), function (fam) {
+        var vis = 0;
+        [].forEach.call(fam.querySelectorAll('tbody tr'), function (tr) {
+          var ok = f === 'ALL' || tr.dataset.result === f;
+          tr.style.display = ok ? '' : 'none';
+          if (ok) vis++;
+        });
+        fam.classList.toggle('hidden', vis === 0);
+        shown += vis;
+      });
+      count.textContent = f === 'ALL' ? '' : shown + ' shown';
+    });
+  });
+
+  // Highlight the section currently in view.
+  var links = [].slice.call(document.querySelectorAll('nav.toc a'));
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      links.forEach(function (a) { a.classList.remove('active'); });
+      var a = byId[e.target.id]; if (a) a.classList.add('active');
+    });
+  }, { rootMargin: '-72px 0px -70% 0px', threshold: 0 });
+  [].forEach.call(document.querySelectorAll('main section.block'), function (s) { obs.observe(s); });
+})();
+</script>
+
+</body>
+</html>

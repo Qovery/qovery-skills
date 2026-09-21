@@ -257,5 +257,43 @@
       "Reports tf_vars carrying credentials with secret false as a VS-01-class finding without printing any value",
       "Applies BP-05 only after reading cronjob.concurrency_policy, and passes jobs set to Forbid or Replace instead of reporting them on the duration bound alone"
     ]
+  },
+  {
+    "skills": [
+      "qovery-assess"
+    ],
+    "query": "Run an assessment on our org before I meet the customer tomorrow. They're on AWS, all their production databases are db.t3 class, and their prod cluster has a stable node pool sitting mostly idle. Observe is installed but we're not getting alerts.",
+    "files": [],
+    "expected_behavior": [
+      "Flags the burstable production database class under RL-24 and explains CPU credit exhaustion as an outage mechanism at peak traffic, not merely a performance concern",
+      "Resolves RL-24 from the instance class alone as an exposure finding, and does not claim the database is currently being throttled without CPUCreditBalance data from the cloud provider",
+      "Resolves burstable databases in development or staging environments as N/A rather than FAIL",
+      "Reads the observability sub-feature flags (alerting, cloud_watch_export_config) and attributes the missing alerts to the disabled sub-feature under CL-08, rather than reporting that metrics could not be retrieved",
+      "Distinguishes 'explicitly disabled' from 'not reported' when a sub-feature flag is false, instead of collapsing both to a dash",
+      "Reports the idle node pool under CL-18 and CE-11, checks whether consolidation is enabled, and does NOT recommend a capacity reduction from a point-in-time reading — resolves UNKNOWN and names the time-series data needed",
+      "Distinguishes requested resources from measured utilization, and says which of the two the evidence is",
+      "Treats the full report as an internal qualification artifact and produces the Phase 8c customer briefing — five or six items from templates/customer-briefing.md — as the thing delivered to the customer",
+      "Pairs each briefing item with a concrete offer of help rather than ending on the problem, and puts intent questions (why is this public, is this volume durable, does anyone read the audit log) as questions rather than asserted findings",
+      "Cross-references finding IDs in the executive top-risks table instead of restating the findings as a second, shorter set"
+    ]
+  },
+  {
+    "skills": [
+      "qovery-assess"
+    ],
+    "query": "Assess organization 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d and give me something I can actually send.",
+    "files": [],
+    "expected_behavior": [
+      "Asks which output format is wanted — HTML, Markdown, or raw — rather than silently choosing one",
+      "Defaults to HTML and says it is defaulting if the user does not answer",
+      "Fills templates/report.html rather than hand-writing HTML or restyling the Qovery design system CSS",
+      "Produces a single self-contained file: no script tag pointing at a URL, no stylesheet link other than the Google Fonts one already in the template, no image reference that is not a data URI or inline SVG",
+      "Uses one article.finding component for every finding in both Top risks and the pillar sections, with the four dt labels Finding, Impact, Fix, Effort in that order",
+      "Gives every appendix row a data-result value from exactly PASS, FAIL, PARTIAL, UNKNOWN, N/A, OBSERVATION that matches the chip rendered in the same row",
+      "Gives every appendix row an evidence note including the PASS rows, and reconciles the row count with the coverage line",
+      "Checks that no {{placeholder}} survived before presenting the file",
+      "Treats 'raw' as a legitimate answer by delivering findings.csv plus the snapshot with no prose report, instead of writing a report anyway",
+      "Still produces the Phase 8c briefing as the customer deliverable, in the same format, reusing the same components rather than a second visual language"
+    ]
   }
 ]
