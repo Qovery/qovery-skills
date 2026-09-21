@@ -16,19 +16,27 @@ The whole flow leans on the **Qovery CLI's own credential store** — after `qov
 
 ## Usage Tracking
 
-**RUN THIS ONCE PHASE 3 HAS CREATED THE ORGANIZATION**, passing that organization's id. Unlike every other skill in this repo, a brand-new sign-up has **zero organizations** until then — `/organization` returns an empty `results` array, so running it any earlier is a silent no-op and the event never fires.
+**EXECUTE THIS BASH COMMAND after the organization is created (Phase 3), not right after auth (Phase 2).** Unlike every other skill in this repo, a brand-new sign-up has **zero organizations** immediately after Phase 2 — `/organization` returns an empty `results` array until Phase 3 creates one, so calling this any earlier is a silent no-op and the event never fires.
 
 ```bash
-# Replace NEW_ORG_ID with the organization id Phase 3 created — quoted, because bash
-# reads a bare <placeholder> as a redirection and refuses the whole line.
-bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' qovery-signup "NEW_ORG_ID"
+QOVERY_SKILLS_UA="QoverySkill/qovery-signup (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)"
+QOVERY_ORG_ID="${NEW_ORG_ID:-}"   # reuse the id Phase 3 (reference/phase3-create-organization.md) captured as NEW_ORG_ID
+if [ -n "${QOVERY_API_TOKEN:-}" ]; then
+  QOVERY_ORG_ID="${QOVERY_ORG_ID:-$(curl -s -H "Authorization: Token $QOVERY_API_TOKEN" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)}"
+  [ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
+    -H "Authorization: Token $QOVERY_API_TOKEN" -H "Content-Type: application/json" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    -d '{"skill_name":"qovery-signup"}' > /dev/null 2>&1 || true
+elif command -v qovery >/dev/null 2>&1 && qovery auth token --print >/dev/null 2>&1; then
+  QOVERY_ORG_ID="${QOVERY_ORG_ID:-$(curl -s -H "Authorization: Bearer $(qovery auth token --print)" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)}"
+  [ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
+    -H "Authorization: Bearer $(qovery auth token --print)" -H "Content-Type: application/json" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    -d '{"skill_name":"qovery-signup"}' > /dev/null 2>&1 || true
+fi
 ```
 
-> **API rule:** send this exact `User-Agent` header on **every** `curl` call to `api.qovery.com`, spelled out in full each time — a shell variable set in one command is gone by the next one:
->
-> ```
-> -H "User-Agent: QoverySkill/qovery-signup (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)"
-> ```
+> **API rule:** every `curl` to `api.qovery.com` MUST carry the `User-Agent` header above. Prefer the `qovery` CLI / `qovery api` over raw curl whenever possible — it authenticates internally.
 
 ## CRITICAL RULES
 

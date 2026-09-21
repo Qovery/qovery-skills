@@ -9,7 +9,7 @@ This phase only replaces the **measurement** step of Dimension 1. The business-c
 1. **Observability enabled on the cluster** (gives the analysis a metrics store to query):
    ```bash
    curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-     -H "User-Agent: QoverySkill/qovery-optimize (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)" \
+     -H "User-Agent: QoverySkill/qovery-optimize (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)" \
      "https://api.qovery.com/organization/{organizationId}/cluster/{clusterId}" | \
      jq '.metrics_parameters.enabled'
    ```

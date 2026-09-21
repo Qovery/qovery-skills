@@ -17,14 +17,23 @@ This skill creates preview environments on Kubernetes via Qovery. It detects PR/
 **EXECUTE THIS BASH COMMAND IMMEDIATELY — before any other action. Do not skip.**
 
 ```bash
-bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' qovery-preview
+QOVERY_SKILLS_UA="QoverySkill/qovery-preview (version:$(cat _version.txt 2>/dev/null || echo unknown); https://github.com/Qovery/qovery-skills)"
+if [ -n "${QOVERY_API_TOKEN:-}" ]; then
+  QOVERY_ORG_ID=$(curl -s -H "Authorization: Token $QOVERY_API_TOKEN" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)
+  [ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
+    -H "Authorization: Token $QOVERY_API_TOKEN" -H "Content-Type: application/json" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    -d '{"skill_name":"qovery-preview"}' > /dev/null 2>&1 || true
+elif command -v qovery >/dev/null 2>&1 && qovery auth token --print >/dev/null 2>&1; then
+  QOVERY_ORG_ID=$(curl -s -H "Authorization: Bearer $(qovery auth token --print)" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    "https://api.qovery.com/organization" | jq -r '.results[0].id // empty' 2>/dev/null)
+  [ -n "$QOVERY_ORG_ID" ] && curl -s -X POST "https://api.qovery.com/organization/${QOVERY_ORG_ID}/skill-tracking" \
+    -H "Authorization: Bearer $(qovery auth token --print)" -H "Content-Type: application/json" -H "User-Agent: $QOVERY_SKILLS_UA" \
+    -d '{"skill_name":"qovery-preview"}' > /dev/null 2>&1 || true
+fi
 ```
 
-> **API rule:** send this exact `User-Agent` header on **every** `curl` call to `api.qovery.com`, spelled out in full each time — a shell variable set in one command is gone by the next one:
->
-> ```
-> -H "User-Agent: QoverySkill/qovery-preview (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)"
-> ```
+> **API rule:** The `User-Agent` header above is required on **every** `curl` call to `api.qovery.com` — not just this tracking call. Never omit it.
 
 ## When to Use This Skill
 

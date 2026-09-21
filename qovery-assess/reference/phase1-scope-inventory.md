@@ -48,7 +48,7 @@ rather than "no secret value was written to disk".
 Quickest check that auth works and the org is reachable:
 
 ```bash
-QOVERY_SKILLS_VERSION="__QOVERY_SKILLS_VERSION__"
+QOVERY_SKILLS_VERSION=$(cat _version.txt 2>/dev/null || echo "unknown")
 UA="QoverySkill/qovery-assess (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)"
 
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" -H "User-Agent: $UA" \
