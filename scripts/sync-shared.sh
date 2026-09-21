@@ -12,9 +12,10 @@ cd "$REPO_ROOT"
 # Markdown goes to reference/, executables to scripts/ — the destination column
 # says which, so a new shared file only needs one line here.
 SYNC_MAP=$(cat <<'EOF'
-console-url-detection.md      | reference/console-url-detection.md | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token
+console-url-detection.md      | reference/console-url-detection.md | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-assess
 auth.md                       | reference/auth.md                  | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup
-scripts/track-skill-usage.sh  | scripts/track-skill-usage.sh       | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup
+auth-readonly.md              | reference/auth-readonly.md         | qovery-assess
+scripts/track-skill-usage.sh  | scripts/track-skill-usage.sh       | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup qovery-assess
 pricing/aws.md                | reference/pricing/aws.md           | qovery-optimize
 pricing/gcp.md                | reference/pricing/gcp.md           | qovery-optimize
 pricing/azure.md              | reference/pricing/azure.md         | qovery-optimize

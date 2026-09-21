@@ -2,6 +2,11 @@
 
 After user confirmation, execute step by step. Show progress with Qovery Console links at EVERY step.
 
+Before presenting a Console deep link, resolve all required IDs and build the
+link from the canonical route table. Never send an ID-less or placeholder URL;
+when an ID is not known yet, use <https://console.qovery.com> and give the UI
+navigation path instead.
+
 ### 3.1 Account & Organization
 
 If the user doesn't have a Qovery account:
@@ -72,9 +77,12 @@ IMPORTANT: The `type` field (`AWS_ROLE` or `AWS_STATIC`) is required. Without it
 
 > "Now I'll create your Kubernetes cluster. This is the infrastructure that will run your applications. It takes about 15-20 minutes — I'll show you the progress."
 
-Recommend the Qovery Console for first-time cluster creation (visual, progress indicators):
-
-> "I recommend creating the cluster through the Qovery Console for your first setup — it has a nice visual interface that shows progress. Go to https://console.qovery.com > Clusters > Create Cluster."
+Recommend the Qovery Console for first-time cluster creation (visual, progress
+indicators). If the organization ID is known, replace `{orgId}` in
+`https://console.qovery.com/organization/{orgId}/clusters` and include the
+completed link in the guidance. If it is unknown, link to
+<https://console.qovery.com> and tell the user to open **Clusters**, then
+**Create Cluster**. Never present the URL template itself to the user.
 
 Guide through the Console options:
 1. Select cloud provider (the one from Phase 2)
@@ -110,8 +118,12 @@ curl -s -X POST "https://api.qovery.com/cluster/{clusterId}/deploy" \
 ```
 
 Show progress:
-> "Cluster creation started. You can monitor it at: https://console.qovery.com/clusters/{id}"
+> "Cluster creation started. You can monitor it from its Console page."
 > "This takes about 15-20 minutes. While we wait, let's set up your project and environments."
+
+Construct the cluster link from verified values as
+`https://console.qovery.com/organization/{orgId}/cluster/{clusterId}`. Replace
+both placeholders before showing it to the user.
 
 ### 3.4 Project & Environments (While Cluster Creates)
 
@@ -125,7 +137,9 @@ curl -s -X POST "https://api.qovery.com/organization/{orgId}/project" \
   -d '{"name": "my-project", "description": "Main project"}'
 ```
 
-> "Project 'my-project' created. View it here: https://console.qovery.com/projects/{id}"
+Construct the project link from verified values as
+`https://console.qovery.com/organization/{orgId}/project/{projId}` before
+showing it to the user.
 
 Wait for cluster to be ready, then create environments:
 
@@ -149,10 +163,9 @@ curl -s -X POST "https://api.qovery.com/project/{projId}/environment" \
   -d '{"name": "production", "mode": "PRODUCTION", "cluster": "{clusterId}"}'
 ```
 
-> "Environments created:
->   - development: https://console.qovery.com/environments/{devId}
->   - staging: https://console.qovery.com/environments/{stagingId}
->   - production: https://console.qovery.com/environments/{prodId}"
+Construct each environment link from verified values as
+`https://console.qovery.com/organization/{orgId}/project/{projId}/environment/{envId}`.
+Replace every placeholder before showing the links to the user.
 
 ### 3.5 Deployment Rules (Cost Optimization)
 
@@ -160,7 +173,12 @@ Set up deployment rules to auto-stop non-production environments:
 
 > "I'm setting up deployment rules to automatically stop your dev and staging environments outside business hours. This will save approximately 60-70% on non-production infrastructure costs."
 
-Guide through Console: Project Settings > Deployment Rules, or explain the deployment rule configuration:
+Guide through Console: Project Settings > Deployment Rules. If both IDs are
+known, replace them in
+`https://console.qovery.com/organization/{orgId}/project/{projId}/deployment-rules`
+and include the completed link. Otherwise use <https://console.qovery.com> and
+give the UI navigation path. Never present the URL template itself to the user.
+Then explain the deployment rule configuration:
 
 ```
 Rule 1 (highest priority): prod-* → Never stop
@@ -175,11 +193,30 @@ Rule 4 (catch-all): * → Stop after 2h idle
 
 > "To deploy applications from your Git repositories, Qovery needs read access to your code. Let's connect your Git provider."
 
-Guide through: Console > Organization Settings > Git Repository Access
+**Use Git tokens for every provider. Do not recommend installing the Qovery
+GitHub App: it is deprecated.** Existing GitHub App users should migrate their
+services to an organization Git token before uninstalling the app.
 
-- **GitHub**: Install the Qovery GitHub App
-- **GitLab**: Generate a personal access token with `api` and `read_repository` scopes
-- **Bitbucket**: Set up an app password with repository read permissions
+1. Resolve the organization ID, then construct this direct Console link with
+   the real ID:
+   `https://console.qovery.com/organization/{orgId}/settings/git-repository-access`.
+   Never send `https://console.qovery.com/organization/settings/git-repository-access`.
+2. Ask the user to select **Add new token**.
+3. Create the provider token with the required access:
+   - **GitHub**: use a dedicated account when possible. A classic token needs
+     `repo` and `admin:repo_hook`, plus `read:org` for organization repositories.
+     A fine-grained token needs repository **Contents: read**, **Webhooks:
+     read/write**, and **Pull requests: read/write**.
+   - **GitLab**: use a project, group, or personal access token with Maintainer
+     or Owner role and `api` plus `read_repository` scopes.
+   - **Bitbucket**: use a repository or workspace access token with
+     **Repositories: read**, **Pull requests: read/write**, and **Webhooks:
+     read/write**. Supply the workspace name in Qovery.
+4. Add the token in Qovery, then select that organization token when creating
+   services from Git.
+
+Full provider instructions:
+<https://www.qovery.com/docs/configuration/organization/git-repository-access>
 
 > "Git provider connected. Qovery can now access your repositories."
 
@@ -222,4 +259,3 @@ curl -fsSL https://skill.qovery.com/install.sh | bash
 ```
 
 ---
-

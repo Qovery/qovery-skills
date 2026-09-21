@@ -65,6 +65,9 @@ Onboarding Progress:
 | Phase 5 | [reference/phase5-migration-guides.md](reference/phase5-migration-guides.md) | Heroku, Vercel, Render, manual K8s migrations + concept mapping |
 | Phase 6 | [reference/phase6-verification.md](reference/phase6-verification.md) | Sanity checks, first deployment hand-off, support paths |
 
+Whenever a phase needs to present a user-facing Console deep link, also load
+the Console URL reference first so every required parent ID is included.
+
 After onboarding, hand off to `qovery-deploy` for the first application deployment.
 
 ## Quick reference
