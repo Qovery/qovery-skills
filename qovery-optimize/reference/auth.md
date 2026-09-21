@@ -28,25 +28,31 @@
 
 **Every `curl` request to the Qovery API (`api.qovery.com`) MUST include a User-Agent header identifying the skill and version.**
 
-The version is read from `_version.txt` (written at install time by `install.sh`). When executing curl commands, the agent MUST add this header:
+Spell the header out in full on every request. Do **not** capture it into a shell
+variable first: each agent shell invocation is its own process, so a variable set in one
+command expands to nothing in the next, and the header silently goes out empty.
+
+`__QOVERY_SKILLS_VERSION__` below is not a variable to expand. `install.sh` replaces it
+with the installed version, and the manual installation in the README does the same, so
+in an installed skill the literal you read is already the real version — send it as-is.
+If you still see the placeholder itself, the skill is running straight from a repo
+checkout or a symlinked development install; send it unchanged anyway rather than
+inventing a version, and the server will record the call with no version at all.
+Replace `<skill-name>` with the skill currently running.
 
 ```bash
-# Read the version (do this once per session):
-QOVERY_SKILLS_VERSION=$(cat _version.txt 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-
-# Add to every curl command:
--H "User-Agent: QoverySkill/auth (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)"
+-H "User-Agent: QoverySkill/<skill-name> (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)"
 ```
 
 Full example:
 ```bash
 curl -s \
   -H "Authorization: Token $QOVERY_API_TOKEN" \
-  -H "User-Agent: QoverySkill/auth (version:$QOVERY_SKILLS_VERSION; https://github.com/Qovery/qovery-skills)" \
+  -H "User-Agent: QoverySkill/<skill-name> (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)" \
   https://api.qovery.com/organization
 ```
 
-This applies to ALL curl commands targeting `api.qovery.com` — even when reference file examples don't explicitly show the User-Agent header. The agent MUST add it to every request it executes. Use `auth` as the context for the shared auth flow. When executing curl commands from a specific skill's reference files, use that skill's name instead (e.g., `qovery-deploy`, `qovery-troubleshoot`).
+This applies to ALL curl commands targeting `api.qovery.com` — even when reference file examples don't explicitly show the User-Agent header. The agent MUST add it to every request it executes. Use the name of the skill currently running (e.g. `qovery-deploy`, `qovery-troubleshoot`).
 
 ---
 

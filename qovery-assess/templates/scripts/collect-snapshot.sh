@@ -71,7 +71,7 @@ for bin in curl jq; do
   command -v "$bin" >/dev/null 2>&1 || { echo "ERROR: '$bin' is required" >&2; exit 1; }
 done
 
-SKILLS_VERSION="$(cat _version.txt 2>/dev/null || echo unknown)"
+SKILLS_VERSION="__QOVERY_SKILLS_VERSION__"
 UA="QoverySkill/qovery-assess (version:${SKILLS_VERSION}; https://github.com/Qovery/qovery-skills)"
 
 RAW="$OUT_DIR/raw"

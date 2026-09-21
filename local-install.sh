@@ -266,6 +266,12 @@ else
 fi
 
 echo ""
+echo -e "${YELLOW}Note:${NC} skills are symlinked to the repo, so the ${BOLD}__QOVERY_SKILLS_VERSION__${NC} and"
+echo -e "${BOLD}__QOVERY_SKILL_DIR__${NC} placeholders stay unsubstituted — install.sh fills those in at"
+echo -e "install time. Usage tracking is a no-op here and the User-Agent carries the literal"
+echo -e "placeholder. That is expected for a development install; use install.sh to test it."
+
+echo ""
 echo -e "${BOLD}Skills linked:${NC}"
 echo -e "  ${YELLOW}qovery${NC}               — Route to skills + quick operations"
 echo -e "  ${YELLOW}qovery-onboard${NC}       — Guided onboarding for new Qovery users"
