@@ -61,8 +61,8 @@ Deployment Speedup Progress:
 | Auth | [reference/auth.md](reference/auth.md) | API token flow |
 | Phase 1 | [reference/phase1-measure-timeline.md](reference/phase1-measure-timeline.md) | V2 deployment history, build runner usage report, log parsing, comparison |
 | Phase 2 | [reference/phase2-classify.md](reference/phase2-classify.md) | Classification table + decision tree (user vs Qovery) |
-| Phase 3 | [reference/phase3-diagnose.md](reference/phase3-diagnose.md) | Dockerfile, build runner, startup, health check, image pull, stage parallelism |
-| Phase 4 | [reference/phase4-fix-verify.md](reference/phase4-fix-verify.md) | Apply changes, redeploy, re-measure |
+| Phase 3 | [reference/phase3-diagnose.md](reference/phase3-diagnose.md) | Image-mirroring reuse check, Dockerfile, build runner, startup, health check, image pull, stage parallelism |
+| Phase 4 | [reference/phase4-fix-verify.md](reference/phase4-fix-verify.md) | Apply changes, redeploy, re-measure — opens a PR for Dockerfile/code fixes when running unattended |
 | Phase 5 | [reference/phase5-support-escalation.md](reference/phase5-support-escalation.md) | When and how to escalate to Qovery support |
 | Phase 6 | [reference/phase6-targets.md](reference/phase6-targets.md) | Ongoing speed targets + monitoring checklist |
 | Support escalation | [reference/diagnostic-report-template.md](reference/diagnostic-report-template.md) | Drop-in report template for Qovery support tickets |
@@ -122,6 +122,7 @@ qovery service list                                # all services overview
 - **Deployment Logs Docs**: <https://www.qovery.com/docs/configuration/deployment/logs>
 - **Deployment Pipeline Docs**: <https://www.qovery.com/docs/configuration/deployment/pipeline>
 - **Build Optimization**: <https://www.qovery.com/docs/getting-started/guides/qovery-101/optimize>
+- **Image Mirroring (rebuild vs. reuse rules)**: <https://www.qovery.com/docs/configuration/deployment/image-mirroring>
 - **Qovery Deploy Skill**: <https://github.com/Qovery/qovery-skills>
 - **Qovery Troubleshoot Skill**: <https://github.com/Qovery/qovery-skills>
 - **Qovery Optimize Skill**: <https://github.com/Qovery/qovery-skills>

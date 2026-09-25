@@ -25,6 +25,20 @@ Same rules as other Qovery skills:
 3. Explain the expected time saving
 4. Wait for explicit approval
 
+**Running unattended (no one available to answer the question above):**
+
+If the agent has no way to get a synchronous approval — an autonomous/scheduled run with nobody watching the turn — do not commit the change straight to the default branch, and do not silently drop it either. Open a PR instead:
+
+1. Create a topic branch (e.g. `qovery-speedup/dockerfile-optimization`)
+2. Apply the proposed Dockerfile / code change on that branch
+3. Commit with a descriptive message (Conventional Commits style, e.g. `perf: reorder Dockerfile layers for cache reuse`)
+4. Push the branch and open a PR against the default branch
+5. In the PR description, include: the measured bottleneck, the before/after diff, the expected time saving, and a note that this was proposed by an autonomous qovery-speedup run and needs human review before merge
+6. Do NOT merge the PR — leave that to a human reviewer
+7. Note in the run's final summary that this fix is pending review in the PR, and that re-measuring it (Phase 4.2) can only happen after it's merged and redeployed
+
+Auto-fixes (health checks, stage ordering, `.dockerignore`, resource requests) still apply directly via the Qovery API/CLI regardless of attended/unattended — they don't need this PR flow since no approval is required for them.
+
 ### 4.2 Apply Fixes and Re-Measure
 
 After applying fixes:
