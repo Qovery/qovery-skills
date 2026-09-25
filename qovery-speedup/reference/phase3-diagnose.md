@@ -4,6 +4,33 @@
 
 Analyze the user's Dockerfile and build logs to identify waste. This is where the biggest gains are.
 
+**Step 0: Check whether the image should have been reused instead of rebuilt**
+
+Before touching the Dockerfile, rule out the cheapest possible fix: the build shouldn't have run at all. Qovery mirrors built images and skips the Docker build entirely when the computed image tag already exists in the mirroring registry.
+
+The tag is derived only from inputs that can change the image:
+- Git commit ID and repository root path
+- Dockerfile path and content
+- Values of build arguments declared by the Dockerfile
+- Values of build secrets referenced via `RUN --mount=type=secret,id=...`
+- Target build stage
+- Injected files, including their paths and contents
+- Inline Dockerfile fragments, or the path of a file-based fragment
+- Whether Git submodules are skipped
+
+**Env vars that are not declared as a Dockerfile `ARG` or a secret mount ID never affect the tag** — they can change freely between deploys without forcing a rebuild.
+
+Check:
+- Did the Docker build step (Phase 1.3 timeline) take close to its normal full duration on a deployment where the commit, Dockerfile, and build args were unchanged from the previous one? If so, the image should have been reused and wasn't — something is silently busting the tag every deploy.
+- **Most common self-inflicted cause:** a build arg or injected file whose value changes on every deploy even when nothing meaningful changed — e.g. `--build-arg BUILD_TIME=$(date)`, a CI-injected random ID, or a fragment embedding a timestamp. Each one produces a brand-new tag every single deploy, so the image is rebuilt from scratch every time regardless of any other optimization. **Fix:** drop it from the Dockerfile `ARG`s / injected files, or pass it as a plain runtime environment variable instead (those don't affect the tag).
+- `force_build` left permanently enabled — it bypasses the first (pre-clone) existence check every time. The second check (after parsing the Dockerfile) can still skip the build if the final tag exists, but leaving `force_build` on defeats the fast path.
+- `tag_build_args` missing an arg the Dockerfile actually declares — can make the pre-clone check miss a reusable image. The post-Dockerfile check still catches it, but only after the clone has already run.
+- `build.disable_buildkit_cache` is a red herring here — it only affects BuildKit's registry layer-cache import/export, not whether the tag-reuse check skips the build. Don't chase it when diagnosing an unnecessary full rebuild.
+
+Full rules: <https://www.qovery.com/docs/configuration/deployment/image-mirroring#when-is-the-docker-image-rebuilt>
+
+If the image is correctly being rebuilt (the tag genuinely changed — new commit, new Dockerfile, new deps), continue to Step 1 for Dockerfile-level build-time optimizations.
+
 **Step 1: Read the Dockerfile**
 
 Examine the Dockerfile and identify anti-patterns:

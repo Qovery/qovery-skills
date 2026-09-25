@@ -43,6 +43,7 @@ After optimization, provide the user with a checklist for maintaining fast deplo
 ```markdown
 ## Deployment Speed Maintenance Checklist
 
+- [ ] No non-deterministic build args or injected files (timestamps, random IDs) that bust the image-reuse tag on every deploy
 - [ ] Dockerfile has proper layer ordering (lockfiles first, then code)
 - [ ] .dockerignore excludes .git, node_modules, build artifacts
 - [ ] Multi-stage build separates build and runtime

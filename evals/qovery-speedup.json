@@ -34,5 +34,31 @@
       "Applies the change via PUT /application/{appId} and triggers a redeploy",
       "Re-measures via deploymentHistoryV2 to confirm the deployment now succeeds within the new window"
     ]
+  },
+  {
+    "skills": ["qovery-speedup"],
+    "query": "Every deployment rebuilds my whole Docker image from scratch even though I haven't changed any code — why isn't it reusing the last image?",
+    "files": [],
+    "expected_behavior": [
+      "Reads reference/phase3-diagnose.md Step 0 (image-mirroring reuse check) before proposing Dockerfile changes",
+      "Explains the image tag is derived from commit ID, Dockerfile content, declared ARG values, build secrets, target stage, injected files, and fragments — not from arbitrary env vars",
+      "Identifies a non-deterministic build arg or injected file (e.g. a timestamp or CI-generated random ID) as the likely cause of a new tag on every deploy",
+      "Recommends removing the non-deterministic value from the Dockerfile ARG/injected files or passing it as a runtime env var instead",
+      "Checks whether force_build is stuck on or tag_build_args is incomplete before blaming Dockerfile anti-patterns",
+      "Does not suggest disabling build.disable_buildkit_cache as a fix for unnecessary rebuilds"
+    ]
+  },
+  {
+    "skills": ["qovery-speedup"],
+    "query": "Run as an unattended background agent (no one will respond to prompts): analyze and speed up the 'backend' service deployment, QOVERY_API_TOKEN is already set",
+    "files": [],
+    "expected_behavior": [
+      "Completes Phase 1-3 (measure, classify, diagnose) without pausing for input",
+      "Applies auto-fixable changes directly via the API/CLI (health check timing, stage reordering, .dockerignore, resource requests) without asking",
+      "For any Dockerfile/code-level fix, reads reference/phase4-fix-verify.md's unattended-mode flow: creates a topic branch, commits the change, pushes, and opens a PR instead of committing to the default branch or applying without review",
+      "Does not merge the PR itself",
+      "PR description includes the measured bottleneck, before/after diff, and expected time saving",
+      "Final summary distinguishes fixes already applied and re-measured from the fix left pending in the open PR"
+    ]
   }
 ]
