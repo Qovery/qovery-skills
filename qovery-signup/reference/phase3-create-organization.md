@@ -81,3 +81,11 @@ Select the new organization (and later a project/environment) so subsequent comm
 A newly created org has **no credit card**, so it carries `billing_deployment_restriction: NO_CREDIT_CARD`: managed (cloud) cluster creation and deployments are blocked until a card is added (Console → **Settings → Billing**). A local demo cluster works without a card (Phase 5). Mention this now so it isn't a surprise.
 
 Carry the **use case** from §3.1 into Phase 4 (recorded as `qovery_usage`) and Phase 5 (configuration).
+
+## Tracking handoff after Phase 3
+
+After authentication and organization selection/creation, associate the existing
+run using the state path retained at launch (see SKILL.md Usage Tracking).
+Do not call `start` again. No live association is sent until q-core validates the
+transport and identity mapping. This step records identity/organization only,
+regardless of whether a deployment later succeeds.

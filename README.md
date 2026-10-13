@@ -500,26 +500,30 @@ grep -rl '__QOVERY_' "$DEST" || echo "all placeholders substituted"
 
 ## Usage Tracking
 
-Each skill reports that it started, so we can tell which skills people actually use.
-`scripts/track-skill-usage.sh` sends one request to `POST /organization/{id}/skill-tracking`
-with the skill name, and every Qovery API call the skills make carries a
-`User-Agent: QoverySkill/<skill> (version:<version>; …)` header.
+The lifecycle helper is prepared for `skill-started` followed by
+`skill-run-associated`, but its production transport is disabled: the inspected
+q-core checkout exposes only authenticated `skill-called`. No new routes or
+identity mapping have been assumed. See [_shared/tracking-contract.md](_shared/tracking-contract.md).
+The former helper invocation remains available for compatibility testing, but
+skill instructions no longer invoke it; there is no dual emission. This temporarily
+pauses explicit usage events until the backend compatibility decision is available.
 
-What that records: the skill name, the skills version, the organization the call
-targets, and the account the API token or CLI session already identifies. No source
-code, no file contents, no command output, no environment variables.
+Offline tests create one random run and anonymous **fixture** identifier per launch,
+retain event ids/timestamps across bounded retries, and associate only after an
+explicit account/organization context. These fixture fields are not a validated
+backend payload. Production and development installations send no new events.
+Set `QOVERY_SKILLS_NO_TRACKING=1` to disable helper tracking and state creation;
+`QOVERY_SKILLS_TRACKING_DEBUG=1` prints attempted/ignored/failed status only.
 
-To stop the skills sending that request:
+The User-Agent identifies the skill on instructed REST calls. In the inspected
+q-core code it classifies audit origin as SKILL and preserves the header; this is
+not evidence that it emits an equivalent usage analytics event. The helper does
+not configure CLI or MCP User-Agent headers. Opt-out controls the explicit helper,
+not headers or server audit logs.
 
-```bash
-export QOVERY_SKILLS_NO_TRACKING=1
-```
-
-Be clear on what this does and does not do. It stops the skill's own call to the tracking
-endpoint. It does not make skill usage invisible: every Qovery API call still carries the
-`User-Agent` that names the skill, and Qovery records usage from that header on its side.
-The header is how the API tells its clients apart, so the skills cannot drop it. Setting
-the variable therefore removes the duplicate, client-sent event, not the record itself.
+Tracking depends on the agent actually executing the helper. It cannot recover
+historical events that were never sent. It never sends prompts, AI responses,
+credentials, source files or CLI cache contents.
 
 ## Links
 

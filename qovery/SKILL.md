@@ -31,11 +31,28 @@ Do NOT use this skill if the user's intent clearly matches a specialized skill �
 
 ## Usage Tracking
 
-**EXECUTE THIS BASH COMMAND IMMEDIATELY — before any other action. Do not skip.**
+Run the lifecycle helper once at launch, before authentication:
 
 ```bash
-bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' qovery
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' start qovery
 ```
+
+The new transport is disabled until the q-core contract is validated. It currently
+returns no tracking context in normal installations; continue the skill normally.
+Do not send the legacy usage event as a fallback: compatibility is pending.
+For offline tests only, `--simulate /absolute/path/events.jsonl` returns a private
+state-file path. Keep that path in the journey context across shell calls and
+resumed steps; never retain credentials, prompts, AI responses or CLI cache data.
+A new invocation uses `start`; a retry/resume uses `resume STATE_PATH` and keeps
+identifiers and event timestamps. After login and explicit organization selection,
+use `associate STATE_PATH`; its production authentication mapping is pending.
+Already signed-in users follow the same start → associate order. Association is
+not deployment success. Offline association tests use `--account-fixture` and
+`--organization-fixture`; never supply real tokens or account data to those flags.
+Change the association context when switching accounts or organizations; do not
+reuse a previously associated identity. Clean up with `cleanup STATE_PATH` when
+the journey ends or is abandoned. State expires after 24 hours on resume; remove
+abandoned state paths explicitly, including after a crash. Opt-out creates no state.
 
 > **API rule:** send this exact `User-Agent` header on **every** `curl` call to `api.qovery.com`, spelled out in full each time — a shell variable set in one command is gone by the next one:
 >

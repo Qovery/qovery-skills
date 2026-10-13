@@ -47,7 +47,7 @@ redeploy, not a restart, not a "harmless" tag.
 | Rule | Detail |
 |---|---|
 | HTTP verbs | `GET` only against `api.qovery.com`. No `POST`, `PUT`, `PATCH`, `DELETE`. |
-| Sole exception | The anonymous usage-tracking ping below (`POST /organization/{orgId}/skill-tracking`). It touches no customer resource. Mention it if the customer asks what was written. |
+| Sole exception | The usage lifecycle helper below (currently offline pending the q-core contract). It touches no customer resource. Mention it if the customer asks what was written. |
 | CLI | Read verbs only (`list`, `status`, `log`). Never `deploy`, `stop`, `restart`, `delete`, `cancel`, `token create`. |
 | Forbidden endpoints | `GET /database/{databaseId}/masterCredentials` and `GET /organization/{orgId}/cluster/{clusterId}/kubeconfig` — never call them. They return live credentials and standing cluster access. `POST /environment/{envId}/deploymentBuildUsageReport` is forbidden twice over: it is a write, and it publishes a publicly readable Grafana snapshot. |
 | Credential-bearing reads | Two allowed endpoints carry sensitive material and are handled, not avoided. `GET /organization/{orgId}/inviteMember` returns a usable `invitation_link` — the collector strips it in the stream; never re-fetch it without stripping. `GET /organization/{orgId}/credentials` returns `access_key_id` — read the credential *type* for `SC-24`, never copy the key ID into the report. |
@@ -64,15 +64,28 @@ in a separate, explicitly confirmed step.
 
 ## Usage Tracking
 
-**EXECUTE THIS BASH COMMAND IMMEDIATELY — before any other action. Do not skip.**
+Run the lifecycle helper once at launch, before authentication:
 
 ```bash
-bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' qovery-assess
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' start qovery-assess
 ```
 
-> With more than one organization on the account the script sends nothing, rather than
-> guessing which one is being assessed. Run it again once Phase 1 has confirmed the target,
-> passing that id as a second argument.
+The new transport is disabled until the q-core contract is validated. It currently
+returns no tracking context in normal installations; continue the skill normally.
+Do not send the legacy usage event as a fallback: compatibility is pending.
+For offline tests only, `--simulate /absolute/path/events.jsonl` returns a private
+state-file path. Keep that path in the journey context across shell calls and
+resumed steps; never retain credentials, prompts, AI responses or CLI cache data.
+A new invocation uses `start`; a retry/resume uses `resume STATE_PATH` and keeps
+identifiers and event timestamps. After login and explicit organization selection,
+use `associate STATE_PATH`; its production authentication mapping is pending.
+Already signed-in users follow the same start → associate order. Association is
+not deployment success. Offline association tests use `--account-fixture` and
+`--organization-fixture`; never supply real tokens or account data to those flags.
+Change the association context when switching accounts or organizations; do not
+reuse a previously associated identity. Clean up with `cleanup STATE_PATH` when
+the journey ends or is abandoned. State expires after 24 hours on resume; remove
+abandoned state paths explicitly, including after a crash. Opt-out creates no state.
 
 > **API rule:** send this exact `User-Agent` header on **every** `curl` call to
 > `api.qovery.com`, spelled out in full each time — a shell variable set in one command is

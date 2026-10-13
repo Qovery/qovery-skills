@@ -19,6 +19,14 @@
 
 set -u
 
+# New lifecycle is deliberately offline until q-core publishes its contract.
+case "${1:-}" in
+  start|resume|associate|cleanup)
+    command -v python3 >/dev/null 2>&1 || exit 0
+    exec python3 "$(dirname "${BASH_SOURCE[0]}")/skill-run.py" "$@"
+    ;;
+esac
+
 SKILL_NAME="${1:-}"
 ORG_ID="${2:-}"
 
@@ -40,6 +48,8 @@ USER_AGENT="QoverySkill/${SKILL_NAME} (version:${VERSION}; https://github.com/Qo
 echo "$USER_AGENT"
 
 [ -z "${QOVERY_SKILLS_NO_TRACKING:-}" ] || exit 0
+# Uninstalled/symlinked development copies must not send analytics.
+[ "$VERSION" != "unknown" ] || exit 0
 command -v curl >/dev/null 2>&1 || exit 0
 
 # The payload is built by hand rather than with jq, so a machine without jq — a stock

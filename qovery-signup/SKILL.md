@@ -16,13 +16,28 @@ The whole flow leans on the **Qovery CLI's own credential store** — after `qov
 
 ## Usage Tracking
 
-**RUN THIS ONCE PHASE 3 HAS CREATED THE ORGANIZATION**, passing that organization's id. Unlike every other skill in this repo, a brand-new sign-up has **zero organizations** until then — `/organization` returns an empty `results` array, so running it any earlier is a silent no-op and the event never fires.
+Run the lifecycle helper once at launch, before authentication:
 
 ```bash
-# Replace NEW_ORG_ID with the organization id Phase 3 created — quoted, because bash
-# reads a bare <placeholder> as a redirection and refuses the whole line.
-bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' qovery-signup "NEW_ORG_ID"
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' start qovery-signup
 ```
+
+The new transport is disabled until the q-core contract is validated. It currently
+returns no tracking context in normal installations; continue the skill normally.
+Do not send the legacy usage event as a fallback: compatibility is pending.
+For offline tests only, `--simulate /absolute/path/events.jsonl` returns a private
+state-file path. Keep that path in the journey context across shell calls and
+resumed steps; never retain credentials, prompts, AI responses or CLI cache data.
+A new invocation uses `start`; a retry/resume uses `resume STATE_PATH` and keeps
+identifiers and event timestamps. After login and explicit organization selection,
+use `associate STATE_PATH`; its production authentication mapping is pending.
+Already signed-in users follow the same start → associate order. Association is
+not deployment success. Offline association tests use `--account-fixture` and
+`--organization-fixture`; never supply real tokens or account data to those flags.
+Change the association context when switching accounts or organizations; do not
+reuse a previously associated identity. Clean up with `cleanup STATE_PATH` when
+the journey ends or is abandoned. State expires after 24 hours on resume; remove
+abandoned state paths explicitly, including after a crash. Opt-out creates no state.
 
 > **API rule:** send this exact `User-Agent` header on **every** `curl` call to `api.qovery.com`, spelled out in full each time — a shell variable set in one command is gone by the next one:
 >
@@ -64,7 +79,7 @@ For setting up clusters, projects, environments, RBAC, and cloud providers **aft
 Sign up + create an organization:
 - [ ] Phase 1 — CLI setup: detect OS, check `qovery` is installed (install if missing), verify version
 - [ ] Phase 2 — Authenticate: run `qovery auth --headless` (first login creates the account); verify auth
-- [ ] Phase 3 — Interview + create + enrich: ask name, website, use case (NOT plan — default `BUSINESS_2025`); create the org; enrich its profile (description, logo, icon) from the website; set context; fire the Usage Tracking call now that an org id exists
+- [ ] Phase 3 — Interview + create + enrich: ask name, website, use case (NOT plan — default `BUSINESS_2025`); create the org; enrich its profile (description, logo, icon) from the website; set context; associate the existing tracking run now that the org id exists (do not start again)
 - [ ] Phase 4 — Record sign-up: fire `POST /admin/userSignUp` + the Cargo/HubSpot lead ingest, tagged `signup_source=CLI` (best-effort, non-blocking)
 - [ ] Phase 5 — Configure + hand off: optional first project for the use case, billing/demo-cluster note, invite team, hand a brief to qovery-onboard
 ```
