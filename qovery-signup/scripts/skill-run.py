@@ -191,6 +191,8 @@ def send(kind, run, transport, authorization=None):
                                                authorization)
     except Exception:
         code, response, retry_after = 0, {}, 0
+    item['last_http_status'] = code
+    debug('response (' + kind + ': ' + ('HTTP ' + str(code) if code else 'network or invalid response') + ')')
     if code == 202:
         try:
             uuid.UUID(response['event_id'])

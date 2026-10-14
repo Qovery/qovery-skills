@@ -115,6 +115,7 @@ class Tracking(unittest.TestCase):
             path = Path(self.m.start('qovery-deploy', 'abc1234'))
             self.m.flush(path, lambda *args: (code, {}, 60))
             item = json.loads(path.read_text())['start']
+            self.assertEqual(item['last_http_status'], code)
             self.assertEqual(item['status'], 'pending' if code in (401, 429, 503) else 'stopped')
             if code in (429, 503):
                 self.assertGreaterEqual(item['next_at'], time.time() + 59)
