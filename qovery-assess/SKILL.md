@@ -47,7 +47,7 @@ redeploy, not a restart, not a "harmless" tag.
 | Rule | Detail |
 |---|---|
 | HTTP verbs | `GET` only against `api.qovery.com`. No `POST`, `PUT`, `PATCH`, `DELETE`. |
-| Sole exception | The usage lifecycle helper below (currently offline pending the q-core contract). It touches no customer resource. Mention it if the customer asks what was written. |
+| Sole exception | The usage lifecycle helper below (anonymous start, then authenticated association). It touches no customer resource. Mention it if the customer asks what was written. |
 | CLI | Read verbs only (`list`, `status`, `log`). Never `deploy`, `stop`, `restart`, `delete`, `cancel`, `token create`. |
 | Forbidden endpoints | `GET /database/{databaseId}/masterCredentials` and `GET /organization/{orgId}/cluster/{clusterId}/kubeconfig` — never call them. They return live credentials and standing cluster access. `POST /environment/{envId}/deploymentBuildUsageReport` is forbidden twice over: it is a write, and it publishes a publicly readable Grafana snapshot. |
 | Credential-bearing reads | Two allowed endpoints carry sensitive material and are handled, not avoided. `GET /organization/{orgId}/inviteMember` returns a usable `invitation_link` — the collector strips it in the stream; never re-fetch it without stripping. `GET /organization/{orgId}/credentials` returns `access_key_id` — read the credential *type* for `SC-24`, never copy the key ID into the report. |
@@ -64,28 +64,46 @@ in a separate, explicitly confirmed step.
 
 ## Usage Tracking
 
-Run the lifecycle helper once at launch, before authentication:
+At each new launch, run this once before authentication or other work:
 
 ```bash
 bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' start qovery-assess
 ```
 
-The new transport is disabled until the q-core contract is validated. It currently
-returns no tracking context in normal installations; continue the skill normally.
-Do not send the legacy usage event as a fallback: compatibility is pending.
-For offline tests only, `--simulate /absolute/path/events.jsonl` returns a private
-state-file path. Keep that path in the journey context across shell calls and
-resumed steps; never retain credentials, prompts, AI responses or CLI cache data.
-A new invocation uses `start`; a retry/resume uses `resume STATE_PATH` and keeps
-identifiers and event timestamps. After login and explicit organization selection,
-use `associate STATE_PATH`; its production authentication mapping is pending.
-Already signed-in users follow the same start → associate order. Association is
-not deployment success. Offline association tests use `--account-fixture` and
-`--organization-fixture`; never supply real tokens or account data to those flags.
-Change the association context when switching accounts or organizations; do not
-reuse a previously associated identity. Clean up with `cleanup STATE_PATH` when
-the journey ends or is abandoned. State expires after 24 hours on resume; remove
-abandoned state paths explicitly, including after a crash. Opt-out creates no state.
+Retain the returned absolute **state-file path** in the journey context across
+shell calls, steps and resumptions. The file holds the run/anonymous UUIDs,
+original timestamp and private correlation proof; never read it into the prompt,
+print its contents, or retain tokens, AI responses or CLI cache contents.
+No path is returned for opt-out, development installs, unavailable Python or an
+unsupported skill: continue normally. The root router `qovery` is excluded by the
+backend name contract; downstream `qovery-*` skills track their own executions.
+
+For a retry or resumed journey, use `resume STATE_PATH`, never `start` again.
+After login and **explicit organization selection/creation**, run:
+
+```bash
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' associate 'STATE_PATH' --organization 'ORGANIZATION_UUID'
+```
+
+Replace those placeholders with the retained path and selected UUID. Already
+signed-in users follow the same start → associate order. Do not guess the first
+organization returned by an API. The helper obtains a Bearer session internally;
+API/policy/machine tokens cannot associate a run with a person. Association means
+identity and organization are known, not that deployment succeeded.
+One run has one immutable account/organization association. On an account or
+organization change, end the old journey and start a **new execution**; never
+reattach the old run or change IDs to bypass a conflict.
+
+Requests run in the background with bounded deadlines. Network failures remain
+queued with backoff; `resume` retries anonymous starts, while `associate` also
+rechecks the current account and selected organization before retrying association.
+Keep the path on interruption. At journey completion, use `cleanup STATE_PATH`
+only after queued requests are no longer needed; explicit cleanup discards pending
+requests too. State is private, limited to 100 runs and pruned after 30 days on
+subsequent launches. Set `QOVERY_SKILLS_NO_TRACKING=1` before any command to prevent
+state creation and sends, including pending retries. `cleanup` still removes state.
+`QOVERY_SKILLS_TRACKING_DEBUG=1` prints safe statuses without request data or secrets.
+Never call the legacy tracking endpoint as a fallback.
 
 > **API rule:** send this exact `User-Agent` header on **every** `curl` call to
 > `api.qovery.com`, spelled out in full each time — a shell variable set in one command is

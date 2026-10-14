@@ -262,8 +262,15 @@ curl -fsSL https://skill.qovery.com/install.sh | bash
 
 ## Tracking handoff after Phase 3
 
-After authentication and organization selection/creation, associate the existing
-run using the state path retained at launch (see SKILL.md Usage Tracking).
-Do not call `start` again. No live association is sent until q-core validates the
-transport and identity mapping. This step records identity/organization only,
-regardless of whether a deployment later succeeds.
+After authentication and explicit organization selection/creation, associate the
+existing run using the state path retained at launch:
+
+```bash
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' associate 'STATE_PATH' --organization 'ORGANIZATION_UUID'
+```
+
+Replace the placeholders with the retained path and selected/created organization
+UUID. Do not call `start` again. Association records identity/organization only,
+regardless of whether a deployment later succeeds. If tracking returned no path,
+skip this handoff. The helper handles authentication internally; keep credentials
+and the correlation proof out of prompts.

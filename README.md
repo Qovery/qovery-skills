@@ -500,30 +500,50 @@ grep -rl '__QOVERY_' "$DEST" || echo "all placeholders substituted"
 
 ## Usage Tracking
 
-The lifecycle helper is prepared for `skill-started` followed by
-`skill-run-associated`, but its production transport is disabled: the inspected
-q-core checkout exposes only authenticated `skill-called`. No new routes or
-identity mapping have been assumed. See [_shared/tracking-contract.md](_shared/tracking-contract.md).
-The former helper invocation remains available for compatibility testing, but
-skill instructions no longer invoke it; there is no dual emission. This temporarily
-pauses explicit usage events until the backend compatibility decision is available.
+Installed `qovery-*` skills launch one anonymous `skill-started` run before login
+and associate that same run with `skill-run-associated` after a human logs in and
+explicitly selects/creates an organization. The root `qovery` router is excluded:
+the q-core v1 contract accepts only `qovery-*` names. API/policy tokens and machine
+identities cannot associate runs with a person. Association is not deployment success.
 
-Offline tests create one random run and anonymous **fixture** identifier per launch,
-retain event ids/timestamps across bounded retries, and associate only after an
-explicit account/organization context. These fixture fields are not a validated
-backend payload. Production and development installations send no new events.
-Set `QOVERY_SKILLS_NO_TRACKING=1` to disable helper tracking and state creation;
-`QOVERY_SKILLS_TRACKING_DEBUG=1` prints attempted/ignored/failed status only.
+The helper uses the [q-core v1 contract](https://gitlab.com/qovery/backend/q-core/-/blob/main/doc-features/skill-tracking/contract.md).
+No legacy event is sent as a fallback. Count starts as uses; associations attach
+identity/organization, and `skill-api-call` measures API activity separately.
+User-Agent classifies SKILL audit origin and can emit `skill-api-call` after
+successful authenticated organization-scoped REST calls. This does not recover
+anonymous starts. The helper does not configure CLI/MCP User-Agent headers.
 
-The User-Agent identifies the skill on instructed REST calls. In the inspected
-q-core code it classifies audit origin as SKILL and preserves the header; this is
-not evidence that it emits an equivalent usage analytics event. The helper does
-not configure CLI or MCP User-Agent headers. Opt-out controls the explicit helper,
-not headers or server audit logs.
+`python3` and `curl` are required for helper tracking. Requests run in detached
+workers with 3-second connection and 8-second request deadlines. Retries use
+persisted backoff without sleeping in the skill; at most two other anonymous runs
+are retried per worker. Pending associations require the same current account and
+explicit organization to be retried. Credentials are fetched internally with the
+CLI's supported authorization-header command and never persisted.
 
-Tracking depends on the agent actually executing the helper. It cannot recover
-historical events that were never sent. It never sends prompts, AI responses,
-credentials, source files or CLI cache contents.
+Tracking state lives under `${XDG_STATE_HOME:-~/.local/state}/qovery-skills`
+(directory 0700, files 0600), limited to 100 runs. It contains UUIDs, timestamps,
+a private possession secret, retry status and a hashed account switch guard.
+Never paste state contents into a prompt. Retain only the state-file path between
+steps. `resume` preserves the run; a new launch creates a new run. An association
+is immutable: switching account/organization requires a new execution.
+State expires after 30 days and is pruned on later launches. Explicit `cleanup`
+discards state and pending retries; keep the path when a journey is interrupted.
+
+Set `QOVERY_SKILLS_NO_TRACKING=1` to prevent state creation and sends, including
+queued retries; cleanup remains available. Development symlink installs without
+`_version.txt` do not track. `QOVERY_SKILLS_TRACKING_DEBUG=1` reports safe local
+attempted/accepted/ignored/failed statuses. Opt-out does not remove User-Agent
+headers from other API calls or disable server audit logs.
+
+Tests inject a simulated transport and mock curl; they do not send production
+events. Backend release alone does not establish gateway forwarding, collection
+enablement or PostHog ingestion. See [_shared/tracking-contract.md](_shared/tracking-contract.md)
+for remaining rollout checks. A 202 means persisted acceptance, not delivery.
+
+Tracking depends on the agent executing the helper and cannot recover historical
+events never sent. No prompts, AI responses, tokens, source files or CLI cache
+contents are sent to analytics. The correlation proof goes only to the collector,
+not to analytics.
 
 ## Links
 

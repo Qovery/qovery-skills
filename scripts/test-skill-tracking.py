@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
+import base64
 import importlib.util
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
-import tempfile
-import unittest
 import sys
+import tempfile
+import time
+import unittest
+from unittest.mock import patch
+import uuid
 sys.dont_write_bytecode = True
-
 ROOT = Path(__file__).resolve().parents[1]
+ORG = '11111111-1111-4111-8111-111111111111'
+ORG2 = '22222222-2222-4222-8222-222222222222'
+
 
 def load(path):
     spec = importlib.util.spec_from_file_location('tracking', path)
@@ -18,104 +24,207 @@ def load(path):
     spec.loader.exec_module(module)
     return module
 
+
+def bearer(sub='user-a'):
+    def encode(obj):
+        return base64.urlsafe_b64encode(json.dumps(obj).encode()).decode().rstrip('=')
+    return 'Bearer ' + encode({'alg': 'RS256'}) + '.' + encode({'sub': sub, 'iss': 'test-issuer'}) + '.synthetic-signature'
+
+
 class Tracking(unittest.TestCase):
-    def test_shared_and_distributed_lifecycle(self):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.env = patch.dict(os.environ, {'XDG_STATE_HOME': self.tmp.name, 'QOVERY_SKILLS_NO_TRACKING': ''})
+        self.env.start()
+        self.m = load(ROOT / '_shared/scripts/skill-run.py')
+        self.requests = []
+
+    def tearDown(self):
+        self.env.stop()
+        self.tmp.cleanup()
+
+    def transport(self, kind, metadata, secret, organization=None, authorization=None):
+        self.requests.append(dict(kind=kind, metadata=metadata, secret=secret, organization=organization, authorization=authorization))
+        return 202, dict(run_id=metadata['run_id'], event_id=str(uuid.uuid4()), delivery_status='PENDING'), 0
+
+    def test_shared_and_all_distributed_journeys(self):
         paths = [ROOT / '_shared/scripts/skill-run.py', *ROOT.glob('qovery*/scripts/skill-run.py')]
         self.assertEqual(len(paths), 12)
         for source in paths:
             with self.subTest(source=source):
                 self.assertEqual(source.read_bytes(), paths[0].read_bytes())
+                self.assertEqual(source.with_name('track-skill-usage.sh').read_bytes(), paths[0].with_name('track-skill-usage.sh').read_bytes())
                 m = load(source)
-                events = []
-                def transport(item):
-                    events.append(json.loads(json.dumps(item)))
-                    return True
-                path = Path(m.start('qovery-signup', transport))
-                other = Path(m.start('qovery-signup', transport))
-                try:
-                    self.assertNotEqual(json.loads(path.read_text())['run_id'], json.loads(other.read_text())['run_id'])
-                    self.assertEqual(path.stat().st_mode & 0o777, 0o600)
-                    self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700)
-                    m.resume(path, transport) # absent auth / abandonment
-                    self.assertEqual(len(events), 2)
-                    m.resume(path, transport, 'account-a', 'org-a') # signed in / new account
-                    m.resume(path, transport, 'account-a', 'org-a') # resume: no duplicate
-                    self.assertEqual(len(events), 3)
-                    m.resume(path, transport, 'account-a', 'org-b') # multiple orgs
-                    m.resume(path, transport, 'account-b', 'org-b') # changed account
-                    self.assertEqual(len(events), 5)
-                    self.assertEqual(events[0]['run_id'], events[2]['run_id'])
-                    attempts = []
-                    def failing(item):
-                        attempts.append(json.loads(json.dumps(item)))
-                        return False
-                    retry = Path(m.start('qovery-onboard', failing))
-                    try:
-                        m.resume(retry, transport, 'account-a', 'org-a')
-                        self.assertEqual(len(attempts), 3)
-                        self.assertTrue(all(x == attempts[0] for x in attempts))
-                        self.assertEqual(attempts[0], events[-2])
-                    finally:
-                        shutil.rmtree(retry.parent)
-                    state = json.loads(path.read_text()); state['created'] = 0
-                    path.write_text(json.dumps(state))
-                    with self.assertRaises(ValueError): m.resume(path, transport)
-                    self.assertFalse(path.exists())
-                finally:
-                    shutil.rmtree(path.parent)
-                    shutil.rmtree(other.parent)
+                self.requests.clear()
+                path = Path(m.start('qovery-signup', 'abc1234'))
+                other = Path(m.start('qovery-signup', 'abc1234'))
+                self.assertNotEqual(json.loads(path.read_text())['metadata']['run_id'], json.loads(other.read_text())['metadata']['run_id'])
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+                self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700)
+                m.flush(path, self.transport) # anonymous / abandonment
+                with patch.object(m, 'session', return_value=None):
+                    m.flush(path, self.transport, ORG) # absent auth, zero association
+                self.assertEqual(len(self.requests), 1)
+                m.flush(path, self.transport, ORG, (bearer(), 'account-a')) # connected / new account
+                m.flush(path, self.transport, ORG, (bearer(), 'account-a')) # same journey resumed
+                self.assertEqual(len(self.requests), 2)
+                m.flush(path, self.transport, ORG2, (bearer(), 'account-a'))
+                m.flush(path, self.transport, ORG, (bearer('user-b'), 'account-b'))
+                self.assertEqual(len(self.requests), 2) # immutable association
+                first, second = self.requests
+                self.assertEqual(first['metadata'], second['metadata'])
+                self.assertEqual(first['secret'], second['secret'])
+                self.assertRegex(first['secret'], '^[a-f0-9]{64}$')
+                self.assertEqual(set(first['metadata']), {'run_id', 'anonymous_id', 'skill_name', 'skill_version', 'started_at'})
+                self.assertNotIn('event_id', first['metadata'])
+                self.assertIsNone(first['authorization'])
+                state = path.read_text()
+                self.assertNotIn(bearer(), state)
+                self.assertNotIn('user-a', state)
+                m.cleanup(path); m.cleanup(other)
 
-    def test_cli_optout_contract_gate_and_cleanup(self):
+    def test_network_retry_preserves_proof_metadata_and_server_event_ids(self):
+        path = Path(self.m.start('qovery-onboard', 'abc1234'))
+        def failed(*args):
+            self.requests.append(args)
+            return 0, {}, 0
+        with patch.object(self.m.time, 'time', return_value=time.time()):
+            self.m.flush(path, failed, ORG, (bearer(), 'account-a'))
+            self.assertEqual([x[0] for x in self.requests], ['start', 'associate'])
+            self.m.flush(path, failed, ORG, (bearer(), 'account-a'))
+            self.assertEqual(len(self.requests), 2) # no immediate retry/sleep
+        run = json.loads(path.read_text())
+        self.assertGreater(run['start']['next_at'], run['created'])
+        with patch.object(self.m.time, 'time', return_value=run['created'] + 100):
+            self.m.flush(path, self.transport, ORG, (bearer(), 'account-a'))
+        self.assertEqual(self.requests[0][1], self.requests[2]['metadata'])
+        self.assertEqual(self.requests[0][2], self.requests[2]['secret'])
+        accepted = json.loads(path.read_text())
+        self.assertIn('event_id', accepted['start'])
+        self.assertIn('event_id', accepted['associate'])
+        # A changed account must not flush an old pending association.
+        accepted['associate']['status'] = 'pending'; accepted['associate']['next_at'] = 0
+        self.m.save(path, accepted)
+        count = len(self.requests)
+        self.m.flush(path, self.transport, ORG, (bearer('user-b'), 'account-b'))
+        self.assertEqual(len(self.requests), count)
+
+    def test_rejections_backoff_and_optout(self):
+        for code in (400, 403, 404, 409, 410, 413, 204, 401, 429, 503):
+            path = Path(self.m.start('qovery-deploy', 'abc1234'))
+            self.m.flush(path, lambda *args: (code, {}, 60))
+            item = json.loads(path.read_text())['start']
+            self.assertEqual(item['status'], 'pending' if code in (401, 429, 503) else 'stopped')
+            if code in (429, 503):
+                self.assertGreaterEqual(item['next_at'], time.time() + 59)
+        with patch.dict(os.environ, {'QOVERY_SKILLS_NO_TRACKING': '1'}):
+            self.assertIsNone(self.m.start('qovery-deploy', 'abc1234'))
+            self.m.flush(path, self.transport, ORG, (bearer(), 'a'))
+        self.assertFalse(self.requests)
+        self.assertIsNone(self.m.start('qovery', 'abc1234'))
+
+    def test_expiration_bounded_queue_and_symlink_protection(self):
+        path = Path(self.m.start('qovery-deploy', 'abc1234'))
+        path.chmod(0o644)
+        with self.assertRaises(ValueError): self.m.flush(path, self.transport)
+        path.chmod(0o600)
+        original = path.with_name('original'); path.rename(original); path.symlink_to(original)
+        with self.assertRaises(OSError): self.m.flush(path, self.transport)
+        path.unlink(); original.rename(path)
+        with patch.object(self.m, 'MAX_RUNS', 1):
+            self.assertIsNone(self.m.start('qovery-deploy', 'abc1234'))
+        run = json.loads(path.read_text()); run['created'] = time.time() - self.m.TTL - 1
+        self.m.save(path, run)
+        self.m.flush(path, self.transport)
+        self.assertFalse(path.parent.exists())
+        self.assertFalse(self.requests)
+
+    def test_auth_uses_supported_cli_and_only_human_bearer_candidates(self):
+        def output(value): return subprocess.CompletedProcess([], 0, stdout=value.encode(), stderr=b'')
+        with patch.object(self.m.subprocess, 'run', return_value=output(bearer())) as cli:
+            header, fingerprint = self.m.session()
+            self.assertEqual(header, bearer())
+            self.assertEqual(len(fingerprint), 64)
+            self.assertEqual(cli.call_args.args[0], ['qovery', 'auth', 'token', '--print', '--authorization-header'])
+            self.assertEqual(cli.call_args.kwargs['timeout'], 3)
+        for value in ('Token api-secret', 'Bearer invalid', bearer() + '\nextra'):
+            with patch.object(self.m.subprocess, 'run', return_value=output(value)):
+                self.assertIsNone(self.m.session())
+
+    def test_http_contract_with_mocked_curl_no_real_requests(self):
+        path = Path(self.m.start('qovery-deploy', 'abc1234'))
+        run = json.loads(path.read_text())
+        configs = []
+        def curl(args, **kwargs):
+            self.assertNotIn(run['secret'], ' '.join(args))
+            self.assertNotIn(bearer(), ' '.join(args))
+            self.assertIn('--max-time', args)
+            self.assertEqual(kwargs['timeout'], 9)
+            config = kwargs['input'].decode(); configs.append(config)
+            Path(args[args.index('--output') + 1]).write_text(json.dumps(dict(run_id=run['metadata']['run_id'], event_id=str(uuid.uuid4()), delivery_status='PENDING')))
+            Path(args[args.index('--dump-header') + 1]).write_text('HTTP/1.1 202 Accepted\r\n')
+            return subprocess.CompletedProcess(args, 0, stdout=b'202', stderr=b'')
+        with patch.object(self.m.subprocess, 'run', side_effect=curl):
+            self.m.flush(path, self.m.curl_transport, ORG, (bearer(), 'a'))
+        self.assertIn('/v1/skillRuns/start', configs[0])
+        self.assertNotIn('Authorization:', configs[0])
+        self.assertIn('/v1/organization/' + ORG + '/skillRuns/associate', configs[1])
+        self.assertIn('X-Qovery-Skill-Run-Secret:', configs[0])
+        self.assertIn('Authorization: Bearer', configs[1])
+
+    def test_cli_simulation_and_development_install(self):
         helper = ROOT / '_shared/scripts/track-skill-usage.sh'
-        with tempfile.TemporaryDirectory() as tmp:
-            output = Path(tmp) / 'events'
-            args = ['bash', str(helper), 'start', 'qovery', '--simulate', str(output)]
-            env = dict(os.environ, QOVERY_SKILLS_NO_TRACKING='1')
-            self.assertEqual(subprocess.check_output(args, env=env), b'')
-            self.assertFalse(output.exists())
-            self.assertEqual(subprocess.check_output(args[:-2]), b'')
-            env = dict(os.environ); env.pop('QOVERY_SKILLS_NO_TRACKING', None)
-            path = subprocess.check_output(args, env=env).decode().strip()
-            subprocess.check_call(['bash', str(helper), 'cleanup', path], env=env)
-            self.assertFalse(Path(path).parent.exists())
-            self.assertEqual(len(output.read_text().splitlines()), 1)
+        self.assertEqual(subprocess.check_output(['bash', str(helper), 'start', 'qovery-deploy']), b'')
+        output = Path(self.tmp.name) / 'events'
+        path = subprocess.check_output(['bash', str(helper), 'start', 'qovery-deploy', '--simulate', str(output)]).decode().strip()
+        for _ in range(50):
+            if output.exists(): break
+            time.sleep(0.02)
+        self.assertEqual(json.loads(output.read_text())['kind'], 'start')
+        self.assertNotIn(json.loads(Path(path).read_text())['secret'], output.read_text())
+        subprocess.check_call(['bash', str(helper), 'cleanup', path])
+        self.assertFalse(Path(path).parent.exists())
 
-    def test_failed_start_blocks_association_and_unsafe_state(self):
-        m = load(ROOT / '_shared/scripts/skill-run.py')
-        attempts = []
-        def failing(item):
-            attempts.append(dict(item))
-            return False
-        path = Path(m.start('qovery', failing))
-        try:
-            m.resume(path, failing, 'account', 'organization')
-            self.assertEqual(len(attempts), 6)
-            self.assertTrue(all(item == attempts[0] for item in attempts))
-            self.assertFalse(json.loads(path.read_text())['associations'])
-            path.chmod(0o644)
-            with self.assertRaises(ValueError): m.resume(path, failing)
-            path.chmod(0o600)
-            link = path.parent / 'link'; link.symlink_to(path)
-            with self.assertRaises(OSError): m.resume(link, failing)
-        finally:
-            shutil.rmtree(path.parent)
+    def test_debug_contains_no_sensitive_values(self):
+        import io
+        path = Path(self.m.start('qovery-deploy', 'abc1234'))
+        secret = json.loads(path.read_text())['secret']
+        stream = io.StringIO()
+        with patch.dict(os.environ, {'QOVERY_SKILLS_TRACKING_DEBUG': '1'}), patch.object(sys, 'stderr', stream):
+            self.m.flush(path, self.transport, ORG, (bearer(), 'a'))
+        self.assertIn('attempted', stream.getvalue())
+        self.assertIn('accepted', stream.getvalue())
+        self.assertNotIn(secret, stream.getvalue())
+        self.assertNotIn(bearer(), stream.getvalue())
+        self.assertNotIn(ORG, stream.getvalue())
+
+    def test_nonblocking_worker_lock(self):
+        path = Path(self.m.start('qovery-deploy', 'abc1234'))
+        with self.m.state(path):
+            with self.assertRaises(BlockingIOError): self.m.flush(path, self.transport)
+        self.assertFalse(self.requests)
 
     def test_installation(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            checkout = Path(tmp) / 'repo'
-            shutil.copytree(ROOT, checkout, ignore=shutil.ignore_patterns('.git', '__pycache__'))
-            # Avoid network SHA lookup: installer local .git detection plus fake git.
-            (checkout / '.git').mkdir()
-            bin_dir = Path(tmp) / 'bin'; bin_dir.mkdir()
-            git = bin_dir / 'git'; git.write_text('#!/bin/sh\nprintf "abc1234\\n"\n'); git.chmod(0o755)
-            env = dict(os.environ, PATH=str(bin_dir)+os.pathsep+os.environ['PATH'])
-            subprocess.run(['bash', 'install.sh', '--project'], cwd=checkout, env=env, check=True, stdout=subprocess.DEVNULL)
-            for skill in ROOT.glob('qovery*/SKILL.md'):
-                target = checkout / '.agents/skills' / skill.parent.name
-                self.assertTrue((target / 'scripts/skill-run.py').exists())
-                self.assertNotIn('__QOVERY_SKILL_DIR__', (target / 'SKILL.md').read_text())
-                helper = target / 'scripts/track-skill-usage.sh'
-                self.assertEqual(subprocess.check_output(['bash', str(helper), 'start', skill.parent.name]), b'')
+        checkout = Path(self.tmp.name) / 'repo'
+        shutil.copytree(ROOT, checkout, ignore=shutil.ignore_patterns('.git', '__pycache__'))
+        (checkout / '.git').mkdir()
+        bin_dir = Path(self.tmp.name) / 'bin'; bin_dir.mkdir()
+        git = bin_dir / 'git'; git.write_text('#!/bin/sh\nprintf "abc1234\\n"\n'); git.chmod(0o755)
+        env = dict(os.environ, PATH=str(bin_dir)+os.pathsep+os.environ['PATH'])
+        subprocess.run(['bash', 'install.sh', '--project'], cwd=checkout, env=env, check=True, stdout=subprocess.DEVNULL)
+        for skill in ROOT.glob('qovery*/SKILL.md'):
+            target = checkout / '.agents/skills' / skill.parent.name
+            self.assertEqual((target / 'scripts/skill-run.py').read_bytes(), (ROOT / '_shared/scripts/skill-run.py').read_bytes())
+            self.assertNotIn('__QOVERY_SKILL_DIR__', (target / 'SKILL.md').read_text())
+            self.assertEqual((target / '_version.txt').read_text().strip(), 'abc1234')
+            # Even installed copies: opt-out before state/network. No production requests.
+            result = subprocess.check_output(['bash', str(target / 'scripts/track-skill-usage.sh'), 'start', skill.parent.name], env=dict(env, QOVERY_SKILLS_NO_TRACKING='1'))
+            self.assertEqual(result, b'')
+        subprocess.run(['bash', 'local-install.sh', '--project'], cwd=checkout, env=env, check=True, stdout=subprocess.DEVNULL)
+        target = checkout / '.agents/skills/qovery-deploy'
+        self.assertTrue((target / 'scripts').is_symlink())
+        self.assertFalse((target / '_version.txt').exists())
+        self.assertEqual(subprocess.check_output(['bash', str(target / 'scripts/track-skill-usage.sh'), 'start', 'qovery-deploy'], env=env), b'')
 
 if __name__ == '__main__':
     unittest.main()
