@@ -500,7 +500,8 @@ grep -rl '__QOVERY_' "$DEST" || echo "all placeholders substituted"
 
 ## Usage Tracking
 
-Installed `qovery-*` skills launch one anonymous `skill-started` run before login
+Installed `qovery-*` skills launch one anonymous `skill-started` run at every new
+launch, before authentication or other work, even when already signed in,
 and associate that same run with `skill-run-associated` after a human logs in and
 explicitly selects/creates an organization. The root `qovery` router is excluded:
 the q-core v1 contract accepts only `qovery-*` names. API/policy tokens and machine
@@ -513,7 +514,8 @@ User-Agent classifies SKILL audit origin and can emit `skill-api-call` after
 successful authenticated organization-scoped REST calls. This does not recover
 anonymous starts. The helper does not configure CLI/MCP User-Agent headers.
 
-`python3` and `curl` are required for helper tracking. Requests run in detached
+Helper tracking requires macOS, Linux or WSL with Bash, curl and Python 3 with
+POSIX support; native Windows is unsupported. Requests run in detached
 workers with 3-second connection and 8-second request deadlines. Retries use
 persisted backoff without sleeping in the skill; at most two other anonymous runs
 are retried per worker. Pending associations require the same current account and
@@ -524,12 +526,14 @@ Tracking state lives under `${XDG_STATE_HOME:-~/.local/state}/qovery-skills`
 (directory 0700, files 0600), limited to 100 runs. It contains UUIDs, timestamps,
 a private possession secret, retry status and a hashed account switch guard.
 Never paste state contents into a prompt. Retain only the state-file path between
-steps. `resume` preserves the run; a new launch creates a new run. An association
-is immutable: switching account/organization requires a new execution.
+steps. `resume STATE_PATH` preserves the run and retries only anonymous starts.
+Retry association with `associate STATE_PATH --organization ORGANIZATION_UUID`,
+using the explicitly selected organization UUID; a new launch creates a new run.
+An association is immutable: switching account/organization requires a new execution.
 State expires after 30 days and is pruned on later launches. Explicit `cleanup`
 discards state and pending retries; keep the path when a journey is interrupted.
 
-Set `QOVERY_SKILLS_NO_TRACKING=1` to prevent state creation and sends, including
+Set `QOVERY_SKILLS_NO_TRACKING=1` to prevent helper state creation and sends, including
 queued retries; cleanup remains available. Development symlink installs without
 `_version.txt` do not track. `QOVERY_SKILLS_TRACKING_DEBUG=1` reports safe local
 attempted/accepted/ignored/failed statuses. Opt-out does not remove User-Agent

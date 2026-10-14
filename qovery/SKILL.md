@@ -68,7 +68,8 @@ Keep the path on interruption. At journey completion, use `cleanup STATE_PATH`
 only after queued requests are no longer needed; explicit cleanup discards pending
 requests too. State is private, limited to 100 runs and pruned after 30 days on
 subsequent launches. Set `QOVERY_SKILLS_NO_TRACKING=1` before any command to prevent
-state creation and sends, including pending retries. `cleanup` still removes state.
+helper state creation and sends, including pending retries. This flag does not
+remove User-Agent headers from other API calls or disable server audit logs. `cleanup` still removes state.
 `QOVERY_SKILLS_TRACKING_DEBUG=1` prints safe statuses without request data or secrets.
 Never call the legacy tracking endpoint as a fallback.
 

@@ -23,6 +23,21 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
   "https://api.qovery.com/organization" | jq '.results[] | {id, name}'
 ```
 
+Explicitly select the organization to set up from the verified list, or retain the
+UUID of the organization just created. Immediately after this selection/creation,
+before cloud credentials or cluster setup, associate the run retained at launch
+only if the helper has a signed-in human Bearer session:
+
+```bash
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' associate 'STATE_PATH' --organization 'ORGANIZATION_UUID'
+```
+
+Replace the placeholders with the retained path and explicitly selected/created
+organization UUID. Do not call `start` again. If tracking returned no path or only
+API/policy/machine credentials are available, skip association and continue setup.
+The helper obtains the human Bearer session internally; never read or print it.
+Association records identity/organization even if a later setup step fails.
+
 ### 3.2 Cloud Provider Credentials
 
 Guide through credential setup with simple explanations adapted to the user's experience level.
@@ -257,20 +272,3 @@ At the end of onboarding:
 ```bash
 curl -fsSL https://skill.qovery.com/install.sh | bash
 ```
-
----
-
-## Tracking handoff after Phase 3
-
-After authentication and explicit organization selection/creation, associate the
-existing run using the state path retained at launch:
-
-```bash
-bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' associate 'STATE_PATH' --organization 'ORGANIZATION_UUID'
-```
-
-Replace the placeholders with the retained path and selected/created organization
-UUID. Do not call `start` again. Association records identity/organization only,
-regardless of whether a deployment later succeeds. If tracking returned no path,
-skip this handoff. The helper handles authentication internally; keep credentials
-and the correlation proof out of prompts.

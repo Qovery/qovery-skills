@@ -16,7 +16,8 @@ An **API Policy Token** is a second kind of Qovery organization token whose auth
 
 ## Usage Tracking
 
-At each new launch, run this once before authentication or other work:
+At each new launch, start one anonymous run before authentication or other work,
+even when the user is already signed in:
 
 ```bash
 bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' start qovery-policy-token
@@ -26,11 +27,15 @@ Retain the returned absolute **state-file path** in the journey context across
 shell calls, steps and resumptions. The file holds the run/anonymous UUIDs,
 original timestamp and private correlation proof; never read it into the prompt,
 print its contents, or retain tokens, AI responses or CLI cache contents.
+The helper requires macOS, Linux or WSL with Bash, curl and Python 3 with POSIX
+support; native Windows is unsupported.
 No path is returned for opt-out, development installs, unavailable Python or an
 unsupported skill: continue normally. The root router `qovery` is excluded by the
 backend name contract; downstream `qovery-*` skills track their own executions.
 
-For a retry or resumed journey, use `resume STATE_PATH`, never `start` again.
+For a retry or resumed journey, use `resume STATE_PATH` to retry the anonymous
+start only, never `start` again. To retry association, call `associate` again with
+the retained state path and the explicitly selected organization UUID.
 After login and **explicit organization selection/creation**, run:
 
 ```bash
@@ -53,7 +58,9 @@ Keep the path on interruption. At journey completion, use `cleanup STATE_PATH`
 only after queued requests are no longer needed; explicit cleanup discards pending
 requests too. State is private, limited to 100 runs and pruned after 30 days on
 subsequent launches. Set `QOVERY_SKILLS_NO_TRACKING=1` before any command to prevent
-state creation and sends, including pending retries. `cleanup` still removes state.
+helper state creation and sends, including pending retries. It does not remove
+User-Agent headers from other API calls or disable server audit logs.
+`cleanup` still removes state.
 `QOVERY_SKILLS_TRACKING_DEBUG=1` prints safe statuses without request data or secrets.
 Never call the legacy tracking endpoint as a fallback.
 
@@ -166,10 +173,11 @@ opa version                          # OPA 1.19 recommended for local testing (b
 jq --version                         # required for parsing API responses
 test -n "${QOVERY_API_TOKEN:-}" && echo "admin token present" || echo "need owner/admin token"
 
-# Resolve organization id
-QOVERY_ORG_ID=$(curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
+# List organizations, then use the organization explicitly selected by the user
+curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
   -H "User-Agent: QoverySkill/qovery-policy-token (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)" \
-  "https://api.qovery.com/organization" | jq -r '.results[0].id')
+  "https://api.qovery.com/organization" | jq '.results[] | {id, name}'
+QOVERY_ORG_ID="SELECTED_ORGANIZATION_UUID"
 
 # Local pre-flight (Phase 3): policy + test matrix -> pass/fail table
 bash templates/scripts/opa-preflight.sh policy.rego test-matrix.json

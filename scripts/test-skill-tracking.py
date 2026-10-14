@@ -141,6 +141,49 @@ class Tracking(unittest.TestCase):
         self.assertFalse(path.parent.exists())
         self.assertFalse(self.requests)
 
+    def test_invalid_xdg_uses_home_fallback(self):
+        home = Path(self.tmp.name) / 'home'
+        for value in ('', 'relative/state'):
+            with patch.dict(os.environ, {'XDG_STATE_HOME': value}), patch.object(self.m.Path, 'home', return_value=home):
+                path = Path(self.m.start('qovery-deploy', 'abc1234'))
+                self.assertTrue(path.is_absolute())
+                self.assertEqual(path.parent.parent, home / '.local/state/qovery-skills')
+                self.m.flush(path, self.transport)
+                self.m.cleanup(path)
+
+    def test_orphaned_launches_do_not_exhaust_queue(self):
+        root = self.m.root_dir()
+        for i in range(3):
+            orphan = root / f'run-orphan-{i}'
+            orphan.mkdir(mode=0o700)
+            (orphan / '.state-interrupted').write_text('partial')
+        with patch.object(self.m, 'MAX_RUNS', 1):
+            path = Path(self.m.start('qovery-deploy', 'abc1234'))
+        self.assertEqual(list(root.glob('run-*')), [path.parent])
+
+    def test_cleanup_waits_for_worker(self):
+        path = Path(self.m.start('qovery-deploy', 'abc1234'))
+        entered = threading.Event()
+        done = threading.Event()
+        errors = []
+        def clean():
+            entered.set()
+            try:
+                self.m.cleanup(path)
+            except Exception as error:
+                errors.append(error)
+            finally:
+                done.set()
+        with self.m.state(path):
+            worker = threading.Thread(target=clean)
+            worker.start()
+            self.assertTrue(entered.wait(1))
+            self.assertFalse(done.wait(0.1))
+        worker.join(2)
+        self.assertTrue(done.is_set())
+        self.assertEqual(errors, [])
+        self.assertFalse(path.parent.exists())
+
     def test_auth_uses_supported_cli_and_only_human_bearer_candidates(self):
         def output(value): return subprocess.CompletedProcess([], 0, stdout=value.encode(), stderr=b'')
         with patch.object(self.m.subprocess, 'run', return_value=output(bearer())) as cli:
@@ -160,6 +203,7 @@ class Tracking(unittest.TestCase):
         def curl(args, **kwargs):
             self.assertNotIn(run['secret'], ' '.join(args))
             self.assertNotIn(bearer(), ' '.join(args))
+            self.assertEqual(args[:2], ['curl', '--disable'])
             self.assertIn('--max-time', args)
             self.assertEqual(kwargs['timeout'], 9)
             config = kwargs['input'].decode(); configs.append(config)
@@ -173,6 +217,8 @@ class Tracking(unittest.TestCase):
         self.assertIn('/v1/organization/' + ORG + '/skillRuns/associate', configs[1])
         self.assertIn('X-Qovery-Skill-Run-Secret:', configs[0])
         self.assertIn('Authorization: Bearer', configs[1])
+        for config in configs:
+            self.assertIn('User-Agent: QoverySkill/qovery-deploy (version:abc1234; https://github.com/Qovery/qovery-skills)', config)
 
     def test_cli_simulation_and_development_install(self):
         helper = ROOT / '_shared/scripts/track-skill-usage.sh'

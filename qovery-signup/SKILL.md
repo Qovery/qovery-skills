@@ -16,7 +16,8 @@ The whole flow leans on the **Qovery CLI's own credential store** — after `qov
 
 ## Usage Tracking
 
-At each new launch, run this once before authentication or other work:
+At each new launch, start one anonymous run before authentication or other work,
+even when the user is already signed in:
 
 ```bash
 bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' start qovery-signup
@@ -26,11 +27,15 @@ Retain the returned absolute **state-file path** in the journey context across
 shell calls, steps and resumptions. The file holds the run/anonymous UUIDs,
 original timestamp and private correlation proof; never read it into the prompt,
 print its contents, or retain tokens, AI responses or CLI cache contents.
+The helper requires macOS, Linux or WSL with Bash, curl and Python 3 with POSIX
+support; native Windows is unsupported.
 No path is returned for opt-out, development installs, unavailable Python or an
 unsupported skill: continue normally. The root router `qovery` is excluded by the
 backend name contract; downstream `qovery-*` skills track their own executions.
 
-For a retry or resumed journey, use `resume STATE_PATH`, never `start` again.
+For a retry or resumed journey, use `resume STATE_PATH` to retry the anonymous
+start only, never `start` again. To retry association, call `associate` again with
+the retained state path and the explicitly selected organization UUID.
 After login and **explicit organization selection/creation**, run:
 
 ```bash
@@ -53,7 +58,9 @@ Keep the path on interruption. At journey completion, use `cleanup STATE_PATH`
 only after queued requests are no longer needed; explicit cleanup discards pending
 requests too. State is private, limited to 100 runs and pruned after 30 days on
 subsequent launches. Set `QOVERY_SKILLS_NO_TRACKING=1` before any command to prevent
-state creation and sends, including pending retries. `cleanup` still removes state.
+helper state creation and sends, including pending retries. It does not remove
+User-Agent headers from other API calls or disable server audit logs.
+`cleanup` still removes state.
 `QOVERY_SKILLS_TRACKING_DEBUG=1` prints safe statuses without request data or secrets.
 Never call the legacy tracking endpoint as a fallback.
 

@@ -4,7 +4,6 @@ import argparse
 import base64
 import contextlib
 import datetime
-import fcntl
 import hashlib
 import json
 import os
@@ -17,6 +16,14 @@ import sys
 import tempfile
 import time
 import uuid
+
+try:
+    import fcntl
+except ImportError:
+    # Native Windows cannot provide the required private POSIX state/locks.
+    if os.environ.get('QOVERY_SKILLS_TRACKING_DEBUG') == '1':
+        print('skill-tracking: ignored (unsupported platform; use WSL)', file=sys.stderr)
+    raise SystemExit(0)
 
 TTL = 30 * 86400
 MAX_RUNS = 100
@@ -48,7 +55,8 @@ def private_open(path, flags=os.O_RDWR):
 
 
 def root_dir():
-    base = Path(os.environ.get('XDG_STATE_HOME', str(Path.home() / '.local/state')))
+    configured = os.environ.get('XDG_STATE_HOME', '')
+    base = Path(configured) if configured and Path(configured).is_absolute() else Path.home() / '.local/state'
     root = base / 'qovery-skills'
     root.mkdir(parents=True, mode=0o700, exist_ok=True)
     private_dir(root)
@@ -87,6 +95,14 @@ def prune(root):
         try:
             private_dir(directory)
             path = directory / 'state.json'
+            if not path.exists() and not path.is_symlink():
+                # start/prune share queue.lock, so no launch is writing here.
+                for item in directory.iterdir():
+                    if item.name == 'lock' or item.name.startswith('.state-'):
+                        if item.is_file() and not item.is_symlink():
+                            item.unlink()
+                directory.rmdir()
+                continue
             with state(path, nonblocking=True) as (_, run):
                 if time.time() - run['created'] >= TTL:
                     for name in ('state.json', 'lock'):
@@ -149,7 +165,8 @@ def session():
 
 def curl_transport(kind, metadata, secret, organization=None, authorization=None):
     endpoint = '/v1/skillRuns/start' if kind == 'start' else f'/v1/organization/{organization}/skillRuns/associate'
-    headers = ['Content-Type: application/json', 'X-Qovery-Skill-Run-Secret: ' + secret]
+    headers = ['Content-Type: application/json', 'X-Qovery-Skill-Run-Secret: ' + secret,
+               f"User-Agent: QoverySkill/{metadata['skill_name']} (version:{metadata['skill_version']}; https://github.com/Qovery/qovery-skills)"]
     if authorization:
         headers.append('Authorization: ' + authorization)
     # Config goes through stdin: neither proof nor Bearer token appears in process argv.
@@ -161,7 +178,7 @@ def curl_transport(kind, metadata, secret, organization=None, authorization=None
                             'data = ' + quoted(json.dumps(metadata)),
                             *['header = ' + quoted(h) for h in headers]])
         try:
-            result = subprocess.run(['curl', '--config', '-', '--silent', '--connect-timeout', '3',
+            result = subprocess.run(['curl', '--disable', '--config', '-', '--silent', '--connect-timeout', '3',
                                      '--max-time', '8', '--max-filesize', '4096', '--output', str(body),
                                      '--dump-header', str(response_headers), '--write-out', '%{http_code}'],
                                     input=config.encode(), capture_output=True, timeout=9)
@@ -257,7 +274,7 @@ def flush(path, transport=curl_transport, organization=None, credentials=None):
 
 
 def cleanup(path):
-    with state(path) as (path, _):
+    with state(path, nonblocking=False) as (path, _):
         path.unlink()
         (path.parent / 'lock').unlink()
         path.parent.rmdir()

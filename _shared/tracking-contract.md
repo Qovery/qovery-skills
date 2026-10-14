@@ -29,7 +29,8 @@ An absent auth session leaves the anonymous run intact. Resume retries start onl
 association retries require explicit org and current matching session. Each worker
 also retries at most two other due anonymous starts, never old associations.
 
-curl uses config stdin for credentials/proof, connection deadline 3s, request 8s,
+curl ignores default configuration with --disable as its first option and sends
+the versioned QoverySkill User-Agent. It uses config stdin for credentials/proof, connection deadline 3s, request 8s,
 subprocess deadline 9s, bounded response body, no redirects and no body/error logs.
 CLI auth has a 3s subprocess deadline. Backoff starts at 5s with jitter, capped
 at one hour; 429/503 use at least 60s and respect numeric Retry-After. Permanent
@@ -40,6 +41,10 @@ Cleanup explicitly discards queued requests as well as completed state.
 Legacy skill-called is removed from helper sends with no fallback or dual emission.
 User-Agent SKILL audit attribution and skill-api-call remain separate signals;
 report starts as uses, associations as enrichment, never add legacy/API events.
+
+Contract publication dependency: the canonical schemas are in the q-core contract
+linked above. Publishing these operations in qovery-openapi-spec is a separate
+backend/spec follow-up; the helper does not infer routes from the legacy OpenAPI.
 
 Remaining operational checks (not performed by these tests):
 - Gateway forwarding of both versioned routes and secret/header/body redaction.
