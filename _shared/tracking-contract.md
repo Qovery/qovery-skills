@@ -20,9 +20,11 @@ requires a new execution. The root `qovery` skill is excluded rather than rename
 because the backend allows only `qovery-*`.
 
 Client behavior: opt-out before state or sends; 100 private run directories;
-atomic state updates and nonblocking file locks; 30-day expiration and pruning on
+atomic state updates and per-run file locks; 30-day expiration and pruning on
 launch. Start state is persisted before launching a detached worker. Each worker
 attempts start, then explicit association, with no sleeps or inline network waits.
+Explicit association workers wait for an active sender to release the run lock;
+anonymous queue drains skip busy runs. The agent command remains nonblocking.
 An absent auth session leaves the anonymous run intact. Resume retries start only;
 association retries require explicit org and current matching session. Each worker
 also retries at most two other due anonymous starts, never old associations.

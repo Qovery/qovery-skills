@@ -221,7 +221,10 @@ def flush(path, transport=curl_transport, organization=None, credentials=None):
     if disabled():
         debug('ignored (opt-out)')
         return
-    with state(path) as (path, run):
+    # Explicit association runs in a detached worker: wait for the current
+    # sender instead of dropping the handoff. Anonymous queue drains still skip
+    # busy runs. HTTP/auth deadlines bound work performed by each lock holder.
+    with state(path, nonblocking=organization is None) as (path, run):
         if time.time() - run['created'] >= TTL:
             path.unlink()
             (path.parent / 'lock').unlink()

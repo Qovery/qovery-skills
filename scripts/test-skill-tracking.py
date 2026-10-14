@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import threading
 import unittest
 from unittest.mock import patch
 import uuid
@@ -203,6 +204,57 @@ class Tracking(unittest.TestCase):
         with self.m.state(path):
             with self.assertRaises(BlockingIOError): self.m.flush(path, self.transport)
         self.assertFalse(self.requests)
+
+    def test_association_waits_for_start_worker(self):
+        path = Path(self.m.start('qovery-deploy', 'abc1234'))
+        start_sending = threading.Event()
+        release_start = threading.Event()
+        association_entered = threading.Event()
+        association_done = threading.Event()
+        errors = []
+
+        def transport(*args):
+            if args[0] == 'start':
+                start_sending.set()
+                if not release_start.wait(2):
+                    raise AssertionError('start worker was not released')
+            return self.transport(*args)
+
+        def starting():
+            try:
+                self.m.flush(path, transport)
+            except Exception as error:
+                errors.append(error)
+
+        def associating():
+            association_entered.set()
+            try:
+                self.m.flush(path, transport, ORG, (bearer(), 'account-a'))
+            except Exception as error:
+                errors.append(error)
+            finally:
+                association_done.set()
+
+        first = threading.Thread(target=starting)
+        second = threading.Thread(target=associating)
+        first.start()
+        try:
+            self.assertTrue(start_sending.wait(1))
+            second.start()
+            self.assertTrue(association_entered.wait(1))
+            self.assertFalse(association_done.wait(0.1))
+        finally:
+            release_start.set()
+            first.join(2)
+            if second.ident is not None:
+                second.join(2)
+        self.assertFalse(first.is_alive())
+        self.assertFalse(second.is_alive())
+        self.assertEqual(errors, [])
+        self.assertEqual([r['kind'] for r in self.requests], ['start', 'associate'])
+        run = json.loads(path.read_text())
+        self.assertEqual(run['associate']['status'], 'accepted')
+        self.assertEqual(run['association']['organization'], ORG)
 
     def test_installation(self):
         checkout = Path(self.tmp.name) / 'repo'
