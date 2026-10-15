@@ -530,8 +530,9 @@ The installer pins `skill-tracking-v0.1.0` release assets and verifies SHA-256
 checksums before copying `scripts/skill-run` into every installed skill. That
 release must be published before binary downloads can work. Missing assets or
 unsupported platforms warn and allow skill installation to continue without
-tracking. Setting `QOVERY_SKILLS_NO_TRACKING=1` before installation skips helper
-download and copying. Installation never sends analytics. For offline smoke tests,
+tracking. Opt-out still installs the helper so cleanup remains available; it
+prevents tracking state creation and event sends. Installation never sends
+analytics. For offline smoke tests,
 `QOVERY_SKILLS_TRACKING_BINARY=/absolute/path/to/skill-run` uses an executable
 local binary whose `--version` must be `skill-run 0.1.0`.
 

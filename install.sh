@@ -191,7 +191,8 @@ echo ""
 TRACKING_VERSION="0.1.0"
 TRACKING_BINARY=""
 prepare_tracking_binary() {
-  [ -n "${QOVERY_SKILLS_NO_TRACKING:-}" ] && return 0
+  # Install software even with opt-out: cleanup must remain usable for older state.
+  # The helper checks opt-out before creating state or sending events.
   local candidate platform asset checksum actual expected
   if [ -n "${QOVERY_SKILLS_TRACKING_BINARY:-}" ]; then
     candidate="$QOVERY_SKILLS_TRACKING_BINARY"

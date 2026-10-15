@@ -64,11 +64,14 @@ or Python installation is needed at runtime; Bash and curl remain required.
 The JSON state format and existing run/anonymous IDs remain compatible.
 
 The installer downloads and verifies one binary, checks its version, and copies
-it into each skill's `scripts/skill-run`. It never sends analytics. Opt-out skips
-download/copy; unsupported platforms, missing assets, or checksum failures leave
+it into each skill's `scripts/skill-run`. It never sends analytics. Opt-out still
+installs the binary so cleanup remains available, while preventing state creation
+and event sends. Unsupported platforms, missing assets, or checksum failures leave
 tracking unavailable without blocking skill installation. An absolute executable
 `QOVERY_SKILLS_TRACKING_BINARY` override supports local pre-release smoke tests.
-Development symlink installs remain tracking-disabled.
+Development symlink installs remain tracking-disabled. If no installed helper is
+available, a verified standalone binary can still run `cleanup STATE_PATH` with
+tracking disabled; cleanup does not require an installation version or auth.
 
 The CI workflow builds/tests on PRs and uploads binary/checksum artifacts. Only
 an explicit workflow dispatch with `publish_draft` creates a draft release; a

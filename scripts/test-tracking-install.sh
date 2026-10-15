@@ -32,7 +32,11 @@ esac
 asset="$TEST_ASSETS/skill-run-$platform"
 printf '#!/usr/bin/env bash\n[ "$1" = --version ] || exit 99\necho "skill-run 0.1.0"\n' > "$asset"
 chmod +x "$asset"
-shasum -a 256 "$asset" > "$asset.sha256"
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256sum "$asset" > "$asset.sha256"
+else
+  shasum -a 256 "$asset" > "$asset.sha256"
+fi
 run_install() {
   env HOME="$TEST_ROOT/$1" bash ./install.sh --global > "$TEST_ROOT/$1.log"
 }
@@ -45,8 +49,8 @@ for base in .claude/skills .agents/skills .config/opencode/skills; do
   done
 done
 QOVERY_SKILLS_NO_TRACKING=true run_install optout
-[ ! -e "$TEST_ROOT/optout/.claude/skills/qovery-deploy/scripts/skill-run" ]
-[ "$(wc -l < "$TEST_CURL_LOG" | tr -d ' ')" = 2 ]
+cmp "$asset" "$TEST_ROOT/optout/.claude/skills/qovery-deploy/scripts/skill-run"
+[ "$(wc -l < "$TEST_CURL_LOG" | tr -d ' ')" = 4 ]
 printf '%064d\n' 0 > "$asset.sha256"
 run_install corrupt
 [ ! -e "$TEST_ROOT/corrupt/.claude/skills/qovery-deploy/scripts/skill-run" ]
@@ -69,6 +73,16 @@ real_binary="$ROOT/tracking/target/debug/skill-run"
 if [ -x "$real_binary" ]; then
   QOVERY_SKILLS_TRACKING_BINARY="$real_binary" run_install native
   cmp "$real_binary" "$TEST_ROOT/native/.claude/skills/qovery-deploy/scripts/skill-run"
+  helper="$TEST_ROOT/native/.claude/skills/qovery-deploy/scripts/track-skill-usage.sh"
+  state=$(env XDG_STATE_HOME="$TEST_ROOT/native-state" QOVERY_SKILLS_NO_TRACKING='' bash "$helper" start qovery-deploy --simulate "$TEST_ROOT/events")
+  for attempt in $(seq 1 100); do
+    [ ! -e "$TEST_ROOT/events" ] || break
+    sleep 0.02
+  done
+  [ -f "$state" ]
+  QOVERY_SKILLS_NO_TRACKING=1 QOVERY_SKILLS_TRACKING_BINARY="$real_binary" run_install native
+  env XDG_STATE_HOME="$TEST_ROOT/native-state" QOVERY_SKILLS_NO_TRACKING=1 bash "$helper" cleanup "$state"
+  [ ! -e "$state" ]
 else
   echo 'Native binary smoke skipped: cargo build --manifest-path tracking/Cargo.toml first.'
 fi
