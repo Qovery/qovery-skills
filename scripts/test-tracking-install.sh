@@ -75,11 +75,11 @@ if [ -x "$real_binary" ]; then
   cmp "$real_binary" "$TEST_ROOT/native/.claude/skills/qovery-deploy/scripts/skill-run"
   helper="$TEST_ROOT/native/.claude/skills/qovery-deploy/scripts/track-skill-usage.sh"
   state=$(env XDG_STATE_HOME="$TEST_ROOT/native-state" QOVERY_SKILLS_NO_TRACKING='' bash "$helper" start qovery-deploy --simulate "$TEST_ROOT/events")
-  for attempt in $(seq 1 100); do
-    [ ! -e "$TEST_ROOT/events" ] || break
+  for ((attempt=0; attempt<100; attempt++)); do
+    [ ! -s "$TEST_ROOT/events" ] || break
     sleep 0.02
   done
-  [ -f "$state" ]
+  [ -s "$TEST_ROOT/events" ] && [ -f "$state" ]
   QOVERY_SKILLS_NO_TRACKING=1 QOVERY_SKILLS_TRACKING_BINARY="$real_binary" run_install native
   env XDG_STATE_HOME="$TEST_ROOT/native-state" QOVERY_SKILLS_NO_TRACKING=1 bash "$helper" cleanup "$state"
   [ ! -e "$state" ]
