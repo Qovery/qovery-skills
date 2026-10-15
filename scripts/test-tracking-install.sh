@@ -50,7 +50,7 @@ QOVERY_SKILLS_NO_TRACKING=true run_install optout
 printf '%064d\n' 0 > "$asset.sha256"
 run_install corrupt
 [ ! -e "$TEST_ROOT/corrupt/.claude/skills/qovery-deploy/scripts/skill-run" ]
-rg -q 'checksum mismatch' "$TEST_ROOT/corrupt.log"
+grep -q 'checksum mismatch' "$TEST_ROOT/corrupt.log"
 rm "$asset"
 run_install missing
 [ ! -e "$TEST_ROOT/missing/.claude/skills/qovery-deploy/scripts/skill-run" ]
@@ -63,7 +63,7 @@ UNAME
 chmod +x "$TEST_ROOT/bin/uname"
 run_install unsupported
 [ ! -e "$TEST_ROOT/unsupported/.claude/skills/qovery-deploy/scripts/skill-run" ]
-rg -q 'unsupported platform' "$TEST_ROOT/unsupported.log"
+grep -q 'unsupported platform' "$TEST_ROOT/unsupported.log"
 rm "$TEST_ROOT/bin/uname"
 real_binary="$ROOT/tracking/target/debug/skill-run"
 if [ -x "$real_binary" ]; then
