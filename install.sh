@@ -153,6 +153,14 @@ if [ -f "qovery-deploy/SKILL.md" ]; then
   echo -e "  Source: local repo (${BLUE}$SOURCE_ROOT${NC})"
 else
   TEMP_DIR=$(mktemp -d)
+  # Resolve once, then fetch that exact revision so version and contents agree.
+  SOURCE_SHA=$(curl --disable -fsS --connect-timeout 3 --max-time 10 "https://api.github.com/repos/Qovery/qovery-skills/git/ref/heads/main" \
+    | sed -n 's/.*"sha": *"\([a-f0-9]*\)".*/\1/p' | head -1) || SOURCE_SHA=""
+  if ! [[ "$SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+    echo "  Error: could not resolve the skill source revision."
+    exit 1
+  fi
+  TARBALL_URL="https://codeload.github.com/Qovery/qovery-skills/tar.gz/$SOURCE_SHA"
   echo -e "  Downloading qovery-skills tarball from GitHub..."
   if ! curl -fsSL "$TARBALL_URL" | tar -xz -C "$TEMP_DIR"; then
     echo -e "  ${RED}Error:${NC} Failed to download or extract tarball from $TARBALL_URL"
@@ -169,17 +177,63 @@ else
 fi
 
 # Determine skill version — commit SHA baked in at install time
-if [ -d "$SOURCE_ROOT/.git" ]; then
-  # Local repo — use git directly
+if git -C "$SOURCE_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   SKILLS_VERSION=$(git -C "$SOURCE_ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")
 else
-  # Tarball install — fetch latest commit SHA from GitHub API (no jq needed)
-  SKILLS_VERSION=$(curl -sf "https://api.github.com/repos/Qovery/qovery-skills/git/ref/heads/main" \
-    | sed -n 's/.*"sha": *"\([a-f0-9]*\)".*/\1/p' | head -1 | cut -c1-7)
-  SKILLS_VERSION="${SKILLS_VERSION:-unknown}"
+  SKILLS_VERSION="${SOURCE_SHA:-unknown}"
+  SKILLS_VERSION="${SKILLS_VERSION:0:7}"
 fi
 echo -e "  Version: ${BLUE}${SKILLS_VERSION}${NC}"
 echo ""
+
+# Download one verified, version-pinned helper and copy it into each skill.
+# Installation itself never invokes tracking commands.
+TRACKING_VERSION="0.1.0"
+TRACKING_BINARY=""
+prepare_tracking_binary() {
+  [ -n "${QOVERY_SKILLS_NO_TRACKING:-}" ] && return 0
+  local candidate platform asset checksum actual expected
+  if [ -n "${QOVERY_SKILLS_TRACKING_BINARY:-}" ]; then
+    candidate="$QOVERY_SKILLS_TRACKING_BINARY"
+    case "$candidate" in /*) ;; *) echo "  Warning: tracking override must be absolute; tracking unavailable."; return 0 ;; esac
+  else
+    case "$(uname -s):$(uname -m)" in
+      Linux:x86_64) platform=x86_64-unknown-linux-musl ;;
+      Linux:aarch64|Linux:arm64) platform=aarch64-unknown-linux-musl ;;
+      Darwin:x86_64) platform=x86_64-apple-darwin ;;
+      Darwin:arm64) platform=aarch64-apple-darwin ;;
+      *) echo "  Warning: unsupported platform; tracking unavailable."; return 0 ;;
+    esac
+    if command -v sha256sum >/dev/null 2>&1; then
+      checksum=sha256sum
+    elif command -v shasum >/dev/null 2>&1; then
+      checksum=shasum
+    else
+      echo "  Warning: SHA-256 tool unavailable; tracking unavailable."; return 0
+    fi
+    [ -n "$TEMP_DIR" ] || TEMP_DIR=$(mktemp -d)
+    asset="skill-run-$platform"
+    candidate="$TEMP_DIR/$asset"
+    local release="https://github.com/Qovery/qovery-skills/releases/download/skill-tracking-v$TRACKING_VERSION"
+    if ! curl --disable --fail --silent --show-error --location --proto '=https' --connect-timeout 3 --max-time 30 "$release/$asset" -o "$candidate" ||
+       ! curl --disable --fail --silent --show-error --location --proto '=https' --connect-timeout 3 --max-time 30 "$release/$asset.sha256" -o "$candidate.sha256"; then
+      echo "  Warning: tracking release unavailable; skills will install without tracking."; return 0
+    fi
+    expected=$(awk 'NR == 1 {print $1}' "$candidate.sha256")
+    if [ "$checksum" = sha256sum ]; then actual=$(sha256sum "$candidate" | awk '{print $1}');
+    else actual=$(shasum -a 256 "$candidate" | awk '{print $1}'); fi
+    if ! [[ "$expected" =~ ^[a-fA-F0-9]{64}$ ]] || [ "$actual" != "$expected" ]; then
+      echo "  Warning: tracking checksum mismatch; tracking unavailable."; return 0
+    fi
+    chmod 755 "$candidate"
+  fi
+  if [ ! -f "$candidate" ] || [ ! -x "$candidate" ] ||
+     [ "$("$candidate" --version 2>/dev/null || true)" != "skill-run $TRACKING_VERSION" ]; then
+    echo "  Warning: invalid tracking binary; tracking unavailable."; return 0
+  fi
+  TRACKING_BINARY="$candidate"
+}
+prepare_tracking_binary
 
 # Clean up stale qovery-* skill dirs from previous installs
 # (e.g. skills that were renamed or removed from the SKILLS array).
@@ -230,6 +284,13 @@ for skill in "${SKILLS[@]}"; do
       [ "$name" = "commands" ] && continue
       cp -R "$entry" "$target/$name"
     done
+
+    rm -f "$target/scripts/skill-run"
+    if [ -n "$TRACKING_BINARY" ]; then
+      mkdir -p "$target/scripts"
+      cp "$TRACKING_BINARY" "$target/scripts/skill-run"
+      chmod 755 "$target/scripts/skill-run"
+    fi
 
     # Write version file for User-Agent tracking
     echo "$SKILLS_VERSION" > "$target/_version.txt"

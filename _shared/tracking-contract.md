@@ -54,3 +54,29 @@ Remaining operational checks (not performed by these tests):
 
 Tests cover shared/distributed implementations, installations and injected HTTP
 responses without production events. Release/merge is not proof of the above.
+
+## Native helper distribution
+
+The runtime is the Rust `tracking/` crate (`skill-run 0.1.0`), distributed as
+`skill-tracking-v0.1.0` GitHub release assets with individual SHA-256 files for
+x86_64/aarch64 Linux musl and x86_64/ARM64 macOS. WSL uses Linux assets. No Rust
+or Python installation is needed at runtime; Bash and curl remain required.
+The JSON state format and existing run/anonymous IDs remain compatible.
+
+The installer downloads and verifies one binary, checks its version, and copies
+it into each skill's `scripts/skill-run`. It never sends analytics. Opt-out skips
+download/copy; unsupported platforms, missing assets, or checksum failures leave
+tracking unavailable without blocking skill installation. An absolute executable
+`QOVERY_SKILLS_TRACKING_BINARY` override supports local pre-release smoke tests.
+Development symlink installs remain tracking-disabled.
+
+The CI workflow builds/tests on PRs and uploads binary/checksum artifacts. Only
+an explicit workflow dispatch with `publish_draft` creates a draft release; a
+maintainer must publish that release before installer downloads are available.
+This change does not publish or dispatch a release.
+
+Local validation: `cargo test --manifest-path tracking/Cargo.toml --locked` covers
+contract, old Python state compatibility, concurrency, retries and an installed
+journey whose PATH contains no Python. `cargo build --manifest-path tracking/Cargo.toml
+--locked` followed by `bash scripts/test-tracking-install.sh` verifies distribution
+with mock downloads and the native binary. No production events are sent.

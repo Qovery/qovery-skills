@@ -32,9 +32,9 @@ Retain the returned absolute **state-file path** in the journey context across
 shell calls, steps and resumptions. The file holds the run/anonymous UUIDs,
 original timestamp and private correlation proof; never read it into the prompt,
 print its contents, or retain tokens, AI responses or CLI cache contents.
-The helper requires macOS, Linux or WSL with Bash, curl and Python 3 with POSIX
-support; native Windows is unsupported.
-No path is returned for opt-out, development installs, unavailable Python or an
+The helper requires macOS, Linux or WSL with Bash and curl. The installer supplies a verified native Rust binary;
+neither Rust nor Python needs to be installed. Native Windows is unsupported.
+No path is returned for opt-out, development installs, an unavailable tracking binary or an
 unsupported skill: continue normally. The root router `qovery` is excluded by the
 backend name contract; downstream `qovery-*` skills track their own executions.
 

@@ -1,0 +1,79 @@
+name: Skill tracking
+on:
+  pull_request:
+    paths: ['tracking/**', '_shared/scripts/**', 'qovery*/scripts/track-skill-usage.sh', 'scripts/sync-shared.sh', 'install.sh', 'local-install.sh', 'scripts/test-tracking-install.sh', '.github/workflows/skill-tracking.yml']
+  workflow_dispatch:
+    inputs:
+      publish_draft:
+        description: Create the versioned draft release (maintainer publishes separately)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: macos-15
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: rustfmt, clippy
+      - name: Install musl toolchain
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y musl-tools
+          echo 'CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc' >> "$GITHUB_ENV"
+          echo 'CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc' >> "$GITHUB_ENV"
+      - name: Check formatting
+        run: cargo fmt --manifest-path tracking/Cargo.toml --all -- --check
+      - name: Lint
+        run: cargo clippy --manifest-path tracking/Cargo.toml --locked --all-targets -- -D warnings
+      - name: Test
+        run: cargo test --manifest-path tracking/Cargo.toml --locked
+      - name: Build native smoke binary
+        run: cargo build --manifest-path tracking/Cargo.toml --locked
+      - name: Test installer without network
+        run: bash scripts/test-tracking-install.sh
+      - name: Build release asset
+        run: |
+          cargo build --manifest-path tracking/Cargo.toml --locked --release --target '${{ matrix.target }}'
+          mkdir -p dist
+          cp 'tracking/target/${{ matrix.target }}/release/skill-run' 'dist/skill-run-${{ matrix.target }}'
+          cd dist
+          shasum -a 256 'skill-run-${{ matrix.target }}' > 'skill-run-${{ matrix.target }}.sha256'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: skill-run-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+  draft-release:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_draft
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: skill-run-*
+          path: dist
+          merge-multiple: true
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create skill-tracking-v0.1.0 dist/* --draft --target "$GITHUB_SHA" --title 'Skill tracking 0.1.0' --notes 'Native tracking helper for macOS and Linux (including WSL). Checksums accompany every asset.'

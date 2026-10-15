@@ -498,6 +498,9 @@ and that no `__QOVERY_` placeholder survives:
 grep -rl '__QOVERY_' "$DEST" || echo "all placeholders substituted"
 ```
 
+Manual copies do not include the native tracking helper. Use `./install.sh` to
+install verified binaries, or keep tracking unavailable for manual copies.
+
 ## Usage Tracking
 
 Installed `qovery-*` skills launch one anonymous `skill-started` run at every new
@@ -514,13 +517,23 @@ User-Agent classifies SKILL audit origin and can emit `skill-api-call` after
 successful authenticated organization-scoped REST calls. This does not recover
 anonymous starts. The helper does not configure CLI/MCP User-Agent headers.
 
-Helper tracking requires macOS, Linux or WSL with Bash, curl and Python 3 with
-POSIX support; native Windows is unsupported. Requests run in detached
+Helper tracking supports macOS, Linux and WSL on x86_64 and ARM64 with Bash
+and curl. The installer supplies a self-contained native Rust binary; no Rust or
+Python installation is required. Native Windows is unsupported. Requests run in detached
 workers with 3-second connection and 8-second request deadlines. Retries use
 persisted backoff without sleeping in the skill; at most two other anonymous runs
 are retried per worker. Pending associations require the same current account and
 explicit organization to be retried. Credentials are fetched internally with the
 CLI's supported authorization-header command and never persisted.
+
+The installer pins `skill-tracking-v0.1.0` release assets and verifies SHA-256
+checksums before copying `scripts/skill-run` into every installed skill. That
+release must be published before binary downloads can work. Missing assets or
+unsupported platforms warn and allow skill installation to continue without
+tracking. Setting `QOVERY_SKILLS_NO_TRACKING=1` before installation skips helper
+download and copying. Installation never sends analytics. For offline smoke tests,
+`QOVERY_SKILLS_TRACKING_BINARY=/absolute/path/to/skill-run` uses an executable
+local binary whose `--version` must be `skill-run 0.1.0`.
 
 Tracking state lives under `${XDG_STATE_HOME:-~/.local/state}/qovery-skills`
 (directory 0700, files 0600), limited to 100 runs. It contains UUIDs, timestamps,
@@ -530,6 +543,7 @@ steps. `resume STATE_PATH` preserves the run and retries only anonymous starts.
 Retry association with `associate STATE_PATH --organization ORGANIZATION_UUID`,
 using the explicitly selected organization UUID; a new launch creates a new run.
 An association is immutable: switching account/organization requires a new execution.
+The Rust helper preserves the JSON state format and existing run and anonymous IDs.
 State expires after 30 days and is pruned on later launches. Explicit `cleanup`
 discards state and pending retries; keep the path when a journey is interrupted.
 

@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# q-core v1 lifecycle. New launch: start <skill>; retry: resume <state-path>;
-# authenticated association: associate <state-path> --organization <uuid>.
-# No legacy fallback, no credentials in shell arguments/output, best effort.
+# One q-core v1 lifecycle implementation, shipped as a native Rust binary.
+# No legacy fallback; no credentials in shell arguments/output; best effort.
 set +x
-command -v python3 >/dev/null 2>&1 || exit 0
+skill_scripts="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 case "${1:-}" in
-  start|resume|associate|cleanup)
-    python3 "$(dirname "${BASH_SOURCE[0]}")/skill-run.py" "$@" || true
+  start|resume|associate|cleanup|worker)
+    if [ -x "$skill_scripts/skill-run" ]; then
+      "$skill_scripts/skill-run" "$@" || true
+    elif [ "${QOVERY_SKILLS_TRACKING_DEBUG:-}" = "1" ]; then
+      echo 'skill-tracking: ignored (native helper unavailable; reinstall skills)' >&2
+    fi
     ;;
   *)
     [ "${QOVERY_SKILLS_TRACKING_DEBUG:-}" != "1" ] || echo 'skill-tracking: ignored (use lifecycle command)' >&2
