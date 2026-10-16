@@ -5,7 +5,7 @@ The policy is only as good as the intent behind it. This phase turns a vague ask
 ## 1.1 Confirm prerequisites (Phase 0 carryover)
 
 - **Owner/admin token.** Creating a policy token requires org Owner or Admin. If `POST .../policyApiToken` later returns `403`, the caller isn't an admin — surface this now, not after authoring a policy.
-- **organizationId.** Resolve it (MCP `list_organizations`, or `GET /organization` → `.results[0].id`). Confirm with the user if they belong to more than one org.
+- **organizationId.** List organizations (MCP `list_organizations`, or `GET /organization`), then use the organization explicitly selected by the user or current request context. Never select the first result by default; confirm when the intended organization is ambiguous.
 - **OPA CLI** (`opa version`) for local testing — best-effort; see `phase3-local-testing.md` if missing.
 
 ## 1.2 Guided interview — build the intent with the user

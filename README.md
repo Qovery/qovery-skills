@@ -498,28 +498,71 @@ and that no `__QOVERY_` placeholder survives:
 grep -rl '__QOVERY_' "$DEST" || echo "all placeholders substituted"
 ```
 
+Manual copies do not include the native tracking helper. Use `./install.sh` to
+install verified binaries, or keep tracking unavailable for manual copies.
+
 ## Usage Tracking
 
-Each skill reports that it started, so we can tell which skills people actually use.
-`scripts/track-skill-usage.sh` sends one request to `POST /organization/{id}/skill-tracking`
-with the skill name, and every Qovery API call the skills make carries a
-`User-Agent: QoverySkill/<skill> (version:<version>; …)` header.
+Installed `qovery-*` skills launch one anonymous `skill-started` run at every new
+launch, before authentication or other work, even when already signed in,
+and associate that same run with `skill-run-associated` after a human logs in and
+explicitly selects/creates an organization. The root `qovery` router is excluded:
+the q-core v1 contract accepts only `qovery-*` names. API/policy tokens and machine
+identities cannot associate runs with a person. Association is not deployment success.
 
-What that records: the skill name, the skills version, the organization the call
-targets, and the account the API token or CLI session already identifies. No source
-code, no file contents, no command output, no environment variables.
+The helper uses the [q-core v1 contract](https://gitlab.com/qovery/backend/q-core/-/blob/main/doc-features/skill-tracking/contract.md).
+No legacy event is sent as a fallback. Count starts as uses; associations attach
+identity/organization, and `skill-api-call` measures API activity separately.
+User-Agent classifies SKILL audit origin and can emit `skill-api-call` after
+successful authenticated organization-scoped REST calls. This does not recover
+anonymous starts. The helper does not configure CLI/MCP User-Agent headers.
 
-To stop the skills sending that request:
+Helper tracking supports macOS, Linux and WSL on x86_64 and ARM64 with Bash
+and curl. The installer supplies a self-contained native Rust binary; no Rust or
+Python installation is required. Native Windows is unsupported. Requests run in detached
+workers with 3-second connection and 8-second request deadlines. Retries use
+persisted backoff without sleeping in the skill; at most two other anonymous runs
+are retried per worker. Pending associations require the same current account and
+explicit organization to be retried. Credentials are fetched internally with the
+CLI's supported authorization-header command and never persisted.
 
-```bash
-export QOVERY_SKILLS_NO_TRACKING=1
-```
+The installer pins `skill-tracking-v0.1.0` release assets and verifies SHA-256
+checksums before copying `scripts/skill-run` into every installed skill. That
+release must be published before binary downloads can work. Missing assets or
+unsupported platforms warn and allow skill installation to continue without
+tracking. Opt-out still installs the helper so cleanup remains available; it
+prevents tracking state creation and event sends. Installation never sends
+analytics. For offline smoke tests,
+`QOVERY_SKILLS_TRACKING_BINARY=/absolute/path/to/skill-run` uses an executable
+local binary whose `--version` must be `skill-run 0.1.0`.
 
-Be clear on what this does and does not do. It stops the skill's own call to the tracking
-endpoint. It does not make skill usage invisible: every Qovery API call still carries the
-`User-Agent` that names the skill, and Qovery records usage from that header on its side.
-The header is how the API tells its clients apart, so the skills cannot drop it. Setting
-the variable therefore removes the duplicate, client-sent event, not the record itself.
+Tracking state lives under `${XDG_STATE_HOME:-~/.local/state}/qovery-skills`
+(directory 0700, files 0600), limited to 100 runs. It contains UUIDs, timestamps,
+a private possession secret, retry status and a hashed account switch guard.
+Never paste state contents into a prompt. Retain only the state-file path between
+steps. `resume STATE_PATH` preserves the run and retries only anonymous starts.
+Retry association with `associate STATE_PATH --organization ORGANIZATION_UUID`,
+using the explicitly selected organization UUID; a new launch creates a new run.
+An association is immutable: switching account/organization requires a new execution.
+The Rust helper preserves the JSON state format and existing run and anonymous IDs.
+State expires after 30 days and is pruned on later launches. Explicit `cleanup`
+discards state and pending retries; keep the path when a journey is interrupted.
+
+Set `QOVERY_SKILLS_NO_TRACKING=1` to prevent helper state creation and sends, including
+queued retries; cleanup remains available. Development symlink installs without
+`_version.txt` do not track. `QOVERY_SKILLS_TRACKING_DEBUG=1` reports safe local
+attempted/accepted/ignored/failed statuses. Opt-out does not remove User-Agent
+headers from other API calls or disable server audit logs.
+
+Tests inject a simulated transport and mock curl; they do not send production
+events. Backend release alone does not establish gateway forwarding, collection
+enablement or PostHog ingestion. See [_shared/tracking-contract.md](_shared/tracking-contract.md)
+for remaining rollout checks. A 202 means persisted acceptance, not delivery.
+
+Tracking depends on the agent executing the helper and cannot recover historical
+events never sent. No prompts, AI responses, tokens, source files or CLI cache
+contents are sent to analytics. The correlation proof goes only to the collector,
+not to analytics.
 
 ## Links
 

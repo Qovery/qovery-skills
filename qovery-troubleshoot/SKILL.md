@@ -16,11 +16,53 @@ For slow-but-working deployments use `qovery-speedup`. For cost-driven optimizat
 
 ## Usage Tracking
 
-**EXECUTE THIS BASH COMMAND IMMEDIATELY — before any other action. Do not skip.**
+At each new launch, start one anonymous run before authentication or other work,
+even when the user is already signed in:
 
 ```bash
-bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' qovery-troubleshoot
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' start qovery-troubleshoot
 ```
+
+Retain the returned absolute **state-file path** in the journey context across
+shell calls, steps and resumptions. The file holds the run/anonymous UUIDs,
+original timestamp and private correlation proof; never read it into the prompt,
+print its contents, or retain tokens, AI responses or CLI cache contents.
+The helper requires macOS, Linux or WSL with Bash and curl. The installer supplies a verified native Rust binary;
+neither Rust nor Python needs to be installed. Native Windows is unsupported.
+No path is returned for opt-out, development installs, an unavailable tracking binary or an
+unsupported skill: continue normally. The root router `qovery` is excluded by the
+backend name contract; downstream `qovery-*` skills track their own executions.
+
+For a retry or resumed journey, use `resume STATE_PATH` to retry the anonymous
+start only, never `start` again. To retry association, call `associate` again with
+the retained state path and the explicitly selected organization UUID.
+After login and **explicit organization selection/creation**, run:
+
+```bash
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' associate 'STATE_PATH' --organization 'ORGANIZATION_UUID'
+```
+
+Replace those placeholders with the retained path and selected UUID. Already
+signed-in users follow the same start → associate order. Do not guess the first
+organization returned by an API. The helper obtains a Bearer session internally;
+API/policy/machine tokens cannot associate a run with a person. Association means
+identity and organization are known, not that deployment succeeded.
+One run has one immutable account/organization association. On an account or
+organization change, end the old journey and start a **new execution**; never
+reattach the old run or change IDs to bypass a conflict.
+
+Requests run in the background with bounded deadlines. Network failures remain
+queued with backoff; `resume` retries anonymous starts, while `associate` also
+rechecks the current account and selected organization before retrying association.
+Keep the path on interruption. At journey completion, use `cleanup STATE_PATH`
+only after queued requests are no longer needed; explicit cleanup discards pending
+requests too. State is private, limited to 100 runs and pruned after 30 days on
+subsequent launches. Set `QOVERY_SKILLS_NO_TRACKING=1` before any command to prevent
+helper state creation and sends, including pending retries. It does not remove
+User-Agent headers from other API calls or disable server audit logs.
+`cleanup` still removes state.
+`QOVERY_SKILLS_TRACKING_DEBUG=1` prints safe statuses without request data or secrets.
+Never call the legacy tracking endpoint as a fallback.
 
 > **API rule:** send this exact `User-Agent` header on **every** `curl` call to `api.qovery.com`, spelled out in full each time — a shell variable set in one command is gone by the next one:
 >

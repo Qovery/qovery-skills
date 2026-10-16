@@ -16,13 +16,53 @@ The whole flow leans on the **Qovery CLI's own credential store** — after `qov
 
 ## Usage Tracking
 
-**RUN THIS ONCE PHASE 3 HAS CREATED THE ORGANIZATION**, passing that organization's id. Unlike every other skill in this repo, a brand-new sign-up has **zero organizations** until then — `/organization` returns an empty `results` array, so running it any earlier is a silent no-op and the event never fires.
+At each new launch, start one anonymous run before authentication or other work,
+even when the user is already signed in:
 
 ```bash
-# Replace NEW_ORG_ID with the organization id Phase 3 created — quoted, because bash
-# reads a bare <placeholder> as a redirection and refuses the whole line.
-bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' qovery-signup "NEW_ORG_ID"
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' start qovery-signup
 ```
+
+Retain the returned absolute **state-file path** in the journey context across
+shell calls, steps and resumptions. The file holds the run/anonymous UUIDs,
+original timestamp and private correlation proof; never read it into the prompt,
+print its contents, or retain tokens, AI responses or CLI cache contents.
+The helper requires macOS, Linux or WSL with Bash and curl. The installer supplies a verified native Rust binary;
+neither Rust nor Python needs to be installed. Native Windows is unsupported.
+No path is returned for opt-out, development installs, an unavailable tracking binary or an
+unsupported skill: continue normally. The root router `qovery` is excluded by the
+backend name contract; downstream `qovery-*` skills track their own executions.
+
+For a retry or resumed journey, use `resume STATE_PATH` to retry the anonymous
+start only, never `start` again. To retry association, call `associate` again with
+the retained state path and the explicitly selected organization UUID.
+After login and **explicit organization selection/creation**, run:
+
+```bash
+bash '__QOVERY_SKILL_DIR__/scripts/track-skill-usage.sh' associate 'STATE_PATH' --organization 'ORGANIZATION_UUID'
+```
+
+Replace those placeholders with the retained path and selected UUID. Already
+signed-in users follow the same start → associate order. Do not guess the first
+organization returned by an API. The helper obtains a Bearer session internally;
+API/policy/machine tokens cannot associate a run with a person. Association means
+identity and organization are known, not that deployment succeeded.
+One run has one immutable account/organization association. On an account or
+organization change, end the old journey and start a **new execution**; never
+reattach the old run or change IDs to bypass a conflict.
+
+Requests run in the background with bounded deadlines. Network failures remain
+queued with backoff; `resume` retries anonymous starts, while `associate` also
+rechecks the current account and selected organization before retrying association.
+Keep the path on interruption. At journey completion, use `cleanup STATE_PATH`
+only after queued requests are no longer needed; explicit cleanup discards pending
+requests too. State is private, limited to 100 runs and pruned after 30 days on
+subsequent launches. Set `QOVERY_SKILLS_NO_TRACKING=1` before any command to prevent
+helper state creation and sends, including pending retries. It does not remove
+User-Agent headers from other API calls or disable server audit logs.
+`cleanup` still removes state.
+`QOVERY_SKILLS_TRACKING_DEBUG=1` prints safe statuses without request data or secrets.
+Never call the legacy tracking endpoint as a fallback.
 
 > **API rule:** send this exact `User-Agent` header on **every** `curl` call to `api.qovery.com`, spelled out in full each time — a shell variable set in one command is gone by the next one:
 >
@@ -64,7 +104,7 @@ For setting up clusters, projects, environments, RBAC, and cloud providers **aft
 Sign up + create an organization:
 - [ ] Phase 1 — CLI setup: detect OS, check `qovery` is installed (install if missing), verify version
 - [ ] Phase 2 — Authenticate: run `qovery auth --headless` (first login creates the account); verify auth
-- [ ] Phase 3 — Interview + create + enrich: ask name, website, use case (NOT plan — default `BUSINESS_2025`); create the org; enrich its profile (description, logo, icon) from the website; set context; fire the Usage Tracking call now that an org id exists
+- [ ] Phase 3 — Interview + create + enrich: ask name, website, use case (NOT plan — default `BUSINESS_2025`); create the org; enrich its profile (description, logo, icon) from the website; set context; associate the existing tracking run now that the org id exists (do not start again)
 - [ ] Phase 4 — Record sign-up: fire `POST /admin/userSignUp` + the Cargo/HubSpot lead ingest, tagged `signup_source=CLI` (best-effort, non-blocking)
 - [ ] Phase 5 — Configure + hand off: optional first project for the use case, billing/demo-cluster note, invite team, hand a brief to qovery-onboard
 ```
@@ -114,8 +154,8 @@ bash templates/scripts/enrich-from-website.sh example.com
 NEW_ORG_ID=$(qovery api organization --field name="My Org" --field plan=BUSINESS_2025 | jq -r '.id')   # plan is always BUSINESS_2025; never ask the user
 #    …or with the enriched profile via --input (see Phase 3.4)
 
-# 3c. Now that an org exists (NEW_ORG_ID), fire the Usage Tracking call (see "Usage Tracking" above) —
-#     it's a no-op any earlier since a brand-new user has no organization yet
+# 3c. Associate the run started at launch with NEW_ORG_ID (see "Usage Tracking").
+#     Keep the same state path; do not emit another start.
 
 # 4. Record the sign-up for tracking + lead qualification (tagged CLI; --dry-run to preview)
 COMPANY="My Org" USE_CASE="<use case>" SIGNUP_SOURCE="CLI" bash templates/scripts/record-signup.sh

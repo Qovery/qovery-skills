@@ -1,3 +1,8 @@
 marketing/
 tests/
 .ctxharness.yml
+
+tracking/target/
+qovery*/scripts/skill-run
+_shared/scripts/skill-run
+!tracking/tests/
