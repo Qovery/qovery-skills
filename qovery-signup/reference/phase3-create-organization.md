@@ -14,9 +14,9 @@ The plan is chosen automatically (§3.2) — **do not ask the user to pick one**
 
 ## 3.2 Plan — chosen automatically, do not ask
 
-Always create the organization on **`BUSINESS_2025`**. **Do not ask the user which plan to use, and do not surface plan names** — the tiers are internal (the individual tier isn't customer-selectable and Enterprise pricing is custom), so exposing them in a sign-up flow is confusing and off-brand. Users can change plan later in the Console (**Settings → Billing**); pricing lives at <https://www.qovery.com/pricing>.
+Always create the organization on **`SCALE_2026`**. **Do not ask the user which plan to use, and do not surface plan names** — the tiers are internal (the individual tier isn't customer-selectable and Enterprise pricing is custom), so exposing them in a sign-up flow is confusing and off-brand. Users can change plan later in the Console (**Settings → Billing**); pricing lives at <https://www.qovery.com/pricing>.
 
-(Only deviate from the `BUSINESS_2025` default if the user *explicitly* names a specific plan themselves — never prompt for it.)
+(Only deviate from the `SCALE_2026` default if the user *explicitly* names a specific plan themselves — never prompt for it.)
 
 ## 3.3 Enrich from the website (description, logo, icon)
 
@@ -38,7 +38,7 @@ There is no `qovery organization` command; use `qovery api`, which reuses the st
 NEW_ORG_ID=$(qovery api organization --input - <<JSON | jq -r '.id'
 {
   "name": "My Org",
-  "plan": "BUSINESS_2025",
+  "plan": "SCALE_2026",
   "website_url": "https://example.com",
   "description": "One-line company description",
   "logo_url": "https://logo.clearbit.com/example.com",
@@ -49,7 +49,7 @@ JSON
 echo "Created organization: $NEW_ORG_ID"
 ```
 
-For a bare org (no website), the short form is enough: `qovery api organization --field name="My Org" --field plan=BUSINESS_2025`.
+For a bare org (no website), the short form is enough: `qovery api organization --field name="My Org" --field plan=SCALE_2026`.
 
 Errors: `access token is invalid or expired…` → re-do Phase 2; `400` → check `plan` is a current value and `name` is present; `409` → the name is taken.
 
