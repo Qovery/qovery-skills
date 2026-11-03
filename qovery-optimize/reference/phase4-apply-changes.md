@@ -44,6 +44,8 @@ curl -s -X PUT "https://api.qovery.com/application/{appId}" \
 "Stop all development environments"
 ```
 
+`PUT /application/{appId}/advancedSettings` replaces the whole object: start from the GET, change only the keys you need, and remove every `build.*` key before sending. Those keys are deprecated; change build resources through `build_settings` on `PUT /application/{appId}`.
+
 ### 4.4 Generate Terraform Diffs
 
 If the user manages infrastructure via Terraform, generate clear before/after diffs:
