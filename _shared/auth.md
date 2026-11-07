@@ -22,7 +22,8 @@
 - NEVER store tokens in shell variables via command substitution that the agent can read — always use them inline
 - NEVER include real token values in generated code, scripts, or config files — use env var references like `$QOVERY_API_TOKEN`
 - Prefer the `qovery` CLI directly (e.g., `qovery environment list`, `qovery log --service "name"`) over `curl` with tokens when possible — the CLI authenticates internally without exposing tokens
-- When running `qovery token create`, the command outputs the new token. Do NOT display it. Pipe it directly into a secure storage or env var file that is NOT read by the agent.
+- Prefer `qovery api <path>` over `curl` for REST calls: it authenticates with the CLI's stored session, so no token ever reaches the shell (e.g. `qovery api organization`, `qovery api organization/<id>/project --field name=web`, `qovery api <path> --method DELETE`).
+- Do NOT mint long-lived API tokens. There is no `qovery token create` command; `qovery token` is an interactive prompt meant for humans. Only the Terraform provider needs a long-lived token, and the user creates it themselves (see section 4).
 
 ## Qovery API Request Rules — User-Agent
 
@@ -56,46 +57,64 @@ This applies to ALL curl commands targeting `api.qovery.com` — even when refer
 
 ---
 
-## 1. Existing API token in environment
+## 1. CLI already authenticated (preferred)
+
+```bash
+# Check without printing anything secret:
+qovery auth status --json 2>/dev/null | jq -e '.authenticated' >/dev/null && echo "CLI authenticated" || echo "CLI not authenticated"
+```
+
+If the CLI is authenticated, make REST calls with `qovery api`. It reads the stored session
+(and refreshes it), so there is no token to handle at all:
+
+```bash
+qovery api organization                                              # GET
+qovery api organization/<org-id>/project --field name="web"          # POST with a JSON body built from fields
+echo '{"name":"web"}' | qovery api organization/<org-id>/project --input -
+qovery api organization/<org-id>/project/<project-id> --method DELETE
+qovery api spec -o /tmp/qovery-openapi.json                          # the OpenAPI spec, to look up paths
+```
+
+`qovery api` also expands `{organizationId}`, `{projectId}`, `{environmentId}` from the CLI
+context when one is set. It sets the `Authorization` header itself, so never pass one; add the
+skill `User-Agent` with `-H` like any other header.
+
+Only when a tool really needs a raw `curl` call, pass the session inline so the value never
+lands in a variable or in the output. `--authorization-header` prints the full header value
+with the right scheme (`Bearer` for an OAuth session, `Token` for an API token):
+
+```bash
+curl -s -H "Authorization: $(qovery auth token --print --authorization-header)" https://api.qovery.com/organization
+```
+
+## 2. Existing API token in environment (CI, or a token the user already set)
 
 ```bash
 # Check if a token is available (without printing it):
 test -n "${QOVERY_API_TOKEN:-${QOVERY_CLI_ACCESS_TOKEN:-}}" && echo "Token found" || echo "No token"
 ```
 
-If a token is found, use it directly in curl commands as `Authorization: Token $QOVERY_API_TOKEN`. The env var is expanded by the shell at execution time — the agent never sees the actual value.
-
-## 2. CLI already authenticated (`qovery auth token`)
-
-```bash
-# Check if the CLI is authenticated (without printing the token):
-qovery auth token --json 2>/dev/null | jq -r '.type' && echo "CLI authenticated" || echo "CLI not authenticated"
-```
-
-If the CLI is authenticated, use `qovery auth token --print` **inline** within curl commands:
-
-```bash
-# Token flows through the shell but is never visible to the agent:
-curl -s -H "Authorization: Bearer $(qovery auth token --print)" https://api.qovery.com/organization
-```
-
-Or generate a named API token for longer-running scripts. The token must be stored securely — do NOT display the output:
-
-```bash
-# Create the token and store it directly in .env (not displayed):
-qovery token create --name "skill-$(date +%Y%m%d-%H%M%S)" --duration 24h > .qovery-token.tmp
-# The user should manually export it or add it to their secure env config
-echo "API token created. Add QOVERY_API_TOKEN to your environment from .qovery-token.tmp"
-```
+If the user set `QOVERY_CLI_ACCESS_TOKEN`, every `qovery` command and `qovery api` call uses it
+automatically. With `curl`, use it as `Authorization: Token $QOVERY_API_TOKEN`. The env var is
+expanded by the shell at execution time, so the agent never sees the value.
 
 ## 3. Interactive login
 
-If neither of the above works, prompt the user:
+If neither of the above works, ask the user to sign in. A browser OAuth login creates a short-lived,
+auto-refreshed session instead of a long-lived credential:
 
 ```bash
-qovery auth                      # interactive browser login
-# OR for headless:
-# The user sets QOVERY_CLI_ACCESS_TOKEN in their environment (not via the agent)
+qovery auth              # opens a browser on a desktop machine
+qovery auth --headless   # prints a URL to open elsewhere; use this from an agent, SSH or a container
 ```
 
-After login, fall through to step 2 to obtain a token.
+Both are interactive: the user completes the browser step. In Claude Code, have them run
+`! qovery auth --headless` so the URL appears in the session, then fall back to section 1.
+
+## 4. Long-lived API token (Terraform only)
+
+The Terraform provider (`QOVERY_API_TOKEN`) is the one place a long-lived token is needed.
+The user creates it, never the agent: Console > Organization Settings > API Tokens, or the
+interactive `qovery token` command (it prompts for organization, name and role, and takes no
+flags). Prefer a scoped API Policy Token (see the qovery-policy-token skill). The user puts it in
+their own secret store or shell; the agent only references `$QOVERY_API_TOKEN`.

@@ -56,7 +56,7 @@ curl -s -X POST "https://api.qovery.com/environment/{sourceEnvId}/clone" \
 
 **Via CLI:**
 ```bash
-qovery environment clone --environment "{source-env-name}" --name "blueprint"
+qovery environment clone --environment "{source-env-name}" --new-environment-name "blueprint"
 ```
 
 IMPORTANT: Use `DEVELOPMENT` mode for the blueprint, not `PREVIEW`. The blueprint is a template, not a preview itself. Preview environments cloned from it will use `PREVIEW` mode.

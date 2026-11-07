@@ -32,7 +32,7 @@ curl -s -X POST "https://api.qovery.com/environment/{blueprintEnvId}/clone" \
 
 **Via CLI:**
 ```bash
-qovery environment clone --environment "blueprint" --name "preview-pr-{number}"
+qovery environment clone --environment "blueprint" --new-environment-name "preview-pr-{number}"
 ```
 
 Store the new environment ID — it will be used for all subsequent operations.

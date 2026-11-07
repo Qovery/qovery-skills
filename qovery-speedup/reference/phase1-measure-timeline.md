@@ -104,7 +104,7 @@ The V2 API gives per-service total duration, but NOT the sub-step breakdown with
 
 **Via CLI:**
 ```bash
-qovery log --application "name" --since 30m
+timeout 30 qovery log --application "name"
 ```
 
 **Via API:**

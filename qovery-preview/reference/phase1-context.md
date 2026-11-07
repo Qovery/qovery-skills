@@ -5,9 +5,10 @@ Before creating anything, gather all the information needed to build the preview
 ### 1.1 Authenticate
 
 Use the same authentication flow as the other Qovery skills:
-1. Check if `QOVERY_CLI_ACCESS_TOKEN` or `QOVERY_API_TOKEN` is set in the environment
-2. If not, try `qovery auth token --print` — if the CLI is authenticated, this outputs a valid token (auto-refreshed if expired). Use it directly with `Authorization: Bearer $(qovery auth token --print)` or generate a named API token via `qovery token create --name "preview-skill" --duration 24h`.
-3. If the CLI is not authenticated, run `qovery auth` for interactive login, then use step 2.
+1. If the CLI is authenticated (`qovery auth status --json | jq -e .authenticated`), call the API with `qovery api <path>`: it uses the CLI session, so no token is handled at all.
+2. If a raw `curl` is unavoidable, pass the session inline: `-H "Authorization: $(qovery auth token --print --authorization-header)"`. If the user already set `QOVERY_API_TOKEN` / `QOVERY_CLI_ACCESS_TOKEN`, use that instead.
+3. If the CLI is not authenticated, ask the user to run `qovery auth` (or `qovery auth --headless` from an agent or remote shell), then use step 1.
+4. Do not mint a long-lived API token (there is no `qovery token create`). Only Terraform needs one, and the user creates it in the Console.
 - Only ask the user to manually create a token at Qovery Console > Organization Settings > API Tokens if none of the above options work
 
 ### 1.2 Detect PR / Branch Context

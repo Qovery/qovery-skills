@@ -30,7 +30,7 @@
 - NEVER store tokens in shell variables via command substitution that the agent can read — always use them inline
 - NEVER include real token values in generated code, scripts, or config files — use env var references like `$QOVERY_API_TOKEN`
 - Prefer the `qovery` CLI directly (e.g., `qovery environment list`, `qovery log --service "name"`) over `curl` with tokens when possible — the CLI authenticates internally without exposing tokens
-- **NEVER run `qovery token create`.** Creating an API token is a write against the customer's account and leaves a raw credential on disk. This skill reads; it does not mint credentials. If no token and no authenticated CLI are available, stop and ask the user to authenticate.
+- **NEVER mint an API token** (the interactive `qovery token`, or `POST /organization/{organizationId}/apiToken`; there is no `qovery token create`). Creating an API token is a write against the customer's account and leaves a raw credential on disk. This skill reads; it does not mint credentials. If no token and no authenticated CLI are available, stop and ask the user to authenticate.
 
 ## Qovery API Request Rules — User-Agent
 
@@ -107,7 +107,7 @@ curl -s -H "Authorization: ${QOVERY_SCHEME} $(qovery auth token --print)" \
 hardcoding it fails authentication on some CLI configurations. Either form keeps the value
 inline: it flows through the shell and is never visible to the agent.
 
-**This skill never creates a token.** `qovery token create` writes a new organization API
+**This skill never creates a token.** `qovery token` (interactive) or the API token endpoint writes a new organization API
 token — that is a write against the customer's account, and it leaves the raw value on disk.
 Both are outside the read-only contract, whatever the convenience. If neither an existing
 `QOVERY_API_TOKEN` nor an authenticated CLI is available, **stop and ask the user to

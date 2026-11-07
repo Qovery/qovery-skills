@@ -2,13 +2,16 @@
 
 Use this path when the user chose "CLI + API" or wants the fastest way to deploy.
 
-IMPORTANT — Authentication for API calls: All `curl` examples below use `Authorization: Token $QOVERY_API_TOKEN`. If you don't have an API token, you can use the CLI's token directly via `qovery auth token --print`:
+IMPORTANT, authentication for API calls: the `curl` examples below show `Authorization: Token $QOVERY_API_TOKEN` for readability. Prefer running the same call through `qovery api`, which authenticates with the CLI session and needs no token (`curl -X POST https://api.qovery.com/<path> -d @body.json` becomes `qovery api <path> --method POST --input - < body.json`). When you do use `curl` without a user-provided token, pass the CLI session inline:
 ```bash
-# With API Token (from `qovery token create` or Console):
--H "Authorization: Token $QOVERY_API_TOKEN"
+# Preferred: no token handling
+qovery api organization/<org-id>/project
 
-# With CLI Token (from `qovery auth token`):
--H "Authorization: Bearer $(qovery auth token --print)"
+# curl with the CLI session (right scheme chosen by the CLI):
+-H "Authorization: $(qovery auth token --print --authorization-header)"
+
+# curl with a token the user already exported:
+-H "Authorization: Token $QOVERY_API_TOKEN"
 ```
 
 ### 4.1 Verify Organization, Project, and Cluster
@@ -321,7 +324,7 @@ qovery environment deploy
 
 ```bash
 # Check status (with live updates)
-qovery status --watch
+qovery environment statuses --environment "<env>" --json
 
 # View application logs
 qovery log --application "my-app"

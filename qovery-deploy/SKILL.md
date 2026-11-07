@@ -80,6 +80,21 @@ Trigger phrases:
 
 For preview environments per PR use `qovery-preview`. For diagnosing failed deployments use `qovery-troubleshoot`.
 
+## How Qovery is configured (no repo manifest)
+
+Qovery has **no repository manifest**. Do not look for, create or commit `qovery.yaml`,
+`qovery.yml`, `.qovery.yml` or `qovery.json`: Qovery never reads them (a `.qovery.yml` existed in
+Qovery v1 and was removed in 2021; blog posts that show one describe the old product). The only
+files this skill adds to the repo are a `Dockerfile` when one is missing and, on the Terraform
+path, `.tf` files. Everything else lives in Qovery itself and is created through one of:
+
+- **`qovery api` / the REST API** (CLI + API path, Phase 4): create the project, environment,
+  services, variables, then trigger the deploy.
+- **The Terraform provider** (Phase 5): `qovery_project`, `qovery_environment`,
+  `qovery_application`, ... in `.tf` files, which is the config-as-code option.
+- **The CLI** for day-2 actions (`qovery application deploy`, `qovery service list`, `qovery log`).
+- **The Console** for anything a human prefers to click.
+
 ---
 
 ## Workflow checklist

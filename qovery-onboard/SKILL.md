@@ -103,7 +103,7 @@ Onboarding Progress:
 | Phase 1 | [reference/phase1-understand-user.md](reference/phase1-understand-user.md) | Role, experience, industry, compliance, constraints questions |
 | Phase 2 | [reference/phase2-recommend-setup.md](reference/phase2-recommend-setup.md) | Cloud / cluster / env / security / cost / RBAC recommendations |
 | Phase 3 | [reference/phase3-execute-setup.md](reference/phase3-execute-setup.md) | Account, credentials, cluster, projects, deployment rules, git provider |
-| Phase 4 | [reference/phase4-byok.md](reference/phase4-byok.md) | `qovery cluster install` for existing K8s clusters |
+| Phase 4 | [reference/phase4-byok.md](reference/phase4-byok.md) | Existing K8s clusters (1.31+): Operator installation on EKS/GKE/Kapsule, `qovery cluster install` elsewhere |
 | Phase 5 | [reference/phase5-migration-guides.md](reference/phase5-migration-guides.md) | Heroku, Vercel, Render, manual K8s migrations + concept mapping |
 | Phase 6 | [reference/phase6-verification.md](reference/phase6-verification.md) | Sanity checks, first deployment hand-off, support paths |
 
@@ -130,7 +130,7 @@ After onboarding, hand off to `qovery-deploy` for the first application deployme
 qovery auth                       # Authenticate
 qovery cluster list               # List clusters
 qovery cluster install            # BYOK installation
-qovery context set                # Set org/project/environment
+qovery context set                # interactive picker: the user runs it; agents pass --organization/--project/--environment
 qovery project list               # List projects
 qovery environment list           # List environments
 qovery service list               # List services

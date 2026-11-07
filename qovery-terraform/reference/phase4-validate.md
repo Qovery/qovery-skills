@@ -60,7 +60,7 @@ curl -s -H "Authorization: Bearer $(qovery auth token --print)" \
 ```
 
 Wait for all services to be `DEPLOYED`. If any service fails:
-- Fetch logs: `qovery log --service "{name}" --since 10m`
+- Fetch logs: `timeout 30 qovery log --service "{name}"`
 - Diagnose and fix the HCL
 - Re-apply: `terraform apply -var-file="terraform-test.tfvars"`
 

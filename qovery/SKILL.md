@@ -110,10 +110,9 @@ Analyze the user's message and route to the appropriate specialized skill. **Aut
 
 ### Remote Development Environments (RDEs)
 
-RDEs are managed directly via the Qovery web interface at [rde.qovery.com](https://rde.qovery.com). If a user asks about Remote Development Environments, cloud workspaces, or RDEs, direct them to:
-
-- **Web portal**: https://rde.qovery.com
-- **Documentation**: https://www.qovery.com/docs/getting-started/quickstart/remote-dev-environments
+The RDE product (rde.qovery.com, AI Builder Portal) has been withdrawn. If a user asks for a
+cloud workspace or a per-branch environment for an agent, offer a preview environment instead
+(route to `qovery-preview`). Do not send users to rde.qovery.com or use `qovery rde` commands.
 
 ### Auto-Routing
 
@@ -213,20 +212,20 @@ qovery environment delete --environment "{name}"
 ### Restart a Service
 
 ```bash
-qovery service restart --service "{name}"
+qovery application restart --application "{name}"
 ```
 
 ### View Logs
 
 ```bash
 # Stream logs in real-time
-qovery log --service "{name}" --follow
+qovery log --service "{name}"
 
 # Filter for errors
-qovery log --service "{name}" --since 1h --filter "ERROR"
+timeout 30 qovery log --service "{name}" | grep -i "ERROR"
 
 # Last N lines
-qovery log --service "{name}" --tail 100
+timeout 20 qovery log --service "{name}" | tail -100
 ```
 
 Via API (applications):
@@ -250,7 +249,7 @@ qovery application env list
 ### Clone an Environment
 
 ```bash
-qovery environment clone --environment "{source}" --name "{new-name}"
+qovery environment clone --environment "{source}" --new-environment-name "{new-name}"
 ```
 
 ### Cancel a Deployment
@@ -343,8 +342,9 @@ curl -s -H "Authorization: Bearer $(qovery auth token --print)" \
 curl -s -H "Authorization: Bearer $(qovery auth token --print)" \
   "https://api.qovery.com/organization/{orgId}/apiToken" | jq '.results[] | {id, name, created_at}'
 
-# Create an API token
-qovery token create --name "my-token" --duration 24h
+# Create an API token: there is no `qovery token create`. Only Terraform needs a long-lived
+# token; the user creates it in Console > Organization Settings > API Tokens (or with the
+# interactive `qovery token`). For everything else use `qovery api <path>`, which needs no token.
 ```
 
 For any operation that requires multi-step planning, creating infrastructure from scratch, or complex workflows, route to the appropriate specialized skill instead of handling it here.

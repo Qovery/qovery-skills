@@ -82,7 +82,7 @@ If the user cannot use STS Assume Role:
 2. **Open Google Cloud Shell** (terminal icon in top-right of Google Cloud Console)
 3. **Run the Qovery credential creation script**:
    ```bash
-   curl https://hub.qovery.com/files/create_credentials_gcp.sh | bash -s -- YOUR_PROJECT_ID qovery_role qovery-service-account
+   curl https://setup.qovery.com/create_credentials_gcp.sh | bash -s -- YOUR_PROJECT_ID qovery_role qovery-service-account
    ```
    This enables required APIs, creates a service account, assigns IAM roles, and generates a `key.json` file.
 4. **Download `key.json`** from Cloud Shell (More menu > Download > enter `key.json`)

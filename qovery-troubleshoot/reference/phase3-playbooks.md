@@ -36,7 +36,7 @@ Pre-built diagnostic sequences for the most common problems. Jump directly to th
 4. Is it using `_INTERNAL` hostname? (Layer 5 — `_HOST_INTERNAL`, not `_HOST`)
 5. Port-forward to the DB and test locally (Layer 6):
    ```bash
-   qovery port-forward --service "postgres" --port 5432:5432
+   qovery port-forward -p 5432:5432   # interactive: pick "postgres" (no --service flag)
    psql -h localhost -p 5432 -U myuser -d mydatabase
    ```
 6. Check for connection pool exhaustion in app logs (Layer 3)

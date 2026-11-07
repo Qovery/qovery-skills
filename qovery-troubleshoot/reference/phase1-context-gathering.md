@@ -7,10 +7,10 @@ Before diagnosing anything, you MUST understand what's deployed and what the use
 **If you are using the Qovery MCP Server, skip this step** — the MCP Server authenticates internally (OAuth or its configured token), so no token needs to flow through the shell. Authentication below is only needed for the CLI/API fallback tiers.
 
 Use the same authentication flow as the deploy skill:
-1. Check if `QOVERY_CLI_ACCESS_TOKEN` or `QOVERY_API_TOKEN` is set
-2. Try `qovery auth token --print` — if the CLI is authenticated, this outputs a valid token (auto-refreshed). Use with `Authorization: Bearer $(qovery auth token --print)`.
-3. Generate a named API token if needed: `qovery token create --name "troubleshoot-skill" --duration 24h`
-4. If the CLI is not authenticated, run `qovery auth` for interactive login, then use step 2.
+1. If the CLI is authenticated (`qovery auth status --json | jq -e .authenticated`), call the API with `qovery api <path>`: it uses the CLI session, so no token is handled at all.
+2. If a raw `curl` is unavoidable, pass the session inline: `-H "Authorization: $(qovery auth token --print --authorization-header)"`. If the user already set `QOVERY_API_TOKEN` / `QOVERY_CLI_ACCESS_TOKEN`, use that instead.
+3. If the CLI is not authenticated, ask the user to run `qovery auth` (or `qovery auth --headless` from an agent or remote shell), then use step 1.
+4. Do not mint a long-lived API token (there is no `qovery token create`). Only Terraform needs one, and the user creates it in the Console.
 
 ### 1.2 Get Overview of All Services
 
@@ -30,7 +30,7 @@ devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
 
 **Via CLI (fallback):**
 ```bash
-qovery context set    # Set org/project/environment
+qovery context set    # interactive picker: the user runs it; agents pass --organization/--project/--environment
 qovery service list   # List all services and statuses
 qovery status         # Detailed status
 ```

@@ -11,7 +11,7 @@ navigation path instead.
 
 If the user doesn't have a Qovery account:
 
-> "First, let's create your Qovery account. Go to https://console.qovery.com and sign up. It's free to start — no credit card required."
+> "First, let's create your Qovery account. Go to https://console.qovery.com and sign up. It's free to start: the Free plan needs no credit card and covers 3 users plus unlimited agents, 1 cluster you already run, and 1,000 deployment minutes per month (hard stop). A Qovery-managed cluster needs a card."
 
 Wait for confirmation, then:
 
@@ -74,7 +74,7 @@ IMPORTANT: The `type` field (`AWS_ROLE` or `AWS_STATIC`) is required. Without it
 
 **For GCP:**
 1. Open Google Cloud Shell
-2. Run: `curl https://hub.qovery.com/files/create_credentials_gcp.sh | bash -s -- PROJECT_ID qovery_role qovery-service-account`
+2. Run: `curl https://setup.qovery.com/create_credentials_gcp.sh | bash -s -- PROJECT_ID qovery_role qovery-service-account`
 3. Download `key.json`
 4. Upload to Qovery via API or Console
 
@@ -91,6 +91,8 @@ IMPORTANT: The `type` field (`AWS_ROLE` or `AWS_STATIC`) is required. Without it
 ### 3.3 Cluster Creation
 
 > "Now I'll create your Kubernetes cluster. This is the infrastructure that will run your applications. It takes about 15-20 minutes — I'll show you the progress."
+
+A cluster Qovery creates and manages needs a credit card on the organization (Console → **Settings → Billing**); without one, managed cluster creation is blocked. If the user has no card yet, offer the BYOK path (Phase 4) or `qovery demo up`.
 
 Recommend the Qovery Console for first-time cluster creation (visual, progress
 indicators). If the organization ID is known, replace `{orgId}` in

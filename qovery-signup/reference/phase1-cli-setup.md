@@ -17,7 +17,7 @@ Run `templates/scripts/check-and-install-cli.sh` to do this and print the right 
 
 | OS / manager | Command |
 |---|---|
-| macOS (Homebrew) | `brew install qovery-cli` |
+| macOS (Homebrew) | `brew tap Qovery/qovery-cli && brew install qovery-cli` (the formula is not in homebrew-core) |
 | Windows (Scoop) | `scoop install qovery-cli` |
 | Arch Linux (yay) | `yay qovery-cli` |
 | Any (release binary) | Download the latest from <https://github.com/Qovery/qovery-cli/releases>, unpack, and move `qovery` onto your `PATH` (e.g. `/usr/local/bin`) |
@@ -25,7 +25,7 @@ Run `templates/scripts/check-and-install-cli.sh` to do this and print the right 
 
 Notes:
 - On macOS without Homebrew, either install Homebrew first or use the release binary.
-- Prefer letting the user run the install command themselves if it needs elevated permissions (e.g. writing to `/usr/local/bin` or `brew` on a locked-down machine). In Claude Code they can run `! brew install qovery-cli`.
+- Prefer letting the user run the install command themselves if it needs elevated permissions (e.g. writing to `/usr/local/bin` or `brew` on a locked-down machine). In Claude Code they can run `! brew tap Qovery/qovery-cli && brew install qovery-cli`.
 - Do **not** auto-run `sudo` installs without asking.
 
 ## 1.3 Verify

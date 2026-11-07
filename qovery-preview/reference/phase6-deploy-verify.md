@@ -46,8 +46,8 @@ Keep polling until:
 On failure, fetch logs:
 ```bash
 # Use the service-type-appropriate flag
-qovery log --service "{service-name}" --since 10m
-qovery log --service "{service-name}" --since 10m --filter "ERROR"
+timeout 30 qovery log --service "{service-name}"
+timeout 30 qovery log --service "{service-name}" | grep -i "ERROR"
 
 # Via API (for applications)
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
@@ -94,7 +94,7 @@ Present the results to the user:
 > **Useful commands:**
 > ```bash
 > # Watch logs
-> qovery log --service "backend" --follow
+> qovery log --service "backend"
 >
 > # Check status
 > qovery status

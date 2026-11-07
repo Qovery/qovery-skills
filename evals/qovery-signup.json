@@ -19,7 +19,7 @@
       "Ensures the CLI is installed and the user is authenticated first (runs qovery auth --headless if `qovery api organization` returns the invalid/expired-token error)",
       "Does NOT ask the user to choose a plan and does not surface internal plan names; defaults to SCALE_2026",
       "Creates the org with `qovery api organization --field name=Acme --field plan=SCALE_2026` (using the CLI's stored credentials, not a manually supplied token) and captures the returned id",
-      "Runs `qovery context set` so the CLI targets the new organization",
+      "Targets the new organization without driving the interactive `qovery context set` picker (asks the user to run it, or passes --organization / explicit IDs)",
       "Surfaces the credit-card requirement for managed clusters/deployments and points to qovery-onboard for cluster + environment setup"
     ]
   },

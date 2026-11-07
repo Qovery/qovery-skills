@@ -113,20 +113,20 @@ Preview Environment Progress:
 
 ```bash
 # Blueprint management
-qovery environment clone --environment "staging" --name "blueprint"
+qovery environment clone --environment "staging" --new-environment-name "blueprint"
 qovery environment deploy --environment "blueprint"
 qovery environment stop --environment "blueprint"
 
 # Preview environment lifecycle
-qovery environment clone --environment "blueprint" --name "preview-pr-123"
+qovery environment clone --environment "blueprint" --new-environment-name "preview-pr-123"
 qovery environment deploy --environment "preview-pr-123"
 qovery environment stop --environment "preview-pr-123"
 qovery environment delete --environment "preview-pr-123"
 
 # Monitoring
-qovery status --watch
-qovery log --service "backend" --follow
-qovery log --service "backend" --since 1h --filter "ERROR"
+qovery environment statuses --environment "<env>" --json
+qovery log --service "backend"
+timeout 30 qovery log --service "backend" | grep -i "ERROR"
 qovery service list
 qovery environment list
 ```

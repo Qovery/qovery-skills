@@ -158,25 +158,25 @@ devops_copilot(organization_id, message[, project_id, environment_id, thread_id]
 
 ```bash
 # Context and status
-qovery context set
+qovery context set    # interactive picker: the user runs it; agents pass --organization/--project/--environment
 qovery service list
-qovery status --watch
+qovery environment statuses --environment "<env>" --json
 
 # Logs (use the flag matching the service type, or --service for any type)
-qovery log --application "name" --since 1h
-qovery log --container "name" --since 1h
-qovery log --database "name" --since 1h
-qovery log --job "name" --since 1h
-qovery log --service "name" --follow
-qovery log --service "name" --filter "ERROR"
-qovery log --service "name" --tail 100
+timeout 30 qovery log --application "name"
+timeout 30 qovery log --container "name"
+timeout 30 qovery log --database "name"
+timeout 30 qovery log --job "name"
+qovery log --service "name"
+timeout 30 qovery log --service "name" | grep -i "ERROR"
+timeout 20 qovery log --service "name" | tail -100
 
 # Environment variables
 qovery application env list
 qovery environment env list
 
 # Connectivity testing
-qovery port-forward --service "name" --port 8080:8080
+qovery port-forward -p 8080:8080   # interactive: pick "name" (no --service flag)
 qovery shell --service "name"
 
 # Cluster

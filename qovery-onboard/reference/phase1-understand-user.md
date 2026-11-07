@@ -42,7 +42,7 @@ Before doing anything, UNDERSTAND who the user is. Ask questions conversationall
    - If **NO**: "Qovery will create and manage one for you — that's the easiest path and I recommend it." → Managed cluster path
    - If **YES**: "You can install Qovery on your existing cluster. This is called BYOK (Bring Your Own Kubernetes)." → Phase 4 (BYOK path)
      - What K8s distribution? (EKS, GKE, AKS, self-managed, Rancher, k3s, etc.)
-     - What version?
+     - What version? (Qovery needs Kubernetes 1.31 or later; any distribution works)
      - Do you have kubectl access with cluster-admin permissions?
 
 6. **What applications do you want to deploy?**

@@ -15,8 +15,11 @@ If the user says yes (or doesn't object), enter the active watch loop below. If 
 Watch the deployment and detect success or failure:
 
 ```bash
-# Option A: CLI (interactive, real-time)
-qovery status --watch
+# Option A: CLI, block until the deployment you triggered finishes
+#   add --watch to the deploy command itself, e.g.
+#   qovery application deploy --application "my-app" --environment "production" --watch
+#   or take a snapshot of every service in the environment:
+qovery environment statuses --organization "My Org" --project "My Project" --environment "production" --json
 
 # Option B: API (scriptable, poll every 15-30 seconds)
 curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
@@ -51,28 +54,24 @@ The deployment step metrics tell you WHICH step failed:
 When any service enters an error state, immediately fetch its logs:
 
 ```bash
-# Via CLI — get last 10 minutes, filter for errors
-qovery log --application "my-app" --since 10m
-qovery log --application "my-app" --since 10m --filter "ERROR"
-qovery log --application "my-app" --since 10m --filter "error"
-qovery log --application "my-app" --since 10m --filter "FATAL"
-qovery log --application "my-app" --since 10m --filter "panic"
-qovery log --application "my-app" --since 10m --filter "Exit"
+# Via CLI: deployment (build + rollout) logs of the last deployment, errors only
+qovery environment deployment logs --environment "production" --service "my-app" --errors-only
 
-# Via API — get last 1000 log lines
-curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  "https://api.qovery.com/application/{appId}/log" | jq '.results[-50:] | .[] | .message'
+# Via CLI: live application logs. `qovery log` streams until interrupted and has no
+# --since/--tail/--filter flags, so bound it and filter with grep
+# (on macOS `timeout` comes from coreutils as `gtimeout`):
+timeout 30 qovery log --application "my-app" | grep -iE "error|fatal|panic|exit"
 
-# Get deployment history to see which step failed and duration
-curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  "https://api.qovery.com/application/{appId}/deploymentHistory" | jq '.results[0]'
+# Via API: the last 1000 deployment log lines of the environment (build + rollout, all services)
+qovery api environment/{envId}/logs | jq -r '.[-50:][] | .message.safe_message // empty'
+
+# Deployment history, to see which step failed and how long it took
+qovery api application/{appId}/deploymentHistory | jq '.results[0]'
 ```
 
-For other service types, replace the endpoint:
-- Containers: `GET /container/{containerId}/log`
-- Jobs: `GET /job/{jobId}/log`
-- Databases: `GET /database/{databaseId}/log` (limited)
-- Helm: `GET /helm/{helmId}/log`
+There is no per-service REST endpoint for runtime logs (`/application/{id}/log` does not exist).
+For past runtime logs use the Qovery MCP server (`get_service_logs`) when it is connected,
+otherwise the bounded `qovery log` stream above.
 
 After fetching logs, analyze them and proceed to Phase 10 for diagnosis and fix.
 
@@ -91,17 +90,18 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 # 3. Test the health endpoint
 curl -s https://{app-url}/health
 
-# 4. View recent logs to confirm healthy operation
-qovery log --application "my-app" --tail 20
+# 4. View recent logs to confirm healthy operation (streams; bound it)
+timeout 20 qovery log --application "my-app" | tail -20
 
 # 5. Open a shell into a running container (for debugging if needed)
-qovery shell --application "my-app"
+qovery shell --organization "My Org" --project "My Project" --environment "production" --service "my-app"
 
-# 6. Port-forward to access internal services locally (secure tunnel, no public exposure)
-qovery port-forward --service "my-app" --port 8080:8080
-
-# 7. Port-forward to access the database locally (e.g., for pgAdmin, DBeaver, psql)
-qovery port-forward --service "postgres" --port 5432:5432
+# 6/7. Port-forward to a service or database locally (secure tunnel, no public exposure).
+# port-forward has no --service flag: it uses the CLI context or asks interactively, so the
+# user runs it in their own terminal:
+#   qovery context set            # pick org / project / environment / service
+#   qovery port-forward -p 8080:8080
+#   qovery port-forward -p 5432:5432   # with the database selected
 # Then in another terminal: psql -h localhost -p 5432 -U myuser -d mydatabase
 ```
 
@@ -114,25 +114,8 @@ Tell the user:
 - They can monitor logs, metrics, and deployment history in the Qovery Console at https://console.qovery.com
 - For the Terraform path: the `qovery.tf` file should be committed to git (but NEVER commit secrets or API tokens)
 
-### 9.5 Token Cleanup
+### 9.5 Credentials
 
-If you generated an API token earlier via `qovery token` during Phase 2, offer to delete it now that deployment is complete. This is good security practice — short-lived tokens reduce the blast radius if compromised.
-
-```bash
-# List tokens to find the one you created
-curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
-  "https://api.qovery.com/organization/{orgId}/apiToken" | jq '.results[] | {id, name, created_at}'
-
-# Delete the token by ID
-curl -s -X DELETE "https://api.qovery.com/organization/{orgId}/apiToken/{tokenId}" \
-  -H "Authorization: Token $QOVERY_API_TOKEN"
-```
-
-Ask the user: "I generated an API token earlier for deployment. Would you like me to delete it now, or keep it for future use?"
-
-- If the user wants to keep it: remind them to store it securely and that it can be managed at Qovery Console > Organization Settings > API Tokens
-- If the user wants to delete it: delete via the API above
-- If a JWT token was used instead (Method 2): no cleanup needed, it expires automatically
-
----
-
+This skill does not create API tokens (it uses `qovery api` and the CLI session), so there is
+nothing to clean up. If the user created a long-lived token for the Terraform path, remind them it
+lives in Console > Organization Settings > API Tokens and should be revoked when no longer needed.

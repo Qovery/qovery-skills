@@ -26,86 +26,81 @@ qovery version
 ### Authenticate
 
 ```bash
-# Interactive browser-based login
-qovery auth
+# Is the CLI already signed in? (prints nothing secret)
+qovery auth status --json | jq -e '.authenticated'
 
-# OR for headless environments, set an existing API token
-export QOVERY_CLI_ACCESS_TOKEN="your-api-token"
+# If not, the user signs in. From an agent or a remote shell use --headless: it prints a URL
+# the user opens in their browser. In Claude Code: ! qovery auth --headless
+qovery auth --headless
+
+# CI only: the user exports a token they created themselves (never the agent)
+# export QOVERY_CLI_ACCESS_TOKEN=...
 ```
 
-### Set Context
+### Target organization, project and environment
 
-The CLI uses a context-based approach. Set your default organization, project, and environment:
+`qovery context set` is an interactive picker (no flags), so an agent cannot drive it. Either ask
+the user to run `! qovery context set`, or skip it and pass names explicitly, which every
+command accepts:
 
 ```bash
-# Interactive context selection
-qovery context set
-
-# Verify
-qovery project list
-qovery environment list
+qovery organization list --json
+qovery project list --organization "My Org" --json
+qovery environment list --organization "My Org" --project "My Project" --json
 ```
 
-### Obtain an API Token for API Calls
+For REST calls, put explicit IDs in the path (`qovery api organization/<org-id>/project`).
 
-Many operations in this skill use the Qovery REST API directly (via `curl`). You need a token for the `Authorization` header. Try these methods in order — use the first one that works:
+### Calling the Qovery API
 
-**Method 1: Generate a token via the CLI (preferred)**
+Many operations in this skill use the Qovery REST API. In order of preference:
 
-If the user is already authenticated via `qovery auth`, the CLI can generate an API token without leaving the terminal:
+**1. `qovery api` (preferred, no token at all)**
 
 ```bash
-# Generate a named token (easy to identify and clean up later)
-qovery token --name "deploy-skill-$(date +%Y%m%d)"
-
-# The command outputs the token — save it
-export QOVERY_API_TOKEN="qov_..."
+qovery api organization                                               # GET
+qovery api organization/<org-id>/project --field name="web"           # POST from fields
+qovery api environment/<env-id>/application --input - < app.json      # POST from a file
+qovery api application/<app-id> --method PUT --input - < app.json
+qovery api application/<app-id>/deploy --method POST
 ```
 
-Use this token in API calls with the header: `Authorization: Token $QOVERY_API_TOKEN`
+It reuses the CLI session (auto-refreshed) and sets the `Authorization` header itself. Add the
+skill `User-Agent` with `-H` as described in auth.md.
 
-This token is permanent (no expiration) and can be deleted later from the Qovery Console (Organization Settings > API Tokens) or via the API when no longer needed. The agent should offer to clean it up after deployment is complete (see Phase 9).
-
-**Method 2: Use the CLI's token via `qovery auth token` (fallback)**
-
-If `qovery token create` fails (e.g., insufficient permissions), use the CLI's own token **inline** within curl commands. The token is expanded by the shell at execution time — NEVER capture it into a variable or display it:
+**2. `curl` with the CLI session inline (when a script needs curl)**
 
 ```bash
-# CORRECT — token flows through the shell inline, never visible to the agent:
-curl -s -H "Authorization: Bearer $(qovery auth token --print)" https://api.qovery.com/organization
+curl -s -H "Authorization: $(qovery auth token --print --authorization-header)" https://api.qovery.com/organization
 ```
 
-The CLI handles token refresh automatically — no need to check expiration manually. API tokens from Method 1 do not expire and are preferred for long-running scripts.
+`--authorization-header` prints the whole header value with the correct scheme. Keep it inline:
 
-**SECURITY: NEVER capture the token into a variable or display it:**
 ```bash
-# WRONG — exposes the token value:
+# WRONG, exposes the value:
 export QOVERY_BEARER_TOKEN=$(qovery auth token --print)
 echo $(qovery auth token --print)
 qovery auth token --print
-
-# CORRECT — always inline:
-curl -s -H "Authorization: Bearer $(qovery auth token --print)" ...
 ```
 
-**Method 3: User provides an existing API token (manual)**
+**3. A token the user already exported**
 
-If the user already has an API token from the Qovery Console, they should set it in their environment themselves (NOT via the agent, to avoid the value being visible):
+If the user set `QOVERY_API_TOKEN` themselves, use `Authorization: Token $QOVERY_API_TOKEN`.
 
-> "Please set your API token as an environment variable: `export QOVERY_API_TOKEN=your-token-here`"
-
-**Method 4: Generate from the Qovery Console (last resort)**
-
-Direct the user to: Qovery Console > Organization Settings > API Tokens > Generate.
+**Do not mint a long-lived API token.** There is no `qovery token create`; `qovery token` is an
+interactive prompt for humans. A long-lived token is only needed for the Terraform path, and the
+user creates it (Console > Organization Settings > API Tokens, ideally a scoped API Policy Token)
+and exports it as `QOVERY_API_TOKEN` in their own shell.
 
 **Summary of auth headers used in this skill:**
 
-| Token Source | Header Format |
+| Source | How |
 |---|---|
-| API Token (from `qovery token create` or Console) | `Authorization: Token $QOVERY_API_TOKEN` |
-| CLI Token (via `qovery auth token`) | `Authorization: Bearer $(qovery auth token --print)` |
+| CLI session (preferred) | `qovery api <path>`, or `Authorization: $(qovery auth token --print --authorization-header)` |
+| Token the user created (Terraform, CI) | `Authorization: Token $QOVERY_API_TOKEN` |
 
-All `curl` examples in this skill use `Authorization: Token $QOVERY_API_TOKEN`. The env var is expanded by the shell — the agent never sees the actual token value. If you are using the CLI token instead, replace `Token $QOVERY_API_TOKEN` with `Bearer $(qovery auth token --print)` in the header.
+The `curl` examples in later phases show `Authorization: Token $QOVERY_API_TOKEN`; with a CLI
+session, run them through `qovery api` instead, or swap the header for the inline form above.
 
 ### Install Terraform (if using Terraform path)
 

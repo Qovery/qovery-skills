@@ -130,19 +130,19 @@ Databases should NEVER be publicly exposed. Use port-forward instead:
 
 ```bash
 # PostgreSQL
-qovery port-forward --service "postgres" --port 5432:5432
+qovery port-forward -p 5432:5432   # interactive: pick "postgres" (no --service flag)
 # Then connect: psql -h localhost -p 5432 -U myuser -d mydatabase
 
 # MySQL
-qovery port-forward --service "mysql" --port 3306:3306
+qovery port-forward -p 3306:3306   # interactive: pick "mysql" (no --service flag)
 # Then connect: mysql -h 127.0.0.1 -P 3306 -u myuser -p mydatabase
 
 # MongoDB
-qovery port-forward --service "mongodb" --port 27017:27017
+qovery port-forward -p 27017:27017   # interactive: pick "mongodb" (no --service flag)
 # Then connect: mongosh "mongodb://localhost:27017/mydatabase"
 
 # Redis
-qovery port-forward --service "redis" --port 6379:6379
+qovery port-forward -p 6379:6379   # interactive: pick "redis" (no --service flag)
 # Then connect: redis-cli -h localhost -p 6379
 ```
 
@@ -152,7 +152,7 @@ If the default port is already in use locally:
 
 ```bash
 # Forward remote 5432 to local 15432
-qovery port-forward --service "postgres" --port 15432:5432
+qovery port-forward -p 15432:5432   # interactive: pick "postgres" (no --service flag)
 # Connect on localhost:15432
 ```
 
@@ -162,7 +162,7 @@ This is extremely useful for development — run your app locally but connect to
 
 ```bash
 # Terminal 1: start the tunnel
-qovery port-forward --service "postgres" --port 5432:5432
+qovery port-forward -p 5432:5432   # interactive: pick "postgres" (no --service flag)
 
 # Terminal 2: run your local app pointing to the forwarded port
 DATABASE_URL=postgresql://user:pass@localhost:5432/mydb npm run dev
@@ -176,11 +176,11 @@ Forward to applications or containers that are not publicly exposed:
 
 ```bash
 # Forward an internal backend API
-qovery port-forward --service "backend" --port 8080:8080
+qovery port-forward -p 8080:8080   # interactive: pick "backend" (no --service flag)
 curl http://localhost:8080/api/health
 
 # Forward a Helm-deployed service (e.g., admin panel)
-qovery port-forward --service "windmill" --port 8000:8000
+qovery port-forward -p 8000:8000   # interactive: pick "windmill" (no --service flag)
 ```
 
 #### Important Notes

@@ -1,19 +1,24 @@
 ## PHASE 4: BYOK Path (Bring Your Own Kubernetes)
 
-If the user has an existing Kubernetes cluster, guide them through installing Qovery on it.
+If the user has an existing Kubernetes cluster, guide them through installing Qovery on it. Qovery works on any Kubernetes cluster; the provider decides the installation method:
+
+| Cluster | Installation method |
+|---|---|
+| Amazon EKS, Google GKE, Scaleway Kapsule | **Qovery Operator installation** (recommended): in the Console, **Clusters** → add a cluster → **Connect existing cluster (BYOK)** → AWS, GCP or Scaleway, then run the Helm command the Console shows. `qovery cluster install` also works. |
+| Any other cluster (AKS, k3s, Rancher, OpenShift, on-premise, other clouds) | `qovery cluster install` (section 4.4) |
 
 ### 4.1 Check Prerequisites
 
 Verify the user's cluster meets the requirements:
 
-- Kubernetes version >= 1.24
+- Kubernetes **1.31 or later**
 - Minimum 4 CPUs and 8GB RAM available in the cluster
 - `kubectl` installed and configured with cluster-admin access
 - `helm` package manager installed
 
 ```bash
-# Check Kubernetes version
-kubectl version --short
+# Check Kubernetes version (server must be 1.31 or later)
+kubectl version
 
 # Check available resources
 kubectl top nodes
@@ -21,6 +26,8 @@ kubectl top nodes
 # Check kubectl access
 kubectl auth can-i '*' '*' --all-namespaces
 ```
+
+Optional: if `qovery cluster --help` lists a `preflight` subcommand, run `qovery cluster preflight` to check the cluster read-only before installing. Older CLI versions do not have it; skip this step rather than fail.
 
 ### 4.2 Install Qovery CLI
 

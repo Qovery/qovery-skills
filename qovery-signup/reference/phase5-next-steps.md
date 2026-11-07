@@ -10,19 +10,20 @@ qovery api organization | jq -r '.results[] | "\(.name) — \(.id)"'
 
 The new org should appear. If the user set the context in Phase 3, subsequent `qovery` commands target it by default.
 
-## 5.2 Unblock real deployments (add a credit card) — or use the demo cluster
+## 5.2 Pick a cluster path: own cluster or demo (no card), or a Qovery-managed cluster (card)
 
-A brand-new org is under `NO_CREDIT_CARD` restriction: **managed clusters and cloud deployments are blocked** until a card is added.
+A brand-new org is under the `NO_CREDIT_CARD` restriction, which only blocks **clusters Qovery creates and manages** and deployments on them.
 
-- **To deploy on real cloud infrastructure**: add a card in the Console → **Settings → Billing** (`qovery console` opens the Console in a browser). This lifts the restriction.
-- **To try Qovery with no card**: spin up a local demo cluster (k3s + Qovery on the user's machine):
+- **Deploy on a Kubernetes cluster the user already runs, no card**: this is the Free plan: 3 users plus unlimited agents, 1 cluster they already run, 1,000 deployment minutes per month with a hard stop, no card. Any cluster on Kubernetes 1.31 or later works. On EKS, GKE or Scaleway Kapsule, use the Qovery Operator installation (Console → **Clusters** → add a cluster → **Connect existing cluster (BYOK)**); on any other cluster (AKS, k3s, on-premise, other clouds), run `qovery cluster install`. Then hand off to qovery-onboard.
+- **Let Qovery create and manage a cluster in their cloud account**: add a card in the Console → **Settings → Billing** (`qovery console` opens the Console in a browser). This lifts the restriction.
+- **Just try it, no card, no cloud**: spin up a local demo cluster (k3s + Qovery on the user's machine):
 
   ```bash
   qovery demo up        # create the local demo cluster
   qovery demo destroy   # tear it down when done
   ```
 
-Recommend the demo path for someone just exploring, and the credit-card path when they're ready to deploy to their own cloud.
+Recommend the demo path for someone just exploring, the own-cluster path for someone who already runs Kubernetes, and the card path when they want Qovery to create the cluster.
 
 ## 5.3 Invite teammates (optional)
 
@@ -64,4 +65,4 @@ Summary to give the user:
 - ✅ CLI installed and authenticated (credentials stored locally by the CLI)
 - ✅ Organization `<name>` created (id `<uuid>`) — profile enriched from `<website>` (description, logo, icon)
 - ✅ First project `<name>` created for the use case (if applicable)
-- ▶️ Next: add a credit card **or** `qovery demo up`, then run **qovery-onboard** (with the brief above) to create a cluster and environments
+- ▶️ Next: connect a cluster they already run (Operator installation on EKS/GKE/Kapsule, `qovery cluster install` elsewhere), `qovery demo up`, **or** add a card for a managed cluster, then run **qovery-onboard** (with the brief above) to create a cluster and environments

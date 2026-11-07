@@ -22,7 +22,7 @@ Based on the user's answers, generate a personalized setup recommendation. Prese
 | User Context | Recommendation | Why |
 |---|---|---|
 | New to K8s, wants easy path | **Qovery Managed Cluster** | Qovery creates and manages everything — zero K8s knowledge needed |
-| Has existing K8s cluster | **BYOK** | Install Qovery on top via `qovery cluster install` |
+| Has existing K8s cluster (any distribution, Kubernetes 1.31+) | **BYOK** | EKS, GKE, Scaleway Kapsule: Qovery Operator installation from the Console; any other cluster: `qovery cluster install` (Phase 4) |
 | Enterprise, multi-team, isolation needed | **Multiple Qovery Managed Clusters** | Separate production from non-production for security isolation |
 | Solo developer, prototyping | **Single Qovery Managed Cluster** | One cluster for all environments, lowest cost |
 | Advanced user, specific requirements | **BYOK or Managed** — let them choose | Explain tradeoffs |

@@ -92,7 +92,7 @@ For data migration:
    heroku pg:backups:download --app your-heroku-app
 
    # Restore to Qovery (use port-forward for secure access)
-   qovery port-forward --service "postgres" --port 5432:5432
+   qovery port-forward -p 5432:5432   # interactive: pick "postgres" (no --service flag)
    pg_restore -h localhost -p 5432 -U qovery_user -d qovery_db latest.dump
    ```
 3. Set the database back to private
@@ -192,7 +192,7 @@ If you're running Kubernetes manually (kubectl apply, Helm, Kustomize):
 2. For ConfigMaps/Secrets: import as Qovery environment variables
 3. For Helm charts: create Qovery Helm services pointing to the same charts
 4. For custom resources: use Qovery Terraform services or BYOK
-5. Consider using `qovery terraform export` if you want to manage as Terraform
+5. To manage it as Terraform afterwards, use **Export as Terraform** on the environment in the Console (there is no `qovery terraform export` command), or the qovery-terraform skill
 
 ---
 

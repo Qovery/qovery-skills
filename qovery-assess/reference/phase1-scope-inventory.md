@@ -32,7 +32,7 @@ qovery auth token --json 2>/dev/null | jq -e -r '.token_type' >/dev/null && echo
 ```
 
 - **Never print a token.** Use it inline; never echo it, never store it in a file.
-- **Never create one.** `qovery token create` is a write, and a first `qovery auth` login
+- **Never create one.** Minting an API token (`qovery token`, or the apiToken endpoint) is a write, and a first `qovery auth` login
   creates an account. If neither route above works, stop and ask the user to authenticate
   themselves, then rerun.
 - Every request to `api.qovery.com` carries the skill's `User-Agent` header.

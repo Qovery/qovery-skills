@@ -62,10 +62,10 @@ devops_copilot(organization_id = "{orgId}", environment_id = "{envId}",
 **Via CLI (fallback):**
 ```bash
 # Use the flag matching the service type (--application, --container, --job, or --service):
-qovery log --application "name" --since 30m
-qovery log --container "name" --since 30m
-qovery log --job "name" --since 30m
-qovery log --service "name" --since 30m     # Generic — works for any service type
+timeout 30 qovery log --application "name"
+timeout 30 qovery log --container "name"
+timeout 30 qovery log --job "name"
+timeout 30 qovery log --service "name"     # Generic, works for any service type
 ```
 
 **Via API (fallback):**
@@ -117,28 +117,28 @@ get_cluster_events(cluster_id = "{clusterId}",
 **Via CLI (fallback):**
 ```bash
 # Get recent logs — use the flag matching the service type:
-qovery log --application "name" --since 1h    # Application
-qovery log --container "name" --since 1h      # Container
-qovery log --database "name" --since 1h       # Database
-qovery log --job "name" --since 1h            # Job (cronjob/lifecycle)
-qovery log --service "name" --since 1h        # Generic — works for any service type
+timeout 30 qovery log --application "name"    # Application
+timeout 30 qovery log --container "name"      # Container
+timeout 30 qovery log --database "name"       # Database
+timeout 30 qovery log --job "name"            # Job (cronjob/lifecycle)
+timeout 30 qovery log --service "name"        # Generic, works for any service type
 
 # Stream logs in real-time (useful during active debugging):
-qovery log --service "name" --follow
+qovery log --service "name"
 
 # Filter for errors (combine with any service flag above):
-qovery log --service "name" --since 1h --filter "ERROR"
-qovery log --service "name" --since 1h --filter "FATAL"
-qovery log --service "name" --since 1h --filter "panic"
-qovery log --service "name" --since 1h --filter "Exit"
-qovery log --service "name" --since 1h --filter "OOM"
-qovery log --service "name" --since 1h --filter "SIGKILL"
+timeout 30 qovery log --service "name" | grep -i "ERROR"
+timeout 30 qovery log --service "name" | grep -i "FATAL"
+timeout 30 qovery log --service "name" | grep -i "panic"
+timeout 30 qovery log --service "name" | grep -i "Exit"
+timeout 30 qovery log --service "name" | grep -i "OOM"
+timeout 30 qovery log --service "name" | grep -i "SIGKILL"
 
 # Get last N lines:
-qovery log --service "name" --tail 100
+timeout 20 qovery log --service "name" | tail -100
 
 # Time-range query:
-qovery log --service "name" --from "2024-01-01T00:00:00Z" --to "2024-01-01T23:59:59Z"
+# no time-window flags on qovery log: for a past window use MCP get_service_logs
 ```
 
 **Via API (fallback):**
@@ -222,7 +222,7 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
 
 5. **Test locally via port-forward:**
    ```bash
-   qovery port-forward --service "name" --port 8080:8080
+   qovery port-forward -p 8080:8080   # interactive: pick "name" (no --service flag)
    # In another terminal:
    curl http://localhost:8080/health
    ```
@@ -405,11 +405,11 @@ curl -s -X POST "https://api.qovery.com/application/{appId}/secret" \
 4. **Port-forward to test connectivity directly:**
    ```bash
    # Test database connectivity
-   qovery port-forward --service "postgres" --port 5432:5432
+   qovery port-forward -p 5432:5432   # interactive: pick "postgres" (no --service flag)
    psql -h localhost -p 5432 -U myuser -d mydatabase
 
    # Test service connectivity
-   qovery port-forward --service "backend" --port 8080:8080
+   qovery port-forward -p 8080:8080   # interactive: pick "backend" (no --service flag)
    curl http://localhost:8080/health
    ```
 

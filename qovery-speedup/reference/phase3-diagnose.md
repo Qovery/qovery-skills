@@ -178,7 +178,7 @@ If the app startup is the bottleneck (time between container starting and health
 
 ```bash
 # Port-forward and time the first successful response
-qovery port-forward --service "name" --port 8080:8080
+qovery port-forward -p 8080:8080   # interactive: pick "name" (no --service flag)
 time curl http://localhost:8080/health
 # The time from container start to first successful health response = actual startup time
 ```

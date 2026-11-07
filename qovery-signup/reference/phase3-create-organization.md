@@ -68,17 +68,16 @@ echo "$CUR" | jq '{name, plan} + {
 }' | qovery api organization/$ORG_ID --method PUT --input -
 ```
 
-## 3.6 Point the CLI at the new organization
+## 3.6 Point the CLI at the new organization (optional)
 
-```bash
-qovery context set
-```
-
-Select the new organization (and later a project/environment) so subsequent commands target it.
+`qovery context set` is an interactive picker with no flags, so an agent cannot drive it. Ask the
+user to run it if they want a default (in Claude Code: `! qovery context set`). Otherwise skip it:
+every command accepts `--organization "<name>"` (and `--project`, `--environment`), and
+`qovery api` takes explicit IDs in the path.
 
 ## 3.7 Billing restriction on brand-new orgs (set expectations)
 
-A newly created org has **no credit card**, so it carries `billing_deployment_restriction: NO_CREDIT_CARD`: managed (cloud) cluster creation and deployments are blocked until a card is added (Console → **Settings → Billing**). A local demo cluster works without a card (Phase 5). Mention this now so it isn't a surprise.
+A newly created org has **no credit card**, so it carries `billing_deployment_restriction: NO_CREDIT_CARD` (check it with `qovery api organization/<org-id> | jq .billing_deployment_restriction`). That blocks managed cluster creation and deployments on Qovery-managed clusters only. Without a card the user can still deploy on a Kubernetes cluster they already run (any Kubernetes 1.31+ cluster; this is the Free plan: 3 users plus unlimited agents, 1 cluster they already run, 1,000 deployment minutes per month with a hard stop, no card) or on a local demo cluster (Phase 5). Mention this now so it isn't a surprise, without implying nothing works before a card is added.
 
 Carry the **use case** from §3.1 into Phase 4 (recorded as `qovery_usage`) and Phase 5 (configuration).
 

@@ -117,11 +117,11 @@ curl -s -X PUT "https://api.qovery.com/application/{appId}" \
 qovery shell --service "my-app"
 
 # Port-forward to access the app locally and test it directly
-qovery port-forward --service "my-app" --port 8080:8080
+qovery port-forward -p 8080:8080   # interactive: pick "my-app" (no --service flag)
 # Then: curl http://localhost:8080/health
 
 # Port-forward to the database to verify it's accessible
-qovery port-forward --service "postgres" --port 5432:5432
+qovery port-forward -p 5432:5432   # interactive: pick "postgres" (no --service flag)
 # Then: psql -h localhost -p 5432 -U myuser -d mydatabase
 ```
 

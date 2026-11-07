@@ -22,10 +22,10 @@ echo "Qovery CLI is NOT installed."
 OS="$(uname -s 2>/dev/null || echo unknown)"
 case "$OS" in
   Darwin)
-    echo "Recommended (macOS): brew install qovery-cli"
+    echo "Recommended (macOS): brew tap Qovery/qovery-cli && brew install qovery-cli"
     if [ "$TRY_INSTALL" = "yes" ] && command -v brew >/dev/null 2>&1; then
-      echo "Attempting: brew install qovery-cli"
-      brew install qovery-cli
+      echo "Attempting: brew tap Qovery/qovery-cli && brew install qovery-cli"
+      brew tap Qovery/qovery-cli && brew install qovery-cli
       command -v qovery >/dev/null 2>&1 && { echo "Installed: $(qovery version | head -1)"; exit 0; }
       exit 2
     fi

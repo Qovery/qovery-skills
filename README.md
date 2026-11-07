@@ -21,8 +21,6 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | **qovery-signup** | Sign up from scratch — checks/installs the Qovery CLI, authenticates via `qovery auth --headless` (first login creates the account), and creates your first organization, then hands off to qovery-onboard. Never handles raw tokens. Includes `/qovery-signup` slash command |
 | **qovery-assess** | Read-only assessment of a whole organization — inventories every cluster, environment and service, reads deployment/runtime logs and audit events (redacted on write), then runs 147 best-practice checks across reliability, security, performance, delivery, cost and disaster recovery. Correlates findings to the company's public compliance claims (SOC 2 / ISO 27001 / GDPR / DORA) and maps technical checks to published controls (CIS Kubernetes Benchmark, Pod Security Standards, NSA/CISA, NIST SP 800-190), scores each pillar, and writes a customer-shareable gap analysis with a prioritized roadmap. Modifies nothing. Includes `/qovery-assess` slash command |
 
-> **Looking for Remote Development Environments (RDEs)?** RDEs are now managed directly via [rde.qovery.com](https://rde.qovery.com). See the [RDE documentation](https://www.qovery.com/docs/getting-started/quickstart/remote-dev-environments) to get started.
-
 ## Quick Install
 
 **One command — installs all eleven skills globally for all your projects:**

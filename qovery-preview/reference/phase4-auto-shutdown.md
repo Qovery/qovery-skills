@@ -24,14 +24,19 @@ For the **recycle** option, also ask:
 
 For options 1, 2, and 3, create a cron job inside the preview environment that calls the Qovery API at the scheduled time. The job uses a raw Dockerfile (no git repo needed) with `curlimages/curl`.
 
-**Step 1: Generate an API token for the shutdown job**
+**Step 1: Get an API token for the shutdown job (user action)**
 
-The cron job needs a Qovery API token to call the stop/delete endpoint. Generate one:
-```bash
-qovery token --name "preview-shutdown-pr-{number}-$(date +%Y%m%d)"
-```
+The cron job runs inside the cluster, so it cannot use the CLI session: it needs a Qovery API
+token to call the stop/delete endpoint. The agent does not mint it (there is no
+`qovery token create`; `qovery token` is an interactive prompt with no flags). Ask the user to
+create a token scoped as narrowly as possible, ideally an API Policy Token limited to stopping
+and deleting this environment, in Console > Organization Settings > API Tokens, and to add it
+as a secret `QOVERY_API_TOKEN` on the job themselves (Console, or
+`qovery cronjob env create ... --secret` run in their own terminal), so the value never passes
+through the conversation.
 
-Store the returned token — it will be set as a secret on the job.
+If the user only needs "stop outside working hours" rather than a one-off TTL, a deployment
+rule with an auto-stop schedule on the preview environments needs no token at all.
 
 **Step 2: Calculate the cron schedule**
 

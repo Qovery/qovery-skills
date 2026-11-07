@@ -19,14 +19,14 @@ After the fix is applied and the service is redeployed:
    ```
    ```bash
    # Fallback (CLI):
-   qovery log --service "name" --tail 20
-   qovery log --service "name" --follow      # Stream in real-time to watch for errors
+   timeout 20 qovery log --service "name" | tail -20
+   qovery log --service "name"      # Stream in real-time to watch for errors
    ```
 
 3. **Test the endpoint:**
    ```bash
    # Via port-forward (for internal services)
-   qovery port-forward --service "name" --port 8080:8080
+   qovery port-forward -p 8080:8080   # interactive: pick "name" (no --service flag)
    curl http://localhost:8080/health
 
    # Via public URL (for public services)

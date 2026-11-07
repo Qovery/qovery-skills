@@ -17,8 +17,8 @@
     "query": "I have an existing EKS cluster — can I use Qovery on it?",
     "files": [],
     "expected_behavior": [
-      "Confirms the existing cluster matches Qovery's minimum requirements (version, node count, ingress, etc.)",
-      "Loads reference/phase4-byok.md and walks through `qovery cluster install`",
+      "Confirms the existing cluster matches Qovery's minimum requirements (Kubernetes 1.31 or later, node size, cluster-admin access)",
+      "Loads reference/phase4-byok.md and, since the cluster is EKS, recommends the Qovery Operator installation from the Console (`qovery cluster install` remains valid); does NOT require `qovery cluster preflight`",
       "Does NOT offer to create a managed cluster (the user already has one)",
       "Verifies the cluster is registered in Qovery before proceeding to project/environment setup"
     ]

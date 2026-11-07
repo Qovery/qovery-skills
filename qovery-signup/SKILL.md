@@ -80,9 +80,9 @@ Never call the legacy tracking endpoint as a fallback.
 >
 > **Do NOT ask the user to choose a plan, and never expose internal plan names.** Always create the organization on **`SCALE_2026`** by default (the individual tier isn't customer-selectable and Enterprise pricing is custom). Confirm only the org **name** before creating (org creation is a real, billable-tier resource). Deviate from `SCALE_2026` only if the user explicitly names a plan themselves.
 >
-> **There is no `qovery organization` CLI command.** Manage organizations through `qovery api organization …` (which uses the CLI's auth) or the REST API — not a CLI noun.
+> **The `qovery organization` CLI command only lists** (`qovery organization list --json`). Create and update organizations through `qovery api organization …` (which uses the CLI's auth).
 >
-> **Set expectations about billing.** A new organization has no credit card, so managed clusters and deployments are blocked (`billing_deployment_restriction: NO_CREDIT_CARD`) until one is added. A local demo cluster (`qovery demo up`) works with no card.
+> **Set expectations about billing, without overstating it.** A card is only needed for clusters Qovery creates and manages. A new organization without a card carries `billing_deployment_restriction: NO_CREDIT_CARD`, which blocks managed cluster creation and deployments on managed clusters only. With no card the user can still deploy on a Kubernetes cluster they already run (any Kubernetes 1.31+ cluster: EKS, GKE or Scaleway Kapsule through the Qovery Operator installation in the Console, any other cluster with `qovery cluster install`), which is the Free plan: 3 users plus unlimited agents, 1 cluster they already run, 1,000 deployment minutes per month with a hard stop, no card, or locally with `qovery demo up`. Read the field from `qovery api organization/<org-id>` instead of assuming it.
 >
 > **Sign-up tracking is tagged, consented, and best-effort.** Phase 4 records the sign-up in Qovery's pipeline and the HubSpot lead funnel, always tagged `signup_source: "CLI"` / `"AI-Agent"` so it's distinguishable from web sign-ups. Only send data the user gave in the interview — never invent PII. The Cargo/HubSpot token comes from `QOVERY_CARGO_INGEST_TOKEN` (or backend forwarding) and is **never committed or printed**. Tracking must never block or fail the sign-up.
 
@@ -111,7 +111,7 @@ Sign up + create an organization:
 
 ## Authentication model (how auth is handled)
 
-1. **Install** the CLI (Phase 1) — `brew install qovery-cli` (macOS), `scoop install qovery-cli` (Windows), or a release binary (Linux). `qovery upgrade` updates it.
+1. **Install** the CLI (Phase 1): `brew tap Qovery/qovery-cli && brew install qovery-cli` (macOS), `scoop install qovery-cli` (Windows), or a release binary (Linux). `qovery upgrade` updates it.
 2. **`qovery auth --headless`** (Phase 2) prints a URL. The user opens it, signs in / signs up via OAuth, and the CLI saves credentials locally. Interactive `qovery auth` (no flag) opens a browser automatically when the machine has one.
 3. **Everything after that uses the stored credentials** — `qovery api …`, `qovery project …`, etc. — so you never touch a token. If a call returns `access token is invalid or expired. Sign in using 'qovery auth'…`, the session lapsed; re-run Phase 2.
 4. **CI / non-interactive** only: the user may set `QOVERY_CLI_ACCESS_TOKEN` (or `Q_CLI_ACCESS_TOKEN`) in their environment instead of interactive login. Generate one with `qovery token`. Never print it.
@@ -139,7 +139,7 @@ Sign up + create an organization:
 
 ```bash
 # 1. Install (macOS shown; see Phase 1 for Windows/Linux) and verify
-brew install qovery-cli
+brew tap Qovery/qovery-cli && brew install qovery-cli
 qovery version
 
 # 2. Sign up / log in (interactive — user completes the URL in a browser). In Claude Code:
@@ -160,8 +160,8 @@ NEW_ORG_ID=$(qovery api organization --field name="My Org" --field plan=SCALE_20
 # 4. Record the sign-up for tracking + lead qualification (tagged CLI; --dry-run to preview)
 COMPANY="My Org" USE_CASE="<use case>" SIGNUP_SOURCE="CLI" bash templates/scripts/record-signup.sh
 
-# 5. Point the CLI at it, then hand off to qovery-onboard
-qovery context set
+# 5. Optional: point the CLI at it. `qovery context set` is an interactive picker, so the user runs it
+#    (in Claude Code: ! qovery context set). Agents can skip it and pass --organization "My Org" or IDs.
 
 # Optional: try Qovery locally with no credit card
 qovery demo up

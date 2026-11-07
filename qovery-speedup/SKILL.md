@@ -152,9 +152,9 @@ PUT  /application/{appId}                      # change deployment_stage_id
 ### CLI commands
 
 ```bash
-qovery status                                       # current deployment status
-qovery log --application "name" --since 30m        # deployment logs
-qovery port-forward --service "name" --port X:X    # test startup locally
+qovery environment statuses --environment "env" --json            # current deployment status
+qovery environment deployment logs --environment "env" --service "name"   # deployment logs
+qovery port-forward -p X:X                                         # test startup locally (interactive: pick the service)
 qovery service list                                # all services overview
 ```
 
