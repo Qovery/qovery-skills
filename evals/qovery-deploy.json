@@ -21,7 +21,7 @@
       "Skips the org/project discovery questions",
       "Loads reference/phase5-terraform.md when entering the Terraform path",
       "Generates qovery.tf, variables.tf, and terraform.tfvars at the project root",
-      "Pins the qovery/qovery provider to ~> 0.54.0"
+      "Pins the qovery/qovery provider to ~> 1.0"
     ]
   },
   {

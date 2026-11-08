@@ -30,7 +30,7 @@ Generated from existing Qovery Console configuration using qovery-terraform skil
 Resources imported into Terraform state — terraform plan shows zero changes.
 
 Resources: {N} applications, {N} databases, {N} jobs, {N} containers
-Provider: qovery/qovery ~> 0.54.0"
+Provider: qovery/qovery ~> 1.0"
 ```
 
 IMPORTANT — remind the user:

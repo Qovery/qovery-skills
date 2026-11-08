@@ -13,7 +13,7 @@ terraform {
   required_providers {
     qovery = {
       source  = "qovery/qovery"
-      version = "~> 0.54.0"
+      version = "~> 1.0"
     }
   }
 }
@@ -79,27 +79,22 @@ variable "auto_deploy_enabled" {
 }
 ```
 
-### 5.3 Look Up Existing Resources (Alternative to hardcoding IDs)
+### 5.3 Read Existing Resources (Alternative to plain ID variables)
 
-If the user prefers looking up resources by name instead of providing IDs:
+The Qovery data sources read a resource by its ID, not by its name. Get the IDs with the CLI (`qovery project list`, `qovery cluster list`) or from the Console URL, then read the resources when the configuration needs their attributes:
 
 ```hcl
-data "qovery_organization" "my_org" {
-  name = "My Organization"
-}
-
 data "qovery_project" "my_project" {
-  organization_id = data.qovery_organization.my_org.id
-  name            = "My Project"
+  id = var.qovery_project_id
 }
 
 data "qovery_cluster" "my_cluster" {
-  organization_id = data.qovery_organization.my_org.id
-  name            = "production"
+  id              = var.qovery_cluster_id
+  organization_id = var.qovery_organization_id
 }
 ```
 
-Then use `data.qovery_project.my_project.id` instead of `var.qovery_project_id`, etc.
+Then use `data.qovery_project.my_project.id` or any other attribute of the data source.
 
 ### 5.4 Environment
 

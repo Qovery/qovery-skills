@@ -264,7 +264,7 @@ User wants to deploy with Qovery
 - **API Base URL**: `https://api.qovery.com`
 - **API Auth Header**: `Authorization: Token YOUR_API_TOKEN`
 - **Terraform Provider**: <https://registry.terraform.io/providers/Qovery/qovery/latest/docs>
-- **Terraform Provider Source**: `qovery/qovery` version `~> 0.54.0`
+- **Terraform Provider Source**: `qovery/qovery` version `~> 1.0`
 - **Terraform Examples**: <https://github.com/Qovery/terraform-examples>
 - **Real-world example (Doktolib)**: <https://github.com/evoxmusic/Doktolib/blob/main/qovery.tf>
 - **OpenAPI Spec**: <https://raw.githubusercontent.com/qovery/qovery-openapi-spec/main/openapi.yaml>

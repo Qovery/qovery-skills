@@ -10,7 +10,7 @@ metadata:
 
 # Qovery Terraform Skill
 
-Generates Terraform manifests from an existing Qovery setup — reads the current configuration from the Qovery API, produces HCL for the Qovery Terraform provider (`qovery/qovery ~> 0.54.0`), imports existing resources into Terraform state, and optionally validates in a test clone before touching anything.
+Generates Terraform manifests from an existing Qovery setup — reads the current configuration from the Qovery API, produces HCL for the Qovery Terraform provider (`qovery/qovery ~> 1.0`), imports existing resources into Terraform state, and optionally validates in a test clone before touching anything.
 
 Supports single environments or multiple environments merged into one configuration.
 
@@ -164,7 +164,7 @@ terraform apply                   # apply (with confirmation)
 
 ```
 terraform/
-├── provider.tf           # qovery/qovery ~> 0.54.0
+├── provider.tf           # qovery/qovery ~> 1.0
 ├── variables.tf          # token, org_id, project_id, cluster_id, secrets
 ├── {env-name}.tf         # all resources for one environment
 ├── outputs.tf            # resource IDs, external hosts

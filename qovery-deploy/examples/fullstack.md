@@ -12,7 +12,7 @@ terraform {
   required_providers {
     qovery = {
       source  = "qovery/qovery"
-      version = "~> 0.54.0"
+      version = "~> 1.0"
     }
   }
 }

@@ -225,18 +225,11 @@ resource "qovery_cluster" "production" {
 
 For Azure:
 ```hcl
-resource "qovery_azure_credentials" "my_azure_creds" {
-  organization_id = var.qovery_organization_id
-  name            = "azure-production"
-  client_id       = var.azure_client_id
-  client_secret   = var.azure_client_secret
-  tenant_id       = var.azure_tenant_id
-  subscription_id = var.azure_subscription_id
-}
-
+# The provider has no Azure credentials resource yet: create the credentials in the Qovery
+# Console, then pass their ID.
 resource "qovery_cluster" "production" {
   organization_id = var.qovery_organization_id
-  credentials_id  = qovery_azure_credentials.my_azure_creds.id
+  credentials_id  = var.azure_credentials_id
   name            = "production"
   cloud_provider  = "AZURE"
   region          = "eastus"

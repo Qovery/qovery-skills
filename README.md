@@ -433,7 +433,7 @@ The skill supports two deployment paths — the user chooses which one:
 Best for development and staging. Uses the Qovery CLI for monitoring and the REST API (`https://api.qovery.com`) for creating resources. Fast to set up, no files to commit.
 
 ### Terraform Provider (Recommended for Production)
-Creates a `qovery.tf` file that defines your entire infrastructure as code. Reproducible, version-controlled, CI/CD-friendly. Uses the [Qovery Terraform Provider](https://registry.terraform.io/providers/Qovery/qovery/latest/docs) (`qovery/qovery` v0.54+).
+Creates a `qovery.tf` file that defines your entire infrastructure as code. Reproducible, version-controlled, CI/CD-friendly. Uses the [Qovery Terraform Provider](https://registry.terraform.io/providers/Qovery/qovery/latest/docs) (`qovery/qovery` v1.x, also on the [OpenTofu Registry](https://search.opentofu.org/provider/qovery/qovery/latest)).
 
 ## Manual Installation
 
