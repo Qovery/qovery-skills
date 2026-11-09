@@ -92,7 +92,8 @@ path, `.tf` files. Everything else lives in Qovery itself and is created through
   services, variables, then trigger the deploy.
 - **The Terraform provider** (Phase 5): `qovery_project`, `qovery_environment`,
   `qovery_application`, ... in `.tf` files, which is the config-as-code option.
-- **The CLI** for day-2 actions (`qovery application deploy`, `qovery service list`, `qovery log`).
+- **The CLI** for day-2 actions (`qovery application deploy`, `qovery service list`, `qovery log`
+  for runtime logs, `qovery environment deployment logs` for build and deployment logs).
 - **The Console** for anything a human prefers to click.
 
 ---

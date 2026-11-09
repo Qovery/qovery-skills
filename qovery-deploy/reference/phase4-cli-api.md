@@ -2,7 +2,7 @@
 
 Use this path when the user chose "CLI + API" or wants the fastest way to deploy.
 
-IMPORTANT, authentication for API calls: the `curl` examples below show `Authorization: Token $QOVERY_API_TOKEN` for readability. Prefer running the same call through `qovery api`, which authenticates with the CLI session and needs no token (`curl -X POST https://api.qovery.com/<path> -d @body.json` becomes `qovery api <path> --method POST --input - < body.json`). When you do use `curl` without a user-provided token, pass the CLI session inline:
+IMPORTANT, authentication for API calls: the `curl` examples below show `Authorization: Token $QOVERY_API_TOKEN` for readability. Prefer running the same call through `qovery api`, which authenticates with the CLI session and needs no token (`curl -X POST https://api.qovery.com/<path> -d @body.json` becomes `qovery api <path> --method POST --input - < body.json`). `--input` reads only from stdin: pass `-` and redirect the file, since `--input body.json` fails. When you do use `curl` without a user-provided token, pass the CLI session inline:
 ```bash
 # Preferred: no token handling
 qovery api organization/<org-id>/project
@@ -186,7 +186,7 @@ IMPORTANT: Adapt these values based on the user's project:
 
 ### 4.6 Create Container Service (from Container Registry)
 
-If the user has a pre-built image in a registry instead of source code:
+Use this when the user has a pre-built image in a registry instead of source code. Pin a real tag such as `v1.12.0`: the API rejects `latest`. List the image's tags on its registry page if the user did not give one.
 
 ```bash
 # First, find the registry ID
@@ -326,8 +326,13 @@ qovery environment deploy
 # Check status (with live updates)
 qovery environment statuses --environment "<env>" --json
 
-# View application logs
-qovery log --application "my-app"
+# Build and deployment logs (the Console's "Deployment logs" tab). Use this while a build runs or after it fails
+qovery environment deployment logs --environment "<env>" --service "my-app"
+qovery environment deployment logs --environment "<env>" --service "my-app" --errors-only
+
+# Runtime logs of the running application. Streams until interrupted, so bound it
+# (on macOS `timeout` comes from coreutils as `gtimeout`)
+timeout 30 qovery log --application "my-app"
 
 # List all services and their statuses
 qovery service list
