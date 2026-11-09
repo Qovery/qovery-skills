@@ -23,6 +23,8 @@ A brand-new org is under the `NO_CREDIT_CARD` restriction, which only blocks **c
   qovery demo destroy   # tear it down when done
   ```
 
+To create it, follow [local-demo-cluster.md](local-demo-cluster.md): it checks Docker and the tools, the two steps only the user can do, and what to do for each error code.
+
 Recommend the demo path for someone just exploring, the own-cluster path for someone who already runs Kubernetes, and the card path when they want Qovery to create the cluster.
 
 ## 5.3 Invite teammates (optional)

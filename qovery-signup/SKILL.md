@@ -126,6 +126,7 @@ Sign up + create an organization:
 | Phase 3 | [reference/phase3-create-organization.md](reference/phase3-create-organization.md) | Interview (name, website, use case — plan is auto `SCALE_2026`, never asked); create via `qovery api`; enrich profile (description/logo/icon) from the website; update via PUT; set context; billing restriction |
 | Phase 4 | [reference/phase4-signup-tracking.md](reference/phase4-signup-tracking.md) | Record the sign-up for tracking + lead qualification (mirrors the console): `POST /admin/userSignUp` + Cargo→HubSpot ingest, tagged `signup_source=CLI`; token via env, never committed |
 | Phase 5 | [reference/phase5-next-steps.md](reference/phase5-next-steps.md) | Configure for the use case (optional first project), add credit card / `qovery demo up`, invite teammates, hand a brief to qovery-onboard |
+| Local demo | [reference/local-demo-cluster.md](reference/local-demo-cluster.md) | Create a local demo cluster with `qovery demo up` (Docker, no cloud account, no card) |
 
 ## Templates
 

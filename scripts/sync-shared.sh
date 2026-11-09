@@ -15,6 +15,7 @@ SYNC_MAP=$(cat <<'EOF'
 console-url-detection.md      | reference/console-url-detection.md | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-assess
 auth.md                       | reference/auth.md                  | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup
 auth-readonly.md              | reference/auth-readonly.md         | qovery-assess
+local-demo-cluster.md         | reference/local-demo-cluster.md    | qovery-deploy qovery-onboard qovery-signup
 scripts/track-skill-usage.sh  | scripts/track-skill-usage.sh       | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup qovery-assess
 pricing/aws.md                | reference/pricing/aws.md           | qovery-optimize
 pricing/gcp.md                | reference/pricing/gcp.md           | qovery-optimize
