@@ -1,6 +1,8 @@
 [
   {
-    "skills": ["qovery-onboard"],
+    "skills": [
+      "qovery-onboard"
+    ],
     "query": "I'm new to Qovery, help me get started — I'm a solo founder, no cloud experience",
     "files": [],
     "expected_behavior": [
@@ -13,7 +15,9 @@
     ]
   },
   {
-    "skills": ["qovery-onboard"],
+    "skills": [
+      "qovery-onboard"
+    ],
     "query": "I have an existing EKS cluster — can I use Qovery on it?",
     "files": [],
     "expected_behavior": [
@@ -24,7 +28,9 @@
     ]
   },
   {
-    "skills": ["qovery-onboard"],
+    "skills": [
+      "qovery-onboard"
+    ],
     "query": "I'm migrating from Heroku — I have 12 apps and a bunch of config vars",
     "files": [],
     "expected_behavior": [
@@ -36,7 +42,9 @@
     ]
   },
   {
-    "skills": ["qovery-onboard"],
+    "skills": [
+      "qovery-onboard"
+    ],
     "query": "Connect my GitHub organization to Qovery. My Qovery organization ID is 123e4567-e89b-12d3-a456-426614174000 — give me the direct Console link.",
     "files": [],
     "expected_behavior": [
@@ -44,6 +52,18 @@
       "Recommends a GitHub organization token and does not recommend installing the deprecated Qovery GitHub App",
       "Explains the required GitHub token permissions or links to the Git Repository Access documentation",
       "Does not emit the invalid ID-less route `https://console.qovery.com/organization/settings/git-repository-access`"
+    ]
+  },
+  {
+    "skills": [
+      "qovery-onboard"
+    ],
+    "query": "I want to try Qovery quickly, I have no AWS or GCP account",
+    "files": [],
+    "expected_behavior": [
+      "Recommends the local demo cluster from the Phase 2 cluster table instead of a managed cloud cluster",
+      "Follows reference/local-demo-cluster.md: machine checks, the user-only steps, qovery demo up, then qovery cluster list",
+      "States that the local cluster is for trying and testing, not production, and how to move to a cloud cluster later"
     ]
   }
 ]

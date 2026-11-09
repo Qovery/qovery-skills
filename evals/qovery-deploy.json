@@ -1,6 +1,8 @@
 [
   {
-    "skills": ["qovery-deploy"],
+    "skills": [
+      "qovery-deploy"
+    ],
     "query": "Deploy this Node.js Express app to Qovery",
     "files": [],
     "expected_behavior": [
@@ -13,7 +15,9 @@
     ]
   },
   {
-    "skills": ["qovery-deploy"],
+    "skills": [
+      "qovery-deploy"
+    ],
     "query": "I want to deploy with Terraform — here is my Console URL: https://console.qovery.com/organization/abc-123/project/def-456",
     "files": [],
     "expected_behavior": [
@@ -25,7 +29,9 @@
     ]
   },
   {
-    "skills": ["qovery-deploy"],
+    "skills": [
+      "qovery-deploy"
+    ],
     "query": "My Qovery account is brand new and I have no cluster yet — deploy my Python FastAPI app on AWS",
     "files": [],
     "expected_behavior": [
@@ -37,7 +43,9 @@
     ]
   },
   {
-    "skills": ["qovery-deploy"],
+    "skills": [
+      "qovery-deploy"
+    ],
     "query": "Deploy my app in production and set up a managed Postgres database for it on AWS",
     "files": [],
     "expected_behavior": [
@@ -53,7 +61,9 @@
     ]
   },
   {
-    "skills": ["qovery-deploy"],
+    "skills": [
+      "qovery-deploy"
+    ],
     "query": "Deploy my Node.js app for local dev/testing with a Postgres database — nothing fancy, just get it running",
     "files": [],
     "expected_behavior": [
@@ -62,6 +72,21 @@
       "If no blueprint matches or the user declines it in favor of simplicity, falls back to the native CONTAINER-mode database (POST /environment/{envId}/database with mode=CONTAINER) from reference/phase4-cli-api.md 4.4",
       "Regardless of which path was taken (blueprint or native container database), wires the app's DB connection env var to the deployed resource via alias (reference/phase6-env-vars.md 6.4 or 6.10) before considering the task complete",
       "Does not skip the Phase 3C catalog check purely because the environment is dev/test"
+    ]
+  },
+  {
+    "skills": [
+      "qovery-deploy"
+    ],
+    "query": "Deploy this app with Qovery. I just signed up and I don't have a cloud account.",
+    "files": [],
+    "expected_behavior": [
+      "Runs Phase 1 discovery and finds that the organization has no cluster",
+      "Offers the local demo cluster first (qovery demo up, Docker, no cloud account) and the cloud or existing cluster path second",
+      "Reads reference/local-demo-cluster.md and checks the OS, Docker (running, 4 CPUs, 8 GB), k3d, helm, kubectl and the CLI version before running anything",
+      "Asks the user to run `! qovery context set` if no organization is in the CLI context, and on macOS to run the sudo loopback command only if the address is missing",
+      "Runs qovery demo up, then confirms the cluster with qovery cluster list before creating the environment",
+      "On a demo up error code, takes the matching action once, then stops and reports instead of retrying in a loop"
     ]
   }
 ]
