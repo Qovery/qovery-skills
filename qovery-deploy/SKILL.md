@@ -203,6 +203,8 @@ User wants to deploy with Qovery
 ├─ Has API token? ──────── NO ──> Generate at Organization Settings > API Tokens
 │
 ├─ Has a cluster? ──────── NO ──> Phase 2B: Cluster Setup
+│                                  ├─ Not for production? Offer the local demo cluster first
+│                                  │  (qovery demo up, Docker; reference/local-demo-cluster.md)
 │                                  ├─ Choose cloud provider (AWS/GCP/Azure/Scaleway)
 │                                  ├─ Create cloud credentials (CloudFormation / Cloud Shell / etc.)
 │                                  ├─ Create cluster (Console recommended, or API, or Terraform)

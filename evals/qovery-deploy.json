@@ -82,9 +82,9 @@
     "files": [],
     "expected_behavior": [
       "Runs Phase 1 discovery and finds that the organization has no cluster",
-      "Offers the local demo cluster first (qovery demo up, Docker, no cloud account) and the cloud or existing cluster path second",
+      "Asks whether the deployment is for production, and if not, offers the local demo cluster first (qovery demo up, Docker, testing only) and the cloud or existing cluster path second",
       "Reads reference/local-demo-cluster.md and checks the OS, Docker (running, 4 CPUs, 8 GB), k3d, helm, kubectl and the CLI version before running anything",
-      "Asks the user to run `! qovery context set` if no organization is in the CLI context, and on macOS to run the sudo loopback command only if the address is missing",
+      "Checks that the CLI context organization matches the selected organization and asks the user to run `! qovery context set` if it is missing or different; on macOS asks for the sudo loopback command only if the exact address is missing",
       "Runs qovery demo up, then confirms the cluster with qovery cluster list before creating the environment",
       "On a demo up error code, takes the matching action once, then stops and reports instead of retrying in a loop"
     ]
