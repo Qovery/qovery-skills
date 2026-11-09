@@ -47,7 +47,7 @@ curl -s -H "Authorization: Token $QOVERY_API_TOKEN" \
   "https://api.qovery.com/organization/{orgId}/cluster" | jq '.results[] | {id, name, cloud_provider, region, status}'
 ```
 
-- **If 0 clusters**: The user MUST create a cluster before deploying. Go to **Phase 2B: Cluster Setup** after completing Phase 2 prerequisites. Cluster creation takes 15-30 minutes.
+- **If 0 clusters**: The user needs a cluster before deploying. Ask whether this deployment is for production. If it is not, offer the local demo cluster first ([local-demo-cluster.md](local-demo-cluster.md)): free, no cloud account, testing only, about 5 to 10 minutes with Docker. If it is for production, or they prefer a cloud or existing cluster, go to **Phase 2B: Cluster Setup** after the Phase 2 prerequisites (15 to 30 minutes for a cloud cluster).
 - **If 1 cluster**: Confirm the cluster details with the user:
   > "I found one cluster: **{name}** ({cloud_provider}, {region}, status: {status}). I'll deploy to this cluster."
   - If the cluster status is NOT `DEPLOYED` or `READY`, warn the user: "This cluster is currently in **{status}** state and cannot accept deployments. Please wait for it to be ready or choose a different cluster."

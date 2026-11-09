@@ -21,6 +21,7 @@ Based on the user's answers, generate a personalized setup recommendation. Prese
 
 | User Context | Recommendation | Why |
 |---|---|---|
+| Wants to try Qovery now, no cloud account or no card | **Local demo cluster** | `qovery demo up` on their machine with Docker, free, about 5 to 10 minutes; not for production. See [local-demo-cluster.md](local-demo-cluster.md) |
 | New to K8s, wants easy path | **Qovery Managed Cluster** | Qovery creates and manages everything — zero K8s knowledge needed |
 | Has existing K8s cluster (any distribution, Kubernetes 1.31+) | **BYOK** | EKS, GKE, Scaleway Kapsule: Qovery Operator installation from the Console; any other cluster: `qovery cluster install` (Phase 4) |
 | Enterprise, multi-team, isolation needed | **Multiple Qovery Managed Clusters** | Separate production from non-production for security isolation |

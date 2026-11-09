@@ -105,7 +105,7 @@ Copy this checklist and check off each step as it completes:
 Deployment Progress:
 - [ ] Phase 1 — Discovery & questionnaire
 - [ ] Phase 2 — Prerequisites & authentication
-- [ ] Phase 2B — Cluster setup (only if no cluster exists)
+- [ ] Phase 2B — Cluster setup (only if no cluster exists; offer the local demo cluster first)
 - [ ] Phase 3 — Codebase analysis & Dockerfile creation
 - [ ] Phase 3C — Blueprint catalog check (MANDATORY whenever any infra piece — DB, cache, storage, queue, etc. — is needed, any environment)
 - [ ] Phase 3B — Deployment plan summary + USER CONFIRMATION
@@ -130,6 +130,7 @@ When entering each phase, read the matching reference file via the bash Read too
 | Phase 1 | [reference/phase1-discovery.md](reference/phase1-discovery.md) | User questionnaire: account, cluster, project, services, DB, deployment method |
 | Phase 2 | [reference/phase2-prereq-auth.md](reference/phase2-prereq-auth.md) | CLI install, login, context, API token |
 | Phase 2B | [reference/phase2b-cluster-setup.md](reference/phase2b-cluster-setup.md) | First-time cluster on AWS / GCP / Azure / Scaleway |
+| Phase 2B (local) | [reference/local-demo-cluster.md](reference/local-demo-cluster.md) | No cluster yet: local demo cluster with `qovery demo up` (Docker, no cloud account) |
 | Phase 3 | [reference/phase3-dockerfiles.md](reference/phase3-dockerfiles.md) | Production Dockerfile templates for 12+ stacks |
 | Phase 3C | [reference/phase3c-blueprints.md](reference/phase3c-blueprints.md) | Blueprint catalog: reuse managed infra components (RDS, Redis, etc.) instead of hand-rolled Terraform |
 | Phase 3B | [reference/phase3b-deployment-plan.md](reference/phase3b-deployment-plan.md) | Plan summary template + confirmation gate |
@@ -202,6 +203,8 @@ User wants to deploy with Qovery
 ├─ Has API token? ──────── NO ──> Generate at Organization Settings > API Tokens
 │
 ├─ Has a cluster? ──────── NO ──> Phase 2B: Cluster Setup
+│                                  ├─ Not for production? Offer the local demo cluster first
+│                                  │  (qovery demo up, Docker; reference/local-demo-cluster.md)
 │                                  ├─ Choose cloud provider (AWS/GCP/Azure/Scaleway)
 │                                  ├─ Create cloud credentials (CloudFormation / Cloud Shell / etc.)
 │                                  ├─ Create cluster (Console recommended, or API, or Terraform)

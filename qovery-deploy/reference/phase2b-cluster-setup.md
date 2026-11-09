@@ -6,6 +6,10 @@ SKIP this phase entirely if the user already has a running cluster in Qovery. On
 
 Cluster creation takes 15-30 minutes. The user needs to complete this before any services can be deployed.
 
+### 2B.0 Try it locally first
+
+If the deployment is not for production and the user has no cloud account ready, or just wants to try Qovery, create a local demo cluster with `qovery demo up` instead of a cloud cluster: follow [local-demo-cluster.md](local-demo-cluster.md), then skip the rest of this phase. It is free and takes about 5 to 10 minutes, but it is for testing only, runs on this machine only, and needs Docker (4 CPUs, 8 GB), k3d, helm, kubectl and Qovery CLI 1.180.1 or later.
+
 ### 2B.1 Choose a Cloud Provider
 
 Ask the user which cloud provider they want to use:

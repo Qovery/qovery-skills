@@ -104,6 +104,7 @@ Onboarding Progress:
 | Phase 2 | [reference/phase2-recommend-setup.md](reference/phase2-recommend-setup.md) | Cloud / cluster / env / security / cost / RBAC recommendations |
 | Phase 3 | [reference/phase3-execute-setup.md](reference/phase3-execute-setup.md) | Account, credentials, cluster, projects, deployment rules, git provider |
 | Phase 4 | [reference/phase4-byok.md](reference/phase4-byok.md) | Existing K8s clusters (1.31+): Operator installation on EKS/GKE/Kapsule, `qovery cluster install` elsewhere |
+| Local demo | [reference/local-demo-cluster.md](reference/local-demo-cluster.md) | No cluster and no cloud account yet: `qovery demo up` on the user's machine (Docker) |
 | Phase 5 | [reference/phase5-migration-guides.md](reference/phase5-migration-guides.md) | Heroku, Vercel, Render, manual K8s migrations + concept mapping |
 | Phase 6 | [reference/phase6-verification.md](reference/phase6-verification.md) | Sanity checks, first deployment hand-off, support paths |
 
