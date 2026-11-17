@@ -26,7 +26,7 @@ jobs:
             target: aarch64-apple-darwin
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.4.0
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -54,7 +54,7 @@ jobs:
           cp 'tracking/target/${{ matrix.target }}/release/skill-run' 'dist/skill-run-${{ matrix.target }}'
           cd dist
           shasum -a 256 'skill-run-${{ matrix.target }}' > 'skill-run-${{ matrix.target }}.sha256'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4.6.2
         with:
           name: skill-run-${{ matrix.target }}
           path: dist/*
@@ -66,8 +66,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4.4.0
+      - uses: actions/download-artifact@v4.3.0
         with:
           pattern: skill-run-*
           path: dist
