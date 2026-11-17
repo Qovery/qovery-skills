@@ -54,7 +54,7 @@ jobs:
           cp 'tracking/target/${{ matrix.target }}/release/skill-run' 'dist/skill-run-${{ matrix.target }}'
           cd dist
           shasum -a 256 'skill-run-${{ matrix.target }}' > 'skill-run-${{ matrix.target }}.sha256'
-      - uses: actions/upload-artifact@v4.6.2
+      - uses: actions/upload-artifact@v7.0.2
         with:
           name: skill-run-${{ matrix.target }}
           path: dist/*
