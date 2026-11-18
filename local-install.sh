@@ -8,7 +8,7 @@ set -euo pipefail
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-terraform" "qovery-policy-token" "qovery-signup" "qovery-assess")
+SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-terraform" "qovery-policy-token" "qovery-signup" "qovery-assess" "qovery-switch-source")
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Colors (if terminal supports them)

@@ -1,0 +1,21 @@
+name: Deploy to Qovery
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy the pushed commit
+        env:
+          QOVERY_API_TOKEN: ${{ secrets.QOVERY_API_TOKEN }}
+          QOVERY_CONTAINER_ID: <container uuid>
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          curl -sS --fail-with-body -X POST "https://api.qovery.com/container/$QOVERY_CONTAINER_ID/deploy" \
+            -H "Authorization: Token $QOVERY_API_TOKEN" \
+            -H "User-Agent: QoverySkill/qovery-switch-source (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)" \
+            -H "Content-Type: application/json" \
+            -d "{\"git_commit_id\": \"$COMMIT_SHA\"}"
