@@ -121,7 +121,7 @@ Each line points to the file with the full entry.
 | Static outbound IP for an allowlist | Cluster **Static IP** feature (NAT gateways + Elastic IPs). On AWS it is chosen at cluster creation and cannot be turned on later | networking-domains |
 | Connect to the database from a laptop | `qovery port-forward` for debugging; not for production traffic or high-churn clients | databases |
 | Production database | Use a managed database from a Blueprint (for example Amazon RDS for PostgreSQL); container databases are for dev and test | databases |
-| Health checks fail on a slow-starting app | Add a startup probe or raise the initial delay; move migrations to a lifecycle job | app-runtime |
+| Health checks fail on a slow-starting app | Add a startup probe (Startup column of the health checks) or raise the initial delay; move migrations to a lifecycle job | app-runtime |
 | OOMKilled / exit code 137 | Memory limit too low for peak usage; raise memory, then look for leaks | app-runtime |
 | Pods restart or move between nodes | Karpenter consolidation and node pools; run at least 2 instances for anything that must not blip | kubernetes-basics |
 | Alias or variable has an unexpected value | Check redeploy, scope overrides and alias targets; re-point an alias through the API or the rename swap, never delete and recreate it | secrets-env |

@@ -25,7 +25,7 @@ Covers containers that crash, restart or never become ready. For a live diagnosi
 **How to check.** In the service **Health checks** settings, compare type, port, path and initial delay with what the app actually does. Time a cold start locally or in the logs (`qovery log --service "<name>"`): if the app logs "listening" after 90 seconds and the probe starts failing at 30, that is the answer. Docs: <https://www.qovery.com/docs/configuration/service-health-checks>.
 
 **Fix, in this order.**
-1. Add a **startup probe** if the service's health check settings offer one. Kubernetes runs readiness and liveness only once the startup probe succeeds, so a slow start no longer trips the liveness probe. If it is not offered, raise the **initial delay** of the readiness and liveness probes to cover the measured boot time.
+1. Add a **startup probe**: the **Startup** column of the service's health check settings in the Console, or `healthchecks.startup_probe` in the API, for applications, containers and jobs. Kubernetes runs readiness and liveness only once the startup probe succeeds, so a slow start no longer trips the liveness probe. With the Console defaults (period 10 s, failure threshold 30), the service gets about 5 minutes to start. Raising the **initial delay** of the readiness and liveness probes also works, but it delays every restart too.
 2. Move database migrations and other one-off work to a lifecycle job (see `reference/deployments-builds.md`).
 3. Make the health endpoint cheap: return 200 when the process can serve, without calling downstream dependencies.
 4. If startup is CPU-bound, raise the CPU allocation.
