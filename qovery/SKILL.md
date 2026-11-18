@@ -107,6 +107,7 @@ Analyze the user's message and route to the appropriate specialized skill. **Aut
 | Scoped/least-privilege API token, OPA/Rego policy token | `qovery-policy-token` | "restricted token", "scoped token", "least-privilege token", "policy token", "OPA/Rego token", "token that can only deploy / never delete", "token for an AI agent" |
 | New to Qovery, no account yet, sign up, create organization | `qovery-signup` | "sign up", "create an account", "install the CLI and log in", "create a new organization", "get started from scratch" |
 | Audit / review the whole setup, production-readiness, gap analysis (read-only) | `qovery-assess` | "assess my organization", "audit my Qovery setup", "are we production-ready?", "gap analysis", "best-practice review", "is my whole org production-ready?" |
+| How-to, "why does Qovery do this", known issues and their fixes, Kubernetes or AWS questions on Qovery | `qovery-support` | "how do I get a static IP", "my certificate is pending", "504 after 15 seconds", "how do I connect to my database", "is this a known issue?" |
 
 ### Remote Development Environments (RDEs)
 
@@ -367,6 +368,7 @@ Quick reference for all specialized skills. When routing, tell the user which sk
 | `qovery-policy-token` | Create and verify a scoped, least-privilege API Policy Token (OPA/Rego) | "Restricted token that can only deploy" |
 | `qovery-signup` | Sign up, install/auth the CLI, and create your first organization | "I'm new to Qovery, help me sign up" |
 | `qovery-assess` | Read-only audit of the whole organization + shareable gap analysis report | "Assess my Qovery setup" |
+| `qovery-support` | Common Qovery, Kubernetes and AWS questions with the fixes that worked, and how to reach support | "How do I get a static outbound IP?" |
 
 ---
 

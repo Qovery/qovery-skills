@@ -13,6 +13,7 @@ metadata:
 This skill diagnoses and fixes infrastructure and application issues on Qovery — crashes, build failures, connectivity problems, stuck deployments, or cluster errors. It systematically narrows the root cause, applies the fix, and writes a runbook to prevent recurrence.
 
 For slow-but-working deployments use `qovery-speedup`. For cost-driven optimization use `qovery-optimize`.
+For how-to questions, known issues and product limits that need no live diagnosis (static IPs, certificates, timeouts, aliases, cluster upgrades, billing), use `qovery-support`.
 
 ## Usage Tracking
 
