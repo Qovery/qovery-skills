@@ -8,7 +8,7 @@ set -euo pipefail
 # https://github.com/Qovery/qovery-skills
 # ============================================================
 
-SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-terraform" "qovery-policy-token" "qovery-signup" "qovery-assess" "qovery-support")
+SKILLS=("qovery" "qovery-onboard" "qovery-deploy" "qovery-troubleshoot" "qovery-optimize" "qovery-speedup" "qovery-preview" "qovery-terraform" "qovery-policy-token" "qovery-signup" "qovery-assess" "qovery-switch-source" "qovery-support")
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Colors (if terminal supports them)
@@ -284,6 +284,7 @@ echo -e "  ${YELLOW}qovery-terraform${NC}     — Terraformize existing Qovery s
 echo -e "  ${YELLOW}qovery-policy-token${NC}  — Create and verify scoped API policy tokens"
 echo -e "  ${YELLOW}qovery-signup${NC}        — Sign up and create your first organization"
 echo -e "  ${YELLOW}qovery-assess${NC}        — Read-only audit of your org + shareable gap analysis"
+echo -e "  ${YELLOW}qovery-switch-source${NC} — Switch a container between an image and a Git build"
 echo -e "  ${YELLOW}qovery-support${NC}       — Answers common Qovery, Kubernetes and AWS support questions"
 echo ""
 echo -e "${BOLD}Slash commands:${NC} /qovery-<skill> (e.g. /qovery-deploy, /qovery-troubleshoot, /qovery-terraform…)."
