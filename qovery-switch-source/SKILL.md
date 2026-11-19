@@ -116,7 +116,7 @@ Run Phase 5 instead of Phases 2 to 4 when the container already builds from Git 
 - **Never send a partial update.** `PUT /container/{containerId}` replaces the whole service: a port or volume missing from the body is removed, and a removed volume loses its data. Always build the body with `scripts/build-switch-body.sh` from a fresh GET of the container.
 - **Confirm before writing.** Show the Phase 3 plan and wait for an explicit yes before the PUT, and again before any deployment.
 - **Keep the before and after.** Save the GET response before the switch and compare it with the one after, using `scripts/check-kept-fields.sh`. Report any difference instead of retrying.
-- **Never send `source` together with the flat `registry_id`, `image_name` and `tag` fields.** The API refuses it. The body builder sends only `source`.
+- **Send `source` alone, without the flat `registry_id`, `image_name` and `tag` fields.** Mixing both can be refused (see [reference/errors.md](reference/errors.md)). The body builder sends only `source`.
 - **Auto-deploy and preview stay off on a Git source.** The API refuses `auto_deploy: true` or `auto_preview: true` for a container that builds from Git. Deploy on push is done by CI calling the deploy endpoint with the commit (Phase 4).
 
 ## Quick reference

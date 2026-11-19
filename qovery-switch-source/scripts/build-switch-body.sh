@@ -28,6 +28,8 @@ jq --slurpfile src "$source_file" --argjson bs "$build_settings" '
   | ($source | has("git_repository")) as $to_git
   | if ($to_git == ($source | has("image")))
     then error("SOURCE_JSON must hold exactly one of git_repository or image") else . end
+  | if ($to_git | not) and ($source.image.registry_id // "") == ""
+    then error("SOURCE_JSON image must hold registry_id: pick one from organization/{organizationId}/containerRegistry") else . end
   | ({
       name, description, arguments, entrypoint, cpu, memory, gpu,
       min_running_instances, max_running_instances, ephemeral_storage_in_gib,

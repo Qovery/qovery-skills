@@ -13,7 +13,7 @@ qovery api organization/<organizationId>/containerRegistry
 - **Image and tag**: the API checks that the tag exists in that registry before saving, so ask for an exact tag (`1.4.2`, a commit sha), not a moving one, when the image is built by CI.
 - The image the container runs now (flat `registry`, `image_name`, `tag` in the GET response) is the last Qovery build, stored in the cluster's own registry. Prefer an image from the user's own registry: the cluster's registry is managed by Qovery.
 
-Write the source file:
+Write the source file. `registry_id` is required: without it, the API refuses a switch from Git back to an image. Use the id of a registry from the list above, not the `registry.id` of the GET response, which is the cluster's build registry.
 
 ```json
 {"image": {"registry_id": "<registry uuid>", "image_name": "acme/api", "tag": "1.4.2"}}
