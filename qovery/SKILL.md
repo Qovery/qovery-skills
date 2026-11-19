@@ -106,6 +106,7 @@ Analyze the user's message and route to the appropriate specialized skill. **Aut
 | Terraformize existing setup, convert to IaC | `qovery-terraform` | "terraformize", "convert to terraform", "export as IaC", "terraform manifests", "infrastructure as code" |
 | Scoped/least-privilege API token, OPA/Rego policy token | `qovery-policy-token` | "restricted token", "scoped token", "least-privilege token", "policy token", "OPA/Rego token", "token that can only deploy / never delete", "token for an AI agent" |
 | New to Qovery, no account yet, sign up, create organization | `qovery-signup` | "sign up", "create an account", "install the CLI and log in", "create a new organization", "get started from scratch" |
+| Switch a container between a registry image and a Git build, change a container's source in place | `qovery-switch-source` | "build my container from GitHub", "Qovery should build this image instead of CircleCI", "switch back to the Docker Hub image", "change the container source" |
 | Audit / review the whole setup, production-readiness, gap analysis (read-only) | `qovery-assess` | "assess my organization", "audit my Qovery setup", "are we production-ready?", "gap analysis", "best-practice review", "is my whole org production-ready?" |
 
 ### Remote Development Environments (RDEs)
@@ -367,6 +368,7 @@ Quick reference for all specialized skills. When routing, tell the user which sk
 | `qovery-policy-token` | Create and verify a scoped, least-privilege API Policy Token (OPA/Rego) | "Restricted token that can only deploy" |
 | `qovery-signup` | Sign up, install/auth the CLI, and create your first organization | "I'm new to Qovery, help me sign up" |
 | `qovery-assess` | Read-only audit of the whole organization + shareable gap analysis report | "Assess my Qovery setup" |
+| `qovery-switch-source` | Switch a container in place between a registry image and a Git build | "Build my container from Git instead of pulling the image" |
 
 ---
 

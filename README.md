@@ -20,10 +20,11 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | **qovery-policy-token** | Create a scoped, least-privilege API Policy Token — turns your intent into an OPA/Rego policy, tests it locally with OPA and live against the API, creates the token, and verifies it allows exactly what you want and denies everything else. Includes `/qovery-policy-token` slash command |
 | **qovery-signup** | Sign up from scratch — checks/installs the Qovery CLI, authenticates via `qovery auth --headless` (first login creates the account), and creates your first organization, then hands off to qovery-onboard. Never handles raw tokens. Includes `/qovery-signup` slash command |
 | **qovery-assess** | Read-only assessment of a whole organization — inventories every cluster, environment and service, reads deployment/runtime logs and audit events (redacted on write), then runs 147 best-practice checks across reliability, security, performance, delivery, cost and disaster recovery. Correlates findings to the company's public compliance claims (SOC 2 / ISO 27001 / GDPR / DORA) and maps technical checks to published controls (CIS Kubernetes Benchmark, Pod Security Standards, NSA/CISA, NIST SP 800-190), scores each pillar, and writes a customer-shareable gap analysis with a prioritized roadmap. Modifies nothing. Includes `/qovery-assess` slash command |
+| **qovery-switch-source** | Switch an existing container service in place between a registry image and a Git build that Qovery runs, in either direction — keeps the service id, name, Kubernetes resources, volumes and data, variables and domains; builds the update from the live config so nothing else changes, confirms the plan, deploys a chosen commit, and sets up any CI to deploy on push. Includes `/qovery-switch-source` slash command |
 
 ## Quick Install
 
-**One command — installs all eleven skills globally for all your projects:**
+**One command — installs all twelve skills globally for all your projects:**
 
 ```bash
 curl -fsSL https://skill.qovery.com/install.sh | bash
@@ -41,7 +42,7 @@ curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --project
 curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --uninstall
 ```
 
-That's it. The installer automatically places all eleven skills (with their `reference/`, `templates/`, and `examples/` sub-directories) in all the right locations so they're discovered by any compatible tool.
+That's it. The installer automatically places all twelve skills (with their `reference/`, `templates/`, and `examples/` sub-directories, where a skill has them) in all the right locations so they're discovered by any compatible tool.
 
 **Update to the latest version** — just run the install command again. It overwrites the previous versions:
 
@@ -160,6 +161,19 @@ When you tell your AI agent _"assess my Qovery organization and give me a gap an
 13. **Writes a customer-shareable report** — executive scorecard, top risks with evidence and impact, compliance badges, topology map, Now/Next/Later roadmap with effort bands, plus a findings CSV
 14. **Ends with hand-offs, not changes** — maps findings to `qovery-optimize`, `qovery-speedup`, `qovery-terraform`, `qovery-policy-token`, and to the work that needs a human rather than a tool
 
+### qovery-switch-source
+
+When you tell your AI agent _"make Qovery build my container from our GitHub repo instead of pulling the image"_:
+
+1. **Finds the container** from a Console URL or its name, and saves its current configuration
+2. **Checks what else manages it** — Terraform, CI jobs that deploy image tags, older Console or CLI versions — before changing anything
+3. **Collects the Git source** — repository, branch, build context, Dockerfile and target stage, reading your CI config when the image is built there today, and the Git token to use
+4. **Builds the update from the live configuration**, so ports, volumes, resources and groups stay exactly as they are. Only the source changes, plus auto-deploy and previews, which a Git source keeps off
+5. **Shows the plan and waits for your yes**, then switches and verifies that nothing else changed
+6. **Deploys a chosen commit**, follows the build, and checks the running image and your data
+7. **Sets up deploy on push** from CI (templates for GitHub Actions and CircleCI, a `curl` call for any other CI), since auto-deploy stays off on a Git container
+8. **Switches back to a registry image** the same way when you need it
+
 
 ## Usage
 
@@ -263,6 +277,13 @@ The onboard skill acts as your personal cloud architect. The deploy skill handle
 - _"Create a new Qovery organization from scratch"_
 - `/qovery-signup` (slash command)
 
+**Prompts that trigger qovery-switch-source:**
+- _"Make Qovery build my container from GitHub instead of pulling the image"_
+- _"We build our images in CI and push them to a registry, can Qovery build this service instead?"_
+- _"Switch this container back to a Docker Hub image"_
+- _"Change my container's source without recreating the service"_
+- `/qovery-switch-source` (slash command)
+
 ## Slash Commands
 
 Each skill includes a slash command for quick invocation. Type `/` followed by the command name in your AI tool's chat:
@@ -280,6 +301,7 @@ Each skill includes a slash command for quick invocation. Type `/` followed by t
 | `/qovery-policy-token` | Create and verify a scoped API Policy Token | `/qovery-policy-token` or `/qovery-policy-token read-only on staging, can deploy the api service` |
 | `/qovery-signup` | Sign up and create your first organization | `/qovery-signup` or `/qovery-signup org="Acme" plan=USER_2025` |
 | `/qovery-assess` | Read-only audit + shareable gap analysis report | `/qovery-assess` or `/qovery-assess https://console.qovery.com/organization/<id>/overview` |
+| `/qovery-switch-source` | Switch a container between a registry image and a Git build | `/qovery-switch-source` or `/qovery-switch-source api to github.com/acme/api main` |
 
 Commands are installed automatically by the install script. They accept optional arguments (service name, environment name, Console URL) and auto-detect context from your git workspace.
 
@@ -424,6 +446,16 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 | **6e. Disaster recovery** | `DR-01..DR-06` — RPO/RTO defined per service, backups automated and off-cluster, a restore actually timed, rebuild-from-code, AZ vs region failure domain as a stated decision, rehearsed runbook with named owners |
 | **7. Score** | Partial credit per check, severity weights (10/6/3/1/0), pillar weights (Reliability 30%, Security 30%, Performance 15%, Delivery 15%, Cost 10%), maturity level 1–4, Critical-finding cap, disclosed coverage including UNKNOWNs |
 | **8. Report** | Customer-shareable Markdown + findings CSV + raw snapshot. Executive summary, compliance profile, topology, findings with evidence/impact/badges, Now/Next/Later roadmap, and a "Where Qovery helps" section mapped to actual finding IDs |
+
+### qovery-switch-source
+
+| Phase | Description |
+|-------|-------------|
+| **1. Context** | Authenticate, find the container (Console URL or name), save its current configuration, check Terraform, CI and client versions |
+| **2. Git source** | Repository, branch, build context, Dockerfile, target stage and Git token; optional build settings; request body built from the live configuration |
+| **3. Plan and apply** | Plan summary and confirmation, the switch, and a check that every other field is unchanged |
+| **4. Deploy and CI** | Deploy a commit, follow the build, verify the running image and data, set up deploy on push from CI |
+| **5. Back to an image** | Pick a registry image, same plan, apply and check, then deploy |
 
 ## Deployment Methods
 
