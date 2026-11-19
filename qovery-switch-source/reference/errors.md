@@ -17,7 +17,7 @@ Every check runs before anything is saved: an error means the container is uncha
 | Error on build settings | Builder CPU, memory or timeout above the cluster's limits | Lower the values, or leave build settings out to use the defaults |
 | Not found on the registry, on a switch to an image | The registry id is not one of the organization's registries | List them with `organization/{organizationId}/containerRegistry` |
 | Error on the image, on a switch to an image | The tag does not exist in that registry | Check the image name and tag in the registry |
-| 403 | The user cannot manage this container | A switch needs the right to edit the service (manager role on its project or environment) |
+| 403 | The user cannot edit this container | Editing a container needs the admin permission on it; use a token or an account that has it |
 
 ## On `POST /container/{containerId}/deploy`
 
@@ -26,4 +26,4 @@ Every check runs before anything is saved: an error means the container is uncha
 | Error on `image_tag` | A tag was sent to a Git container, usually by an old CI step | Send `git_commit_id` instead, and update the CI step (Phase 4) |
 | Error on `git_commit_id` | A commit was sent to an image container | Send `image_tag`, or switch the container to Git first |
 | Build failed | The Dockerfile does not build on the cluster's builder | Read the build logs; check build arguments the CI used to pass, the target stage, and the builder's memory |
-| Deployment failed after the build | The new image does not start (port, health check, missing variable) | Use `qovery-troubleshoot`; the switch itself is not the cause, and switching back restores the previous image |
+| Deployment failed after the build | The new image does not start (port, health check, missing variable) | Use `qovery-troubleshoot`; the switch itself is not the cause. To go back, switch to the previous image (Phase 5), then deploy it: the switch alone changes only the configuration |

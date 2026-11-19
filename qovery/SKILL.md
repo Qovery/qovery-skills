@@ -368,6 +368,7 @@ Quick reference for all specialized skills. When routing, tell the user which sk
 | `qovery-policy-token` | Create and verify a scoped, least-privilege API Policy Token (OPA/Rego) | "Restricted token that can only deploy" |
 | `qovery-signup` | Sign up, install/auth the CLI, and create your first organization | "I'm new to Qovery, help me sign up" |
 | `qovery-assess` | Read-only audit of the whole organization + shareable gap analysis report | "Assess my Qovery setup" |
+| `qovery-switch-source` | Switch a container in place between a registry image and a Git build | "Build my container from Git instead of pulling the image" |
 
 ---
 

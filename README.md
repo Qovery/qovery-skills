@@ -42,7 +42,7 @@ curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --project
 curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --uninstall
 ```
 
-That's it. The installer automatically places all twelve skills (with their `reference/`, `templates/`, and `examples/` sub-directories) in all the right locations so they're discovered by any compatible tool.
+That's it. The installer automatically places all twelve skills (with their `reference/`, `templates/`, and `examples/` sub-directories, where a skill has them) in all the right locations so they're discovered by any compatible tool.
 
 **Update to the latest version** — just run the install command again. It overwrites the previous versions:
 
@@ -168,7 +168,7 @@ When you tell your AI agent _"make Qovery build my container from our GitHub rep
 1. **Finds the container** from a Console URL or its name, and saves its current configuration
 2. **Checks what else manages it** — Terraform, CI jobs that deploy image tags, older Console or CLI versions — before changing anything
 3. **Collects the Git source** — repository, branch, build context, Dockerfile and target stage, reading your CI config when the image is built there today, and the Git token to use
-4. **Builds the update from the live configuration**, so ports, volumes, resources and groups stay exactly as they are and only the source changes
+4. **Builds the update from the live configuration**, so ports, volumes, resources and groups stay exactly as they are. Only the source changes, plus auto-deploy and previews, which a Git source keeps off
 5. **Shows the plan and waits for your yes**, then switches and verifies that nothing else changed
 6. **Deploys a chosen commit**, follows the build, and checks the running image and your data
 7. **Sets up deploy on push** from CI (templates for GitHub Actions and CircleCI, a `curl` call for any other CI), since auto-deploy stays off on a Git container

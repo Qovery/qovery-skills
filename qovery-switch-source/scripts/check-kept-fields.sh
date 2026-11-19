@@ -15,7 +15,7 @@ before_is_git="$(jq -r '.source | has("git_repository")' "$1")"
 kept='{id, name, description, icon_uri, environment: .environment.id, cpu, memory, gpu,
        min_running_instances, max_running_instances, ephemeral_storage_in_gib, cpu_architecture,
        arguments, entrypoint, healthchecks, autoscaling,
-       ports: ((.ports // []) | sort_by(.id)),
+       ports: ((.ports // []) | map(with_entries(select(.value != null))) | sort_by(.id)),
        storage: ((.storage // []) | sort_by(.id)),
        annotations_groups: ((.annotations_groups // []) | map(.id) | sort),
        labels_groups: ((.labels_groups // []) | map(.id) | sort)}'

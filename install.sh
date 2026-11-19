@@ -349,6 +349,7 @@ echo -e "  ${YELLOW}qovery-terraform${NC}     — Terraformize existing Qovery s
 echo -e "  ${YELLOW}qovery-policy-token${NC}  — Create and verify scoped API policy tokens"
 echo -e "  ${YELLOW}qovery-signup${NC}        — Sign up and create your first organization"
 echo -e "  ${YELLOW}qovery-assess${NC}        — Read-only audit of your org + shareable gap analysis"
+echo -e "  ${YELLOW}qovery-switch-source${NC} — Switch a container between an image and a Git build"
 echo ""
 echo -e "${BOLD}Compatible with:${NC}"
 echo "  Claude Code, OpenCode, Cursor, VS Code Copilot, Gemini CLI,"

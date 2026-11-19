@@ -12,8 +12,9 @@ Switch source — <container name> (<environment name>)
 From:  <image: registry / image:tag>   or   <Git: repository @ branch, root path, Dockerfile>
 To:    <Git: repository @ branch, root path, Dockerfile, token name>   or   <image: registry / image:tag>
 
-Kept:  service id, name, volumes and data (<n> volume(s)), ports (<list>), resources, instances,
-       health checks, autoscaling: compared after the switch.
+Kept:  service id, name, volumes (<n>: id, size, mount path), ports (<list>), resources,
+       instances, health checks, autoscaling: compared after the switch. Volume data is not
+       compared: the volumes are kept, and the user checks the data after the deploy.
        Variables and secrets, custom domains, deployment stage: not in the request, not compared.
 Auto:  to Git: auto-deploy <on|off> -> off, previews <on|off> -> off.
        To an image: auto-deploy off -> <on|off>, previews off -> <on|off> (Phase 5).
@@ -26,8 +27,8 @@ Next:  deploy a commit (Phase 4)<, then change the CI job that deploys by image 
 ## 2. Apply
 
 ```bash
-qovery api container/<containerId> --method PUT --input - < body.json > put-response.json
-qovery api container/<containerId> > after.json
+qovery api container/<containerId> --method PUT --input - < body.json > put-response.json \
+  && qovery api container/<containerId> > after.json
 ```
 
 If the PUT fails, `qovery api` exits non-zero and `put-response.json` holds the API error: nothing was saved, find the message in [errors.md](errors.md). On success, `after.json` is a fresh GET, the same shape as `before.json`.
@@ -44,7 +45,7 @@ With `curl`, send the body from the file (`-d @body.json`): pasting a long JSON 
 bash '__QOVERY_SKILL_DIR__/scripts/check-kept-fields.sh' before.json after.json
 ```
 
-It must print `kept: …`. If it prints changed fields, stop, show them to the user, and do not deploy. Rebuilding the body from a fresh GET and sending it again restores fields that were dropped, but a volume that was removed cannot be restored with its data.
+It must print `kept: …`. If it prints changed fields, stop, show them to the user, and do not deploy. Don't retry from a fresh GET: it already reflects the change. A field that changed can be set back from `before.json` with a new plan and a yes; a removed port comes back as a new port without its old id, and a removed volume cannot be restored with its data.
 
 On an API error, nothing was saved: find the message in [errors.md](errors.md), fix the input, rebuild the body, and show the plan again if it changed.
 

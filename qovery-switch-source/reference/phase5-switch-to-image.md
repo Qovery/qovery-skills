@@ -30,14 +30,14 @@ qovery api container/<containerId> > before-back.json
 bash '__QOVERY_SKILL_DIR__/scripts/build-switch-body.sh' before-back.json source.json > body.json
 ```
 
-`auto_deploy` and `auto_preview` stay off. If Phase 1's `before.json` shows either on before the switch to Git, offer to turn it back on (for example `jq '.auto_deploy = true | .auto_preview = true' body.json > body-on.json`, then send `body-on.json`), and say which in the plan. The check below then reports those flags going from false to true: expected. The plan's last line reads: deploy the image (step 3), and the auto-deploy state.
+`auto_deploy` and `auto_preview` stay off. If Phase 1's `before.json` shows either on before the switch to Git, offer to restore them, each to its Phase 1 value, in the body the PUT sends: `jq --slurpfile b before.json '.auto_deploy = $b[0].auto_deploy | .auto_preview = $b[0].auto_preview' body.json > body-restored.json && mv body-restored.json body.json`. Say which in the plan. The check below then reports those flags going from false to true: expected. The plan's last line reads: deploy the image (step 3), and the auto-deploy state.
 
 Show the plan summary and wait for a yes. Then:
 
 ```bash
-qovery api container/<containerId> --method PUT --input - < body.json > put-response.json
-qovery api container/<containerId> > after.json
-bash '__QOVERY_SKILL_DIR__/scripts/check-kept-fields.sh' before-back.json after.json
+qovery api container/<containerId> --method PUT --input - < body.json > put-response.json \
+  && qovery api container/<containerId> > after.json \
+  && bash '__QOVERY_SKILL_DIR__/scripts/check-kept-fields.sh' before-back.json after.json
 ```
 
 After the switch, `source.image` holds the chosen image, `build_settings` is gone, and the Git link is removed. The flat `registry`, `image_name` and `tag` show the new image at once, while the cluster keeps running the last build until the next deployment.

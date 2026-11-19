@@ -4,7 +4,7 @@ Goal: the container runs an image Qovery built from the chosen commit, its data 
 
 ## 1. Deploy a commit (confirm first)
 
-A Git container deploys the stored commit (`source.git_repository.deployed_commit_id`) unless the request names one. The stored commit is the head of the branch when the source was saved. To deploy the current head, read it with `git ls-remote <url> refs/heads/<branch>` (public repository, or with the user's Git credentials), or ask the user for the sha. Ask which commit to deploy: usually the head of the branch, or the commit currently running in production when the image was built from it.
+A Git container deploys the stored commit (`source.git_repository.deployed_commit_id`) unless the request names one. The stored commit is the head of the branch when the source was saved. To deploy the current head, read it with `git ls-remote -- "<url>" "refs/heads/<branch>"` (keep the quotes) (public repository, or with the user's Git credentials), or ask the user for the sha. Ask which commit to deploy: usually the head of the branch, or the commit currently running in production when the image was built from it.
 
 ```bash
 echo '{"git_commit_id": "<full 40-character sha>"}' | qovery api container/<containerId>/deploy --method POST --input -
