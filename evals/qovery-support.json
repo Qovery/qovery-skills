@@ -1,0 +1,105 @@
+[
+  {
+    "skills": ["qovery-support"],
+    "query": "Since last week our export endpoint returns 504 upstream request timeout after about 15 seconds. It used to work. We're on AWS.",
+    "files": [],
+    "expected_behavior": [
+      "Loads reference/networking-domains.md, not every reference file",
+      "Explains that clusters routed by Envoy Gateway use a default request timeout of 15 seconds when none is set",
+      "Asks or checks whether the cluster uses Gateway API (k8s.use_api_gateway) or NGINX Ingress before naming a setting",
+      "Recommends network.gateway_api.http_request_timeout_seconds on the service, or envoy.gateway_api.http_request_timeout_seconds on the cluster, followed by a redeploy",
+      "Uses the read, modify, write sequence if it proposes changing advanced settings through the API, and asks before writing"
+    ]
+  },
+  {
+    "skills": ["qovery-support"],
+    "query": "A payment provider wants a fixed IP to whitelist our outbound traffic. How do I get one on our existing EKS cluster?",
+    "files": [],
+    "expected_behavior": [
+      "Loads reference/networking-domains.md",
+      "Explains the cluster Static IP feature (NAT gateways with Elastic IPs) and where to find the addresses in the AWS console",
+      "States that on AWS the Static IP feature is chosen at cluster creation and cannot be enabled on an existing cluster, so the path is a new cluster",
+      "Does not invent a setting that enables static IP on an existing AWS cluster"
+    ]
+  },
+  {
+    "skills": ["qovery-support"],
+    "query": "I added app.example.com as a custom domain an hour ago and the certificate is still pending. DNS is on Cloudflare.",
+    "files": [],
+    "expected_behavior": [
+      "Loads reference/networking-domains.md",
+      "Asks whether the Cloudflare record is proxied or DNS only, and whether the domain is a wildcard",
+      "Suggests checking the CNAME with dig against the target shown in the Console",
+      "Explains Generate certificate for DNS-only records versus Domain behind a CDN for proxied records",
+      "Recommends a redeploy after DNS resolves, and escalation to Qovery support with the service URL if it still fails"
+    ]
+  },
+  {
+    "skills": ["qovery-support"],
+    "query": "How do I connect DBeaver on my laptop to the Postgres database of my staging environment?",
+    "files": [],
+    "expected_behavior": [
+      "Loads reference/databases.md",
+      "Recommends qovery port-forward with the database's Console URL and a local port, rather than making the database public",
+      "Mentions the Port-forward permission on the environment type",
+      "Points to the built-in variables for credentials without printing any secret value",
+      "If the database is a managed RDS instance, explains that port-forward reaches pods and proposes another path"
+    ]
+  },
+  {
+    "skills": ["qovery-support"],
+    "query": "I replaced our Redis service with Valkey and now the app can't read REDIS_URL. What happened?",
+    "files": [],
+    "expected_behavior": [
+      "Loads reference/secrets-env.md and/or reference/databases.md",
+      "Explains that REDIS_URL was an alias whose target was removed with the old service",
+      "Recommends re-pointing the alias with PUT /variable/{aliasId} (value is the target variable name) or the rename swap in the Console, then a redeploy",
+      "Warns against deleting the alias and recreating it, or replacing it with a plain variable holding the copied value"
+    ]
+  },
+  {
+    "skills": ["qovery-support"],
+    "query": "Our pods keep restarting during the night even though nobody deployed anything. Is that normal?",
+    "files": [],
+    "expected_behavior": [
+      "Loads reference/kubernetes-basics.md or reference/aws-eks.md",
+      "Lists Karpenter consolidation and drift, OOM kills, liveness failures and spot reclaims as the usual causes",
+      "Explains the stable and default node pools and that single-instance services restart when their node is replaced",
+      "Recommends at least 2 instances, graceful SIGTERM handling with deployment.termination_grace_period_seconds, and the stable pool consolidation window",
+      "Hands off to qovery-troubleshoot if the user wants the restarts of a specific service diagnosed from its logs and events"
+    ]
+  },
+  {
+    "skills": ["qovery-support"],
+    "query": "I used the API to set one advanced setting on my app and now the service account setting is empty and the app lost access to S3.",
+    "files": [],
+    "expected_behavior": [
+      "Loads reference/cli-api-terraform.md",
+      "Explains that PUT on advancedSettings replaces the whole object and omitted keys reset to defaults",
+      "Gives the GET, edit, PUT sequence with qovery api, and says to drop build.* keys for applications",
+      "Suggests the audit log to find the previous value, and asks before writing anything",
+      "Recommends a redeploy after restoring the setting"
+    ]
+  },
+  {
+    "skills": ["qovery-support"],
+    "query": "My deployments are refused with a billing message but we paid the invoice yesterday.",
+    "files": [],
+    "expected_behavior": [
+      "Loads reference/billing-access.md",
+      "Checks billing_deployment_restriction on the organization with a read-only call",
+      "Explains that a value other than NO_CREDIT_CARD is lifted by Qovery support, and tells the user how to contact support with the invoice reference",
+      "Does not attempt to change billing or retry deployments in a loop"
+    ]
+  },
+  {
+    "skills": ["qovery-support", "qovery-troubleshoot"],
+    "query": "My api service in production is crash looping right now, here is the URL: https://console.qovery.com/organization/x/project/y/environment/z/application/a",
+    "files": [],
+    "expected_behavior": [
+      "Recognizes a live incident on a specific service",
+      "Hands off to qovery-troubleshoot for live diagnosis, or, if it is not installed, follows reference/app-runtime.md (CrashLoopBackOff, OOMKilled, probes) using read-only checks first",
+      "Does not change configuration or redeploy production without explicit confirmation"
+    ]
+  }
+]
