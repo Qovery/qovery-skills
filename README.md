@@ -20,7 +20,7 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | **qovery-policy-token** | Create a scoped, least-privilege API Policy Token — turns your intent into an OPA/Rego policy, tests it locally with OPA and live against the API, creates the token, and verifies it allows exactly what you want and denies everything else. Includes `/qovery-policy-token` slash command |
 | **qovery-signup** | Sign up from scratch — checks/installs the Qovery CLI, authenticates via `qovery auth --headless` (first login creates the account), and creates your first organization, then hands off to qovery-onboard. Never handles raw tokens. Includes `/qovery-signup` slash command |
 | **qovery-assess** | Read-only assessment of a whole organization — inventories every cluster, environment and service, reads deployment/runtime logs and audit events (redacted on write), then runs 147 best-practice checks across reliability, security, performance, delivery, cost and disaster recovery. Correlates findings to the company's public compliance claims (SOC 2 / ISO 27001 / GDPR / DORA) and maps technical checks to published controls (CIS Kubernetes Benchmark, Pod Security Standards, NSA/CISA, NIST SP 800-190), scores each pillar, and writes a customer-shareable gap analysis with a prioritized roadmap. Modifies nothing. Includes `/qovery-assess` slash command |
-| **qovery-switch-source** | Switch an existing container service in place between a registry image and a Git build that Qovery runs, in either direction — keeps the service id, name, Kubernetes resources, volumes and data, variables and domains; builds the update from the live config so nothing else changes, confirms the plan, deploys a chosen commit, and sets up CI (GitHub Actions, CircleCI) to deploy on push. Includes `/qovery-switch-source` slash command |
+| **qovery-switch-source** | Switch an existing container service in place between a registry image and a Git build that Qovery runs, in either direction — keeps the service id, name, Kubernetes resources, volumes and data, variables and domains; builds the update from the live config so nothing else changes, confirms the plan, deploys a chosen commit, and sets up any CI to deploy on push. Includes `/qovery-switch-source` slash command |
 
 ## Quick Install
 
@@ -171,7 +171,7 @@ When you tell your AI agent _"make Qovery build my container from our GitHub rep
 4. **Builds the update from the live configuration**, so ports, volumes, resources and groups stay exactly as they are and only the source changes
 5. **Shows the plan and waits for your yes**, then switches and verifies that nothing else changed
 6. **Deploys a chosen commit**, follows the build, and checks the running image and your data
-7. **Sets up deploy on push** from CI (GitHub Actions or CircleCI template), since auto-deploy stays off on a Git container
+7. **Sets up deploy on push** from CI (templates for GitHub Actions and CircleCI, a `curl` call for any other CI), since auto-deploy stays off on a Git container
 8. **Switches back to a registry image** the same way when you need it
 
 
@@ -279,7 +279,7 @@ The onboard skill acts as your personal cloud architect. The deploy skill handle
 
 **Prompts that trigger qovery-switch-source:**
 - _"Make Qovery build my container from GitHub instead of pulling the image"_
-- _"We build images in CircleCI, can Qovery build this service instead?"_
+- _"We build our images in CI and push them to a registry, can Qovery build this service instead?"_
 - _"Switch this container back to a Docker Hub image"_
 - _"Change my container's source without recreating the service"_
 - `/qovery-switch-source` (slash command)

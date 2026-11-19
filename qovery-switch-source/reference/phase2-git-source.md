@@ -11,21 +11,22 @@ Collect from the user, or from the repository they point at:
 | `url` | `https://github.com/acme/api.git` | HTTPS URL of the repository |
 | `provider` | `GITHUB` | `GITHUB`, `GITLAB` or `BITBUCKET` |
 | `branch` | `main` | The branch the next deployment builds from |
-| `root_path` | `/` or `/services/api` | Build context inside the repository |
-| `dockerfile_path` | `Dockerfile` | Relative to `root_path` |
+| `root_path` | `/` or `/services/api` | Build context inside the repository, starting with `/` |
+| `dockerfile_path` | `Dockerfile` | Relative to `root_path`: for an app and its Dockerfile in `services/api`, send `root_path` `/services/api` and `dockerfile_path` `Dockerfile` |
 | `docker_target_build_stage` | `runtime` | Optional; the last stage is built when absent |
 
-When the image is built in CI today, read the CI configuration (`.circleci/config.yml`, `.github/workflows/*.yml`, `.gitlab-ci.yml`) to find the Dockerfile, the build context and any `--target`. Build arguments passed by CI (`--build-arg`) are not carried over by the switch. List them for the user, suggest declaring them as environment variables on the container, and check the first build's logs (Phase 4) for an `ARG` that came through empty.
+When the image is built in CI today, read that CI's configuration, whatever the tool (for example `.github/workflows/*.yml`, `.gitlab-ci.yml`, `.circleci/config.yml`, `bitbucket-pipelines.yml`, a `Jenkinsfile`), to find the Dockerfile, the build context and any `--target`. Build arguments passed by CI (`--build-arg`) are not carried over by the switch. List them for the user, suggest declaring them as environment variables on the container, and check the first build's logs (Phase 4) for an `ARG` that came through empty. With no CI configuration in the repository (the image is built by hand, or by a CI the agent cannot read), ask the user for the Dockerfile path, the build context and any build arguments.
 
 ## 2. Git access
 
 The organization must be able to read the repository:
 
-- **Git provider connected to the organization** (for example the Qovery GitHub app): nothing else to send.
-- **Git token**: list the organization's tokens and let the user pick one; send its id as `git_token_id`.
+- **Git provider connected to the organization** (for example the Qovery GitHub app): nothing else to send. The API does not say whether one is connected: ask the user, and use a token when unsure.
+- **Git token**: list the organization's tokens whose `type` matches `provider`, and let the user pick one; send its id as `git_token_id`.
 
 ```bash
-qovery api organization/<organizationId>/gitToken
+qovery api organization/<organizationId>/gitToken \
+  | jq -r --arg p "<provider>" '.results[] | select(.type == $p) | "\(.name)  \(.id)"'
 ```
 
 Show only token names and ids, never values. The API checks before saving that the token belongs to the organization, that it can read the repository, and that the Dockerfile exists on the branch. A failed check changes nothing (see [errors.md](errors.md)).

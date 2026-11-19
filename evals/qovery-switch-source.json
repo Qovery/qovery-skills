@@ -1,17 +1,41 @@
 [
   {
     "skills": ["qovery-switch-source"],
-    "query": "We build the api image in CircleCI and push it to ECR, then deploy the tag on Qovery. I want Qovery to build it from our GitHub repo instead, without recreating the service: https://console.qovery.com/organization/<org>/project/<project>/environment/<env>/application/<containerId>",
+    "query": "A GitHub Actions workflow builds our api image, pushes it to our registry and then deploys the new tag on Qovery. I want Qovery to build it from the GitHub repository instead, without recreating the service: https://console.qovery.com/organization/<org>/project/<project>/environment/<env>/service/<containerId>",
     "files": [],
     "expected_behavior": [
       "Extracts the IDs from the Console URL and saves GET /container/{containerId} as before.json",
       "Confirms the service is a container with an image source and asks whether Terraform manages it",
-      "Reads .circleci/config.yml to find the Dockerfile, build context, target stage and build arguments",
+      "Reads the workflow under .github/workflows/ to find the Dockerfile, build context, target stage and build arguments",
       "Lists the organization's git tokens by name and id only, never printing a token value",
       "Builds the PUT body with scripts/build-switch-body.sh instead of writing a partial body by hand",
       "Shows the Phase 3 plan (from, to, kept, auto-deploy off, not deployed) and waits for confirmation before the PUT",
       "Runs scripts/check-kept-fields.sh after the switch and reports the result",
-      "Deploys with git_commit_id after a second confirmation, and replaces the CircleCI deploy-by-tag step with templates/ci/circleci-deploy-commit.yml"
+      "Deploys with git_commit_id after a second confirmation, and replaces the workflow steps that pushed the image and deployed the tag with templates/ci/github-actions-deploy-commit.yml"
+    ]
+  },
+  {
+    "skills": ["qovery-switch-source"],
+    "query": "Our .gitlab-ci.yml has a build job that pushes the image to the GitLab container registry and a deploy job that calls the Qovery deploy endpoint with the new image_tag. Make the container build from the GitLab repo instead, keeping the same service. Container id: <containerId>",
+    "files": [],
+    "expected_behavior": [
+      "Reads .gitlab-ci.yml to find the Dockerfile, build context, target stage and build arguments",
+      "Uses provider GITLAB in source.git_repository and checks Git access: a GitLab provider connected to the organization, or a git token that can read the repository",
+      "Builds the body with scripts/build-switch-body.sh, shows the plan and waits for confirmation before the PUT",
+      "With no template for GitLab CI, adapts the Phase 4 curl call: commit from $CI_COMMIT_SHA, run after the tests on the container's branch, User-Agent header, QOVERY_API_TOKEN as a masked variable",
+      "Removes the build/push job and replaces the image_tag deploy job, since the API refuses image_tag on a Git container"
+    ]
+  },
+  {
+    "skills": ["qovery-switch-source"],
+    "query": "I build my api image on my laptop and push it to Docker Hub by hand. Switch the container to build from github.com/acme/api on main instead",
+    "files": [],
+    "expected_behavior": [
+      "Finds no CI that builds the image and asks for the Dockerfile path, build context and build arguments instead of guessing",
+      "Builds the body with scripts/build-switch-body.sh, shows the plan and waits for confirmation before the PUT",
+      "Deploys the head of main with git_commit_id after a second confirmation",
+      "Verifies that source.git_repository.deployed_commit_id is that commit and that the running tag contains its sha",
+      "Explains that auto_deploy stays off on a Git container and offers a CI job that deploys each pushed commit, without requiring one"
     ]
   },
   {
@@ -20,8 +44,8 @@
     "files": [],
     "expected_behavior": [
       "Reads the container and confirms its current source is git_repository",
-      "Lists the organization's container registries and uses the Docker Hub registry id",
-      "Builds the body with source.image only, no flat registry_id/image_name/tag",
+      "Lists the organization's container registries and uses the Docker Hub registry id, not the registry.id of the GET response",
+      "Builds the body with source.image only, including registry_id, and no flat registry_id/image_name/tag",
       "Shows the plan and waits for confirmation before the PUT",
       "Checks after the switch that source.image is set, build_settings is gone, and kept fields are unchanged",
       "Asks before deploying, then deploys without git_commit_id and verifies the running image",
@@ -30,13 +54,13 @@
   },
   {
     "skills": ["qovery-switch-source"],
-    "query": "make my qovery container build from git and turn on auto deploy on push like my other apps",
+    "query": "make my qovery container build from git and turn on auto deploy on push like my other apps, our pipelines run in CircleCI",
     "files": [],
     "expected_behavior": [
       "Explains that auto_deploy and auto_preview stay off on a Git container and the API refuses true",
       "Does not send auto_deploy true in the PUT body",
       "Proposes deploy on push through CI calling POST /container/{containerId}/deploy with git_commit_id",
-      "Copies the GitHub Actions or CircleCI template and asks the user to store QOVERY_API_TOKEN as a CI secret, without creating or printing a token",
+      "Merges templates/ci/circleci-deploy-commit.yml into .circleci/config.yml, with the branch filter, requires on the test job and the qovery context holding QOVERY_API_TOKEN, without creating or printing a token",
       "Still confirms the plan before the switch and verifies kept fields after it"
     ]
   }

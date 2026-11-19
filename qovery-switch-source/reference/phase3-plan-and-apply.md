@@ -12,26 +12,31 @@ Switch source — <container name> (<environment name>)
 From:  <image: registry / image:tag>   or   <Git: repository @ branch, root path, Dockerfile>
 To:    <Git: repository @ branch, root path, Dockerfile, token name>   or   <image: registry / image:tag>
 
-Kept:  service id, name, Kubernetes names, volumes and data (<n> volume(s)), variables and secrets,
-       custom domains, ports (<list>), resources, instances, deployment stage
-Off:   auto-deploy and preview environments (Git source only)
+Kept:  service id, name, volumes and data (<n> volume(s)), ports (<list>), resources, instances,
+       health checks, autoscaling: compared after the switch.
+       Variables and secrets, custom domains, deployment stage: not in the request, not compared.
+Auto:  to Git: auto-deploy <on|off> -> off, previews <on|off> -> off.
+       To an image: auto-deploy off -> <on|off>, previews off -> <on|off> (Phase 5).
 Not deployed: the switch only saves the new source. The container keeps running its current
        image until the next deployment.
 
-Next:  deploy a commit (Phase 4), and update CI so it deploys by commit instead of image tag.
+Next:  deploy a commit (Phase 4)<, then change the CI job that deploys by image tag: only when one exists>.
 ```
 
 ## 2. Apply
 
 ```bash
-qovery api container/<containerId> --method PUT --input - < body.json > after.json
+qovery api container/<containerId> --method PUT --input - < body.json > put-response.json
+qovery api container/<containerId> > after.json
 ```
+
+If the PUT fails, `qovery api` exits non-zero and `put-response.json` holds the API error: nothing was saved, find the message in [errors.md](errors.md). On success, `after.json` is a fresh GET, the same shape as `before.json`.
 
 With `curl`, send the body from the file (`-d @body.json`): pasting a long JSON body into a terminal can wrap it with line breaks, which the API rejects as invalid JSON.
 
 ## 3. Check the result
 
-1. The response's `source` matches the plan (`git_repository` or `image`).
+1. The `source` in `after.json` matches the plan (`git_repository` or `image`).
 2. On a Git source: `auto_deploy` and `auto_preview` are false, `build_settings` is present.
 3. Run the kept-fields check:
 

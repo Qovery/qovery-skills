@@ -4,7 +4,7 @@ Goal: the container pulls an image from a registry again, with the same service,
 
 ## 1. Pick the image
 
-- **Registry**: list the organization's registries and let the user pick one. The registry must belong to the same organization as the container.
+- **Registry**: list the organization's registries and let the user pick one. The registry must belong to the same organization as the container. When this journey started from an image (Phase 1 `before.json`), offer that registry and image first: an organization often has several registries of the same kind.
 
 ```bash
 qovery api organization/<organizationId>/containerRegistry
@@ -23,19 +23,24 @@ Write the source file. `registry_id` is required: without it, the API refuses a 
 
 Same steps as Phases 2.4 and 3, with this source file:
 
+Keep Phase 1's `before.json`: save the Git state under another name.
+
 ```bash
-qovery api container/<containerId> > before.json
-bash '__QOVERY_SKILL_DIR__/scripts/build-switch-body.sh' before.json source.json > body.json
+qovery api container/<containerId> > before-back.json
+bash '__QOVERY_SKILL_DIR__/scripts/build-switch-body.sh' before-back.json source.json > body.json
 ```
+
+`auto_deploy` and `auto_preview` stay off. If Phase 1's `before.json` shows either on before the switch to Git, offer to turn it back on (for example `jq '.auto_deploy = true | .auto_preview = true' body.json > body-on.json`, then send `body-on.json`), and say which in the plan. The check below then reports those flags going from false to true: expected. The plan's last line reads: deploy the image (step 3), and the auto-deploy state.
 
 Show the plan summary and wait for a yes. Then:
 
 ```bash
-qovery api container/<containerId> --method PUT --input - < body.json > after.json
-bash '__QOVERY_SKILL_DIR__/scripts/check-kept-fields.sh' before.json after.json
+qovery api container/<containerId> --method PUT --input - < body.json > put-response.json
+qovery api container/<containerId> > after.json
+bash '__QOVERY_SKILL_DIR__/scripts/check-kept-fields.sh' before-back.json after.json
 ```
 
-After the switch, `source.image` holds the chosen image, `build_settings` is gone, and the Git link is removed. `auto_deploy` and `auto_preview` stay off until the user turns them on again.
+After the switch, `source.image` holds the chosen image, `build_settings` is gone, and the Git link is removed. The flat `registry`, `image_name` and `tag` show the new image at once, while the cluster keeps running the last build until the next deployment.
 
 ## 3. Deploy (confirm first)
 
@@ -43,4 +48,4 @@ After the switch, `source.image` holds the chosen image, `build_settings` is gon
 echo '{}' | qovery api container/<containerId>/deploy --method POST --input -
 ```
 
-Verify as in Phase 4 step 3: the container runs the chosen image, `check-kept-fields.sh` prints `kept: …`, and data on the volumes is intact. Remind the user to turn CI back to building and pushing the image, then deploying it by `image_tag`.
+Follow the deployment with `qovery api container/<containerId>/status` until `state` is `DEPLOYED` with a `last_deployment_date` after the switch: the flat image fields already showed the new image before the deploy, so they prove nothing. Then save a fresh GET as `deployed.json` and run `check-kept-fields.sh before-back.json deployed.json` (flags turned back on show as changed, as expected), and suggest the user check the data on the volumes. If a CI used to build and push the image, remind the user to turn it back to building and pushing the image, then deploying it by `image_tag`.

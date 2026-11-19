@@ -10,7 +10,7 @@ Follow [auth.md](auth.md). Prefer `qovery api <path>`: it uses the CLI session, 
 
 - **Console URL given**: extract the organization, project, environment and service IDs as described in [console-url-detection.md](console-url-detection.md).
 - **Names given**: list them with the CLI (`qovery service list` in the right context) or walk the API: `organization/{organizationId}/project` → `project/{projectId}/environment` → `environment/{environmentId}/container`.
-- Confirm the container's name and environment with the user before going further. Containers in different environments often share a name.
+- Confirm the container's name and environment with the user before going further, even when a Console URL gave every ID: the switch rewrites the service. Containers in different environments often share a name.
 
 Only a service of type `CONTAINER` can switch source. Applications, jobs and Helm services choose their source at creation; for those, explain that the switch is not available and stop.
 
@@ -34,7 +34,7 @@ If the container already has the source the user asked for, say so and stop. A G
 Ask the user, and check what you can:
 
 - **Terraform** (`qovery_container` resource): a switch made through the API is overwritten or refused at the next `terraform apply` unless the Terraform configuration declares the same source. Recommend switching in the Terraform configuration instead, with a provider version whose `qovery_container` resource supports a `source` block. If the provider in use has no `source` block, warn that an apply sends the image fields and the API refuses them on a Git container; agree on a plan before switching.
-- **CI that deploys new image tags** (for example a CircleCI job calling the deploy endpoint with `image_tag`, or a registry webhook): after a switch to Git these calls are refused, because a Git container builds its own image. Phase 4 replaces them with a deploy by commit.
+- **CI that deploys new image tags** (for example a CI job calling the deploy endpoint with `image_tag`, or a registry webhook): after a switch to Git these calls are refused, because a Git container builds its own image. Phase 4 replaces them with a deploy by commit.
 - **Qovery CLI or Console versions** that do not know about Git containers yet show the container as an image container. Ask the user to update them before editing the container there.
 
 Move on to Phase 2 (to Git) or Phase 5 (back to an image).
