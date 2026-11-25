@@ -21,10 +21,11 @@ AI agent skills for deploying and troubleshooting applications on Kubernetes usi
 | **qovery-signup** | Sign up from scratch — checks/installs the Qovery CLI, authenticates via `qovery auth --headless` (first login creates the account), and creates your first organization, then hands off to qovery-onboard. Never handles raw tokens. Includes `/qovery-signup` slash command |
 | **qovery-assess** | Read-only assessment of a whole organization — inventories every cluster, environment and service, reads deployment/runtime logs and audit events (redacted on write), then runs 147 best-practice checks across reliability, security, performance, delivery, cost and disaster recovery. Correlates findings to the company's public compliance claims (SOC 2 / ISO 27001 / GDPR / DORA) and maps technical checks to published controls (CIS Kubernetes Benchmark, Pod Security Standards, NSA/CISA, NIST SP 800-190), scores each pillar, and writes a customer-shareable gap analysis with a prioritized roadmap. Modifies nothing. Includes `/qovery-assess` slash command |
 | **qovery-switch-source** | Switch an existing container service in place between a registry image and a Git build that Qovery runs, in either direction — keeps the service id, name, Kubernetes resources, volumes and data, variables and domains; builds the update from the live config so nothing else changes, confirms the plan, deploys a chosen commit, and sets up any CI to deploy on push. Includes `/qovery-switch-source` slash command |
+| **qovery-support** | Support knowledge base built from anonymized Qovery support history: the questions users ask most (deployments, crashes and probes, custom domains and TLS, timeouts, static IPs, VPC peering, databases, variables and secrets, AWS EKS clusters, autoscaling, logs, CLI/API/Terraform, billing and access) with the fixes that worked, how to confirm them, and when to escalate to Qovery support. Hands off to `qovery-troubleshoot` for live diagnosis. Includes `/qovery-support` slash command |
 
 ## Quick Install
 
-**One command — installs all twelve skills globally for all your projects:**
+**One command — installs all thirteen skills globally for all your projects:**
 
 ```bash
 curl -fsSL https://skill.qovery.com/install.sh | bash
@@ -42,7 +43,7 @@ curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --project
 curl -fsSL https://skill.qovery.com/install.sh | bash -s -- --uninstall
 ```
 
-That's it. The installer automatically places all twelve skills (with their `reference/`, `templates/`, and `examples/` sub-directories, where a skill has them) in all the right locations so they're discovered by any compatible tool.
+That's it. The installer automatically places all thirteen skills (with their `reference/`, `templates/`, and `examples/` sub-directories, where a skill has them) in all the right locations so they're discovered by any compatible tool.
 
 **Update to the latest version** — just run the install command again. It overwrites the previous versions:
 
@@ -175,6 +176,17 @@ When you tell your AI agent _"make Qovery build my container from our GitHub rep
 8. **Switches back to a registry image** the same way when you need it
 
 
+### qovery-support
+
+When you ask your AI agent _"how do I get a static IP for my cluster?"_ or _"why do I get a 504 after 15 seconds?"_:
+
+1. **Classifies the question** into one topic and loads only that reference file, so the context stays small
+2. **Matches the exact error text** against the symptoms users reported to Qovery support
+3. **Gives the likely cause, how to check it, the fix and how to confirm it**, using read-only commands first and asking before any change
+4. **States known product limits plainly** (for example no per-service internal load balancer) with the documented workaround
+5. **Hands off** to `qovery-troubleshoot` when a specific service needs live diagnosis, or to `qovery-speedup`, `qovery-optimize` and the other skills when the question is really theirs
+6. **Helps write a good support ticket** when escalation is needed, without secrets
+
 ## Usage
 
 Just ask your AI agent:
@@ -284,6 +296,14 @@ The onboard skill acts as your personal cloud architect. The deploy skill handle
 - _"Change my container's source without recreating the service"_
 - `/qovery-switch-source` (slash command)
 
+**Prompts that trigger qovery-support:**
+- _"How do I get a static outbound IP to whitelist?"_
+- _"My custom domain certificate is still pending"_
+- _"Requests time out with a 504 after 15 seconds"_
+- _"How do I connect to my database from my laptop?"_
+- _"Is this a known issue?"_
+- `/qovery-support` (slash command)
+
 ## Slash Commands
 
 Each skill includes a slash command for quick invocation. Type `/` followed by the command name in your AI tool's chat:
@@ -302,6 +322,7 @@ Each skill includes a slash command for quick invocation. Type `/` followed by t
 | `/qovery-signup` | Sign up and create your first organization | `/qovery-signup` or `/qovery-signup org="Acme" plan=USER_2025` |
 | `/qovery-assess` | Read-only audit + shareable gap analysis report | `/qovery-assess` or `/qovery-assess https://console.qovery.com/organization/<id>/overview` |
 | `/qovery-switch-source` | Switch a container between a registry image and a Git build | `/qovery-switch-source` or `/qovery-switch-source api to github.com/acme/api main` |
+| `/qovery-support` | Answer a support question with the known fix | `/qovery-support` or `/qovery-support 504 after 15 seconds on my API` |
 
 Commands are installed automatically by the install script. They accept optional arguments (service name, environment name, Console URL) and auto-detect context from your git workspace.
 
@@ -456,6 +477,20 @@ If your framework is not listed, the agent will create a custom Dockerfile based
 | **3. Plan and apply** | Plan summary and confirmation, the switch, and a check that every other field is unchanged |
 | **4. Deploy and CI** | Deploy a commit, follow the build, verify the running image and data, set up deploy on push from CI |
 | **5. Back to an image** | Pick a registry image, same plan, apply and check, then deploy |
+
+### qovery-support
+
+| Topic file | Covers |
+|-------|-------------|
+| **deployments-builds** | Build failures, Docker Hub limits, mutable tags, stuck or cancelled deployments, auto-deploy webhooks, preview environments, lifecycle and cron jobs |
+| **app-runtime** | Probe failures on slow starts, connection refused, OOMKilled, CrashLoopBackOff, exit code 0, rollout 503s, ephemeral debug shells |
+| **networking-domains** | NGINX vs Envoy Gateway settings, 504 timeouts, certificates and Cloudflare, wildcard TLS, static outbound IP, inbound allowlists, internal load balancer, WAF, VPC peering, network policies |
+| **databases** | Container vs Blueprint databases, connection variables, port-forward, backups and restores, upgrades, swapping a database, cleanup order |
+| **secrets-env** | Scopes, built-in variables, aliases (re-point and swap), interpolation, cross-environment references, secrets in Docker builds, file variables |
+| **aws-eks** | Preflight checks, AWS quotas, credentials and IAM, node pools and spot, Karpenter consolidation, Kubernetes upgrades, custom AMIs, kubectl access, cluster deletion |
+| **kubernetes-basics** | Qovery to Kubernetes mapping, Pending pods, evictions, HPA and KEDA, shells and debug pods, namespaces, logs retention, alerts, Datadog |
+| **cli-api-terraform** | Common CLI commands, `qovery api`, full-object advanced settings updates, CI deploy pattern, Terraform provider drift, Terraform services |
+| **billing-access** | Billing deployment restrictions, plan-gated features, cloud bill increases, roles and custom roles, invitations, login provider switch, SSO, tokens |
 
 ## Deployment Methods
 

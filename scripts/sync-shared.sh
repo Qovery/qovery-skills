@@ -12,11 +12,11 @@ cd "$REPO_ROOT"
 # Markdown goes to reference/, executables to scripts/ — the destination column
 # says which, so a new shared file only needs one line here.
 SYNC_MAP=$(cat <<'EOF'
-console-url-detection.md      | reference/console-url-detection.md | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-assess qovery-switch-source
-auth.md                       | reference/auth.md                  | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup qovery-switch-source
+console-url-detection.md      | reference/console-url-detection.md | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-assess qovery-switch-source qovery-support
+auth.md                       | reference/auth.md                  | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup qovery-switch-source qovery-support
 auth-readonly.md              | reference/auth-readonly.md         | qovery-assess
 local-demo-cluster.md         | reference/local-demo-cluster.md    | qovery-deploy qovery-onboard qovery-signup
-scripts/track-skill-usage.sh  | scripts/track-skill-usage.sh       | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup qovery-assess qovery-switch-source
+scripts/track-skill-usage.sh  | scripts/track-skill-usage.sh       | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup qovery-assess qovery-switch-source qovery-support
 pricing/aws.md                | reference/pricing/aws.md           | qovery-optimize
 pricing/gcp.md                | reference/pricing/gcp.md           | qovery-optimize
 pricing/azure.md              | reference/pricing/azure.md         | qovery-optimize
