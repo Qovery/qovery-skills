@@ -5,11 +5,14 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: build-switch-body.sh CONTAINER_JSON SOURCE_JSON [BUILD_SETTINGS_JSON]
+usage: [AUTO_DEPLOY=true|false] [AUTO_PREVIEW=true|false] build-switch-body.sh CONTAINER_JSON SOURCE_JSON [BUILD_SETTINGS_JSON]
   CONTAINER_JSON       file holding the GET /container/{containerId} response
   SOURCE_JSON          file holding {"git_repository": {...}} or {"image": {...}}
   BUILD_SETTINGS_JSON  optional file holding build settings (Git source only);
                        without it, a Git container keeps its current build settings
+  AUTO_DEPLOY, AUTO_PREVIEW  the flags the user chose; when unset, a switch between Git and an
+                       image sends false and an update that keeps the source kind keeps the
+                       current value
 Prints the PUT /container/{containerId} request body on stdout.
 EOF
   exit 2
@@ -23,9 +26,21 @@ source_file="$2"
 build_settings='null'
 [ -n "${3:-}" ] && build_settings="$(cat "$3")"
 
-jq --slurpfile src "$source_file" --argjson bs "$build_settings" '
+flag_json() {
+  case "${1:-}" in
+    '') echo null ;;
+    true|false) echo "$1" ;;
+    *) echo "$2 must be true or false" >&2; exit 2 ;;
+  esac
+}
+auto_deploy="$(flag_json "${AUTO_DEPLOY:-}" AUTO_DEPLOY)"
+auto_preview="$(flag_json "${AUTO_PREVIEW:-}" AUTO_PREVIEW)"
+
+jq --slurpfile src "$source_file" --argjson bs "$build_settings" \
+   --argjson deploy "$auto_deploy" --argjson preview "$auto_preview" '
   ($src[0]) as $source
   | ($source | has("git_repository")) as $to_git
+  | ((.source // {} | has("git_repository")) != $to_git) as $switches_kind
   | if ($to_git == ($source | has("image")))
     then error("SOURCE_JSON must hold exactly one of git_repository or image") else . end
   | if ($to_git | not) and ($source.image.registry_id // "") == ""
@@ -40,8 +55,8 @@ jq --slurpfile src "$source_file" --argjson bs "$build_settings" '
       storage: [(.storage // [])[] | {id, type, size, mount_point}],
       annotations_groups: [(.annotations_groups // [])[] | {id}],
       labels_groups: [(.labels_groups // [])[] | {id}],
-      auto_deploy: (if $to_git then false else (.auto_deploy // false) end),
-      auto_preview: (if $to_git then false else (.auto_preview // false) end),
+      auto_deploy: (if $deploy == null then (if $switches_kind then false else (.auto_deploy // false) end) else $deploy end),
+      auto_preview: (if $preview == null then (if $switches_kind then false else (.auto_preview // false) end) else $preview end),
       build_settings: (if $to_git then ($bs // .build_settings) else null end),
       source: $source
     } | with_entries(select(.value != null)))
