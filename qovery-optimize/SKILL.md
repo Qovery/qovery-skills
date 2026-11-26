@@ -77,8 +77,8 @@ Never call the legacy tracking endpoint as a fallback.
 
 ## Organization preset
 
-After authentication, once the organization is known, apply your organization's skill preset
-before doing the task: read `reference/org-preset.md` and follow it. It can turn this skill off,
+After authentication, once the member has chosen or confirmed the organization, apply your
+organization's skill preset before doing the task: read `reference/org-preset.md` and follow it. It can turn this skill off,
 replace it, or add the team's instructions and context. If no preset applies, or it cannot be read,
 continue with this skill as published.
 
