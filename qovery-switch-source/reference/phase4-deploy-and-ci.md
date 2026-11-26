@@ -1,6 +1,6 @@
 # Phase 4 — Deploy, verify, and deploy on push
 
-Goal: the container runs an image Qovery built from the chosen commit, its data is intact, and CI deploys new commits.
+Goal: the container runs an image Qovery built from the chosen commit, its data is intact, and new commits get deployed: by Qovery auto-deploy, or by CI.
 
 ## 1. Deploy a commit (confirm first)
 
@@ -28,12 +28,30 @@ qovery api container/<containerId> > deployed.json
 
 - `source.git_repository.deployed_commit_id` is the commit you deployed. The status may read `OUT_OF_DATE` right after a successful Git deployment (a known API issue): trust the commit and the running tag.
 - `registry`, `image_name`, `tag` now point at the build in the cluster's registry (the tag contains the commit sha).
-- `bash '__QOVERY_SKILL_DIR__/scripts/check-kept-fields.sh' before.json deployed.json` prints `kept: …`.
+- `bash '__QOVERY_SKILL_DIR__/scripts/check-kept-fields.sh' before.json deployed.json`, with the same `AUTO_DEPLOY` and `AUTO_PREVIEW` as the body, prints `kept: …`.
 - When the service has a public port or URL, check it answers. A repository that builds a different app than the old image answers differently: compare with what the user expects, not with the old image. Suggest the user check a known file or record on the volumes.
 
-## 4. Deploy on push from CI
+## 4. Deploy on push
 
-A Git container does not deploy by itself on a push: `auto_deploy` stays off on a Git source.
+Follow the answer from Phase 2.4.
+
+### Auto-deploy on
+
+Qovery deploys each push to `source.git_repository.branch` through a webhook on the Git provider. Check it:
+
+```bash
+qovery api service/<containerId>/gitWebhookStatus
+```
+
+- `ACTIVE`: done.
+- `NOT_CONFIGURED` or `MISCONFIGURED`: ask for a yes, then create or repair the webhook with `qovery api service/<containerId>/gitWebhook/sync --method POST`, and check again. A 424 means the Git account or token can't manage webhooks on the repository: see [errors.md](errors.md).
+- `UNABLE_TO_VERIFY`: Qovery could not read the repository's webhooks (Git token permissions, rate limit). Ask the user to check the webhook in the provider's settings, or the Git token's permissions.
+
+Whatever the status, if a CI deployed this container by `image_tag`, remove those steps: they now fail on this container.
+
+### Auto-deploy off: deploy from CI
+
+Use this when a CI must run tests before each deploy, or the user wants deploys from CI only.
 
 - **A CI deploys this container today**: replace the steps that built and pushed the image, and then deployed a tag, with one call that deploys the pushed commit.
 - **No CI** (the image was pushed by hand): say that each new commit needs a deploy (Console, CLI or this API call), and offer a CI job. Add one only if the user wants it.

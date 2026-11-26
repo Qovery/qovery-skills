@@ -6,7 +6,6 @@ Every check runs before anything is saved: an error means the container is uncha
 
 | Message (or status) | Cause | Fix |
 |---|---|---|
-| `A container with a Git repository source must have auto_deploy and auto_preview set to false` | The body turns on auto-deploy or previews for a Git source | Rebuild the body with `build-switch-body.sh`; it sends both as false |
 | `send \`source\` or \`registry_id\`, \`image_name\` and \`tag\`, not both` | `source` and the flat image fields both ask for a change and do not name the same image. A side that repeats what the container already has is ignored, so a body copied from the GET is accepted | Rebuild with `build-switch-body.sh`, which sends only `source` |
 | `send all of \`registry_id\`, \`image_name\` and \`tag\`, or none of them to keep the image` | Only some flat image fields were sent on an image container, often a GET copy with only `tag` changed (GET returns `registry.id`, not `registry_id`) | Rebuild with `build-switch-body.sh`, or send all three flat fields |
 | `send \`source.image.registry_id\`` | A switch from Git back to an image without the registry: the API never guesses it from the cluster's own build registry | Add `registry_id` to `source.image` (Phase 5); list registries with `organization/{organizationId}/containerRegistry` |
@@ -27,3 +26,10 @@ Every check runs before anything is saved: an error means the container is uncha
 | Error on `git_commit_id` | A commit was sent to an image container | Send `image_tag`, or switch the container to Git first |
 | Build failed | The Dockerfile does not build on the cluster's builder | Read the build logs; check build arguments the CI used to pass, the target stage, and the builder's memory |
 | Deployment failed after the build | The new image does not start (port, health check, missing variable) | Use `qovery-troubleshoot`; the switch itself is not the cause. To go back, switch to the previous image (Phase 5), then deploy it: the switch alone changes only the configuration |
+
+## On `POST /service/{serviceId}/gitWebhook/sync`
+
+| Status | Cause | Fix |
+|---|---|---|
+| 424 | The Git account or token the service uses can't manage webhooks on the repository | Give it admin rights on the repository; a Git token also needs the webhooks permission. Or let a repository admin add the webhook, then check `gitWebhookStatus` again |
+| 429 | The Git provider's rate limit | Wait, then check `gitWebhookStatus` again |

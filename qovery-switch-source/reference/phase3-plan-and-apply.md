@@ -16,12 +16,14 @@ Kept:  service id, name, volumes (<n>: id, size, mount path), ports (<list>), re
        instances, health checks, autoscaling: compared after the switch. Volume data is not
        compared: the volumes are kept, and the user checks the data after the deploy.
        Variables and secrets, custom domains, deployment stage: not in the request, not compared.
-Auto:  to Git: auto-deploy <on|off> -> off, previews <on|off> -> off.
-       To an image: auto-deploy off -> <on|off>, previews off -> <on|off> (Phase 5).
+Auto:  auto-deploy <on|off> -> <on|off>, previews <on|off> -> <on|off>. On Git, auto-deploy
+       deploys every push to <branch>; on an image, it deploys a new tag of the image.
 Not deployed: the switch only saves the new source. The container keeps running its current
-       image until the next deployment.
+       image until the next deployment<, or until the next push to <branch> when auto-deploy is
+       on: that push deploys without another confirmation>.
 
-Next:  deploy a commit (Phase 4)<, then change the CI job that deploys by image tag: only when one exists>.
+Next:  deploy a commit (Phase 4), then <check the auto-deploy webhook | set up the CI job that
+       deploys the commit | deploy each new commit by hand (no CI)>.
 ```
 
 ## 2. Apply
@@ -38,14 +40,15 @@ With `curl`, send the body from the file (`-d @body.json`): pasting a long JSON 
 ## 3. Check the result
 
 1. The `source` in `after.json` matches the plan (`git_repository` or `image`).
-2. On a Git source: `auto_deploy` and `auto_preview` are false, `build_settings` is present.
+2. `auto_deploy` and `auto_preview` match the plan. On a Git source, `build_settings` is present.
 3. Run the kept-fields check:
 
 ```bash
-bash '__QOVERY_SKILL_DIR__/scripts/check-kept-fields.sh' before.json after.json
+AUTO_DEPLOY=<true|false> AUTO_PREVIEW=<true|false> \
+  bash '__QOVERY_SKILL_DIR__/scripts/check-kept-fields.sh' before.json after.json
 ```
 
-It must print `kept: …`. If it prints changed fields, stop, show them to the user, and do not deploy. Don't retry from a fresh GET: it already reflects the change. A field that changed can be set back from `before.json` with a new plan and a yes; a removed port comes back as a new port without its old id, and a removed volume cannot be restored with its data.
+Pass the same `AUTO_DEPLOY` and `AUTO_PREVIEW` as the body (leave them unset if the body did). It must print `kept: …`. If it prints changed fields, stop, show them to the user, and do not deploy. Don't retry from a fresh GET: it already reflects the change. A field that changed can be set back from `before.json` with a new plan and a yes; a removed port comes back as a new port without its old id, and a removed volume cannot be restored with its data.
 
 On an API error, nothing was saved: find the message in [errors.md](errors.md), fix the input, rebuild the body, and show the plan again if it changed.
 

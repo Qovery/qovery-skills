@@ -9,9 +9,9 @@
       "Reads the workflow under .github/workflows/ to find the Dockerfile, build context, target stage and build arguments",
       "Lists the organization's git tokens by name and id only, never printing a token value",
       "Builds the PUT body with scripts/build-switch-body.sh instead of writing a partial body by hand",
-      "Shows the Phase 3 plan (from, to, kept, auto-deploy off, not deployed) and waits for confirmation before the PUT",
+      "Asks whether to turn on auto-deploy or keep deploying from the workflow after its tests, passes the answer to build-switch-body.sh, and shows it in the Phase 3 plan (from, to, kept, auto-deploy and previews, not deployed) before waiting for confirmation",
       "Runs scripts/check-kept-fields.sh after the switch and reports the result",
-      "Deploys with git_commit_id after a second confirmation, and replaces the workflow steps that pushed the image and deployed the tag with templates/ci/github-actions-deploy-commit.yml"
+      "Deploys with git_commit_id after a second confirmation; with auto-deploy off, replaces the workflow steps that pushed the image and deployed the tag with templates/ci/github-actions-deploy-commit.yml, and with auto-deploy on, removes them and checks GET /service/{containerId}/gitWebhookStatus"
     ]
   },
   {
@@ -35,7 +35,7 @@
       "Builds the body with scripts/build-switch-body.sh, shows the plan and waits for confirmation before the PUT",
       "Deploys the head of main with git_commit_id after a second confirmation",
       "Verifies that source.git_repository.deployed_commit_id is that commit and that the running tag contains its sha",
-      "Explains that auto_deploy stays off on a Git container and offers a CI job that deploys each pushed commit, without requiring one"
+      "Offers Qovery auto-deploy for each push to main, checks the webhook with GET /service/{containerId}/gitWebhookStatus once it is on, and mentions a CI job only as the option for running tests first"
     ]
   },
   {
@@ -57,10 +57,10 @@
     "query": "make my qovery container build from git and turn on auto deploy on push like my other apps, our pipelines run in CircleCI",
     "files": [],
     "expected_behavior": [
-      "Explains that auto_deploy and auto_preview stay off on a Git container and the API refuses true",
-      "Does not send auto_deploy true in the PUT body",
-      "Proposes deploy on push through CI calling POST /container/{containerId}/deploy with git_commit_id",
-      "Merges templates/ci/circleci-deploy-commit.yml into .circleci/config.yml, with the branch filter, requires on the test job and the qovery context holding QOVERY_API_TOKEN, without creating or printing a token",
+      "Builds the body with AUTO_DEPLOY=true passed to scripts/build-switch-body.sh, so the PUT body sends auto_deploy true",
+      "Asks about previews and warns that they build pull-request code with the environment's secrets before turning auto_preview on",
+      "After the deploy, checks GET /service/{containerId}/gitWebhookStatus and, on NOT_CONFIGURED or MISCONFIGURED, offers POST /service/{containerId}/gitWebhook/sync after a yes",
+      "Does not add a CircleCI deploy job unless the user wants tests to pass before each deploy, and then uses templates/ci/circleci-deploy-commit.yml without creating or printing a token",
       "Still confirms the plan before the switch and verifies kept fields after it"
     ]
   }

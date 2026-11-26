@@ -25,7 +25,7 @@ Keep `before.json` for the whole journey: Phase 2 builds the request from it and
 - the current source: `source.image` (registry, image, tag) or `source.git_repository` (repository, branch, root path, Dockerfile);
 - whether a response has no `source` key at all: the API predates source switching. Stop and tell the user the switch is not available on their Qovery instance yet;
 - the volumes (`storage`): they are kept, with their data, as long as the body keeps their `id`;
-- `auto_deploy` and `auto_preview`: a switch to Git turns both off (see Phase 4 for deploy on push).
+- `auto_deploy` and `auto_preview`: a switch between Git and an image resets both, unless the user turns them on (Phase 2.4, or Phase 5 for an image). Their meaning follows the source (Phase 4.4).
 
 If the container already has the source the user asked for, say so and stop. A Git container that should only change branch or repository stays a Git-to-Git update: same Phase 2 and 3, with the new `git_repository`.
 

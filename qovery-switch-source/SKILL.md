@@ -1,6 +1,6 @@
 ---
 name: qovery-switch-source
-description: Switches an existing Qovery container service in place between a registry image and a Git repository that Qovery builds, in either direction, keeping the same service id, name, Kubernetes resources, volumes, variables and domains. Builds the update from the live container so nothing else changes, confirms the plan, applies it through the Qovery API, deploys a chosen commit, offers a CI job that deploys on push, and verifies what was kept. Use when a user wants Qovery to build a container that was deployed from a registry image, wants to move a container from an image built in any CI (GitHub Actions, GitLab CI, CircleCI, Bitbucket Pipelines, Jenkins) to a Qovery build, wants to switch a container back to a registry image, or asks to change a container's source without recreating the service.
+description: Switches an existing Qovery container service in place between a registry image and a Git repository that Qovery builds, in either direction, keeping the same service id, name, Kubernetes resources, volumes, variables and domains. Builds the update from the live container so nothing else changes, confirms the plan, applies it through the Qovery API, deploys a chosen commit, sets up deploy on push (Qovery auto-deploy, or a CI job when tests must pass first), and verifies what was kept. Use when a user wants Qovery to build a container that was deployed from a registry image, wants to move a container from an image built in any CI (GitHub Actions, GitLab CI, CircleCI, Bitbucket Pipelines, Jenkins) to a Qovery build, wants to switch a container back to a registry image, or asks to change a container's source without recreating the service.
 license: MIT
 compatibility: opencode
 metadata:
@@ -92,7 +92,7 @@ Switch Source Progress:
 - [ ] Phase 1 — Context: auth, find the container, read its current source, Terraform check
 - [ ] Phase 2 — Git source: pick the repository, branch, Dockerfile and Git access; build the body
 - [ ] Phase 3 — Plan summary + USER CONFIRMATION, then apply the switch
-- [ ] Phase 4 — Deploy a commit, verify, and set up CI to deploy on push
+- [ ] Phase 4 — Deploy a commit, verify, and set up deploy on push (auto-deploy or CI)
 - [ ] Phase 5 — (when asked) switch back to a registry image
 ```
 
@@ -107,7 +107,7 @@ Run Phase 5 instead of Phases 2 to 4 when the container already builds from Git 
 | Phase 1 | [reference/phase1-context.md](reference/phase1-context.md) | Find the container, read its source, Terraform and Console checks |
 | Phase 2 | [reference/phase2-git-source.md](reference/phase2-git-source.md) | Repository, branch, Dockerfile, Git token, build settings, request body |
 | Phase 3 | [reference/phase3-plan-and-apply.md](reference/phase3-plan-and-apply.md) | Plan template, confirmation gate, PUT, checks after the switch |
-| Phase 4 | [reference/phase4-deploy-and-ci.md](reference/phase4-deploy-and-ci.md) | Deploy at a commit, verify, CI templates for deploy on push |
+| Phase 4 | [reference/phase4-deploy-and-ci.md](reference/phase4-deploy-and-ci.md) | Deploy at a commit, verify, deploy on push: auto-deploy webhook or CI templates |
 | Phase 5 | [reference/phase5-switch-to-image.md](reference/phase5-switch-to-image.md) | Switch back to a registry image and deploy |
 | Errors | [reference/errors.md](reference/errors.md) | API errors during a switch or deploy, and the fix for each |
 
@@ -115,20 +115,22 @@ Run Phase 5 instead of Phases 2 to 4 when the container already builds from Git 
 
 - **Never send a partial update.** `PUT /container/{containerId}` replaces the whole service: a port or volume missing from the body is removed, and a removed volume loses its data. Always build the body with `scripts/build-switch-body.sh` from a fresh GET of the container.
 - **Confirm before writing.** Show the Phase 3 plan and wait for an explicit yes before the PUT, again before any deployment, and before writing any file into the user's repository.
-- **Keep the before and after.** Save the GET response before the switch and compare it with the one after, using `scripts/check-kept-fields.sh`. Report any difference instead of retrying.
+- **Keep the before and after.** Save the GET response before the switch and compare it with the one after, using `scripts/check-kept-fields.sh` with the same `AUTO_DEPLOY` and `AUTO_PREVIEW` as the body. Report any difference instead of retrying.
 - **Send `source` alone, without the flat `registry_id`, `image_name` and `tag` fields.** Mixing both can be refused (see [reference/errors.md](reference/errors.md)). The body builder sends only `source`.
-- **Auto-deploy and preview stay off on a Git source.** The API refuses `auto_deploy: true` or `auto_preview: true` for a container that builds from Git. Deploy on push is done by CI calling the deploy endpoint with the commit (Phase 4).
+- **Auto-deploy and previews are the user's choice on a switch.** A switch between Git and an image resets both flags unless the body sends them, and their meaning follows the source: on Git, `auto_deploy` deploys every push to the branch and `auto_preview` builds pull requests in preview environments; on an image, `auto_deploy` deploys a new tag of the image. Ask in Phase 2 (Phase 5 for an image), pass the answers to `build-switch-body.sh`, and show them in the plan.
 
 ## Quick reference
 
 ### Scripts (run in place, from the installed skill directory)
 
 ```bash
-# Body for the switch: keeps every editable field of the container, adds the new source
-bash '__QOVERY_SKILL_DIR__/scripts/build-switch-body.sh' container.json source.json [build-settings.json] > body.json
+# Body for the switch: keeps every editable field of the container, adds the new source and the chosen flags
+AUTO_DEPLOY=<true|false> AUTO_PREVIEW=<true|false> \
+  bash '__QOVERY_SKILL_DIR__/scripts/build-switch-body.sh' container.json source.json [build-settings.json] > body.json
 
-# After the switch: prints any kept field that changed
-bash '__QOVERY_SKILL_DIR__/scripts/check-kept-fields.sh' before.json after.json
+# After the switch: prints any kept field that changed, and flags that differ from the ones the body sent
+AUTO_DEPLOY=<true|false> AUTO_PREVIEW=<true|false> \
+  bash '__QOVERY_SKILL_DIR__/scripts/check-kept-fields.sh' before.json after.json
 ```
 
 ### API endpoints
@@ -141,6 +143,8 @@ POST   /container/{containerId}/deploy                   {"git_commit_id": "<sha
 GET    /container/{containerId}/status                   Deployment progress
 GET    /organization/{organizationId}/gitToken           Git tokens the organization can use
 GET    /organization/{organizationId}/containerRegistry  Registries for a switch back to an image
+GET    /service/{containerId}/gitWebhookStatus           Auto-deploy on Git: is the provider webhook ACTIVE?
+POST   /service/{containerId}/gitWebhook/sync            Create or repair that webhook
 ```
 
 ### Request shapes

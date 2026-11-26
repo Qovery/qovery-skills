@@ -50,10 +50,16 @@ The API checks them against the cluster's builder limits.
 
 ## 4. Build the request body
 
+First ask how new commits should reach the container, and note both answers:
+
+- **Deploy on push** (`auto_deploy`): Qovery deploys every push to the container's branch, from the moment the switch is saved: a push before the Phase 4 deploy builds and deploys that commit. Suggest it unless a CI must run tests before each deploy: then leave it off, and CI deploys the tested commit (Phase 4.4).
+- **Previews** (`auto_preview`): when the environment has preview environments turned on, this container's preview copy builds the pull request's branch; off, the copy stays on the container's branch. A preview copy follows new commits on its pull request only with `auto_deploy` on. Previews build pull-request code with the environment's secrets: leave this off when the repository accepts pull requests from forks or outside contributors.
+
 ```bash
-bash '__QOVERY_SKILL_DIR__/scripts/build-switch-body.sh' before.json source.json [build-settings.json] > body.json
+AUTO_DEPLOY=<true|false> AUTO_PREVIEW=<true|false> \
+  bash '__QOVERY_SKILL_DIR__/scripts/build-switch-body.sh' before.json source.json [build-settings.json] > body.json
 ```
 
-The body keeps every editable field of `before.json` (name, resources, instances, ports with their ids, volumes with their ids, health checks, autoscaling, label and annotation groups), adds `source`, sets `auto_deploy` and `auto_preview` to false, and leaves out the flat image fields. Do not hand-edit it to remove fields.
+The body keeps every editable field of `before.json` (name, resources, instances, ports with their ids, volumes with their ids, health checks, autoscaling, label and annotation groups), adds `source`, sets `auto_deploy` and `auto_preview` to the user's answers (false when unset), and leaves out the flat image fields. Do not hand-edit it to remove fields.
 
 Move on to Phase 3.
