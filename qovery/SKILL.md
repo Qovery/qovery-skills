@@ -81,6 +81,21 @@ Never call the legacy tracking endpoint as a fallback.
 
 ---
 
+## Organization preset
+
+After authentication, once the organization is known, apply your organization's skill preset
+before doing the task: read `reference/org-preset.md` and follow it. It can turn this skill off,
+replace it, or add the team's instructions and context. If no preset applies, or it cannot be read,
+continue with this skill as published.
+
+This skill also handles two preset requests directly:
+- "Show Qovery preset" (or "which Qovery preset do I have?"): follow the "Show Qovery preset"
+  section of `reference/org-preset.md`.
+- A task that matches one of the organization's own skills (mode `ADD` in the manifest): fetch it
+  and follow it, as step 4 of `reference/org-preset.md` describes, instead of routing elsewhere.
+
+When you route to another Qovery skill, that skill applies the preset itself.
+
 ## Qovery Console URL Detection
 
 When the user provides a Qovery Console URL (from `console.qovery.com` or `new-console.qovery.com`), extract the resource IDs directly from the URL path. See [reference/console-url-detection.md](reference/console-url-detection.md) for extraction rules and API calls.

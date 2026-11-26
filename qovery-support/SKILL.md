@@ -60,6 +60,13 @@ data or secrets. Never call the legacy tracking endpoint as a fallback.
 > -H "User-Agent: QoverySkill/qovery-support (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)"
 > ```
 
+## Organization preset
+
+After authentication, once the organization is known, apply your organization's skill preset
+before doing the task: read `reference/org-preset.md` and follow it. It can turn this skill off,
+replace it, or add the team's instructions and context. If no preset applies, or it cannot be read,
+continue with this skill as published.
+
 ## When to Use This Skill
 
 Trigger phrases:

@@ -51,6 +51,17 @@ That's it. The installer automatically places all thirteen skills (with their `r
 curl -fsSL https://skill.qovery.com/install.sh | bash
 ```
 
+## Organization presets
+
+An organization admin can choose, in the Qovery Console (**Agents > Skills registry**), what their members' agents get from these skills: the full skills, a short CLI-first setup, or none; per skill, use it as is, add the team's instructions, replace it or turn it off; plus the team's own skills and context. The preset is assigned to the whole organization, a role or a person.
+
+Every skill applies the preset on its own after sign-in, through `scripts/org-preset.sh` and `reference/org-preset.md`:
+
+- It reads the member's resolved preset with `qovery api`, so it uses the CLI session and no token. Responses are cached per organization with their ETag, and a repeat check costs a `304`.
+- It tells the member which preset is active, and names every piece of organization content it loads with its revision and SHA-256. Say **"show Qovery preset"** to read it all.
+- Organization content is treated as data. It can never authorize reading credentials, sending data out, running downloaded code or skipping the member's approval; if it asks for that, the agent shows the text and ignores it.
+- If no preset applies, or it cannot be read (signed out, offline, older Qovery), the skills work as published.
+
 ## Compatible Tools
 
 These skills follow the [Agent Skills](https://agentskills.io) open standard and work with:
