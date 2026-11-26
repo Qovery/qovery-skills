@@ -17,6 +17,8 @@ auth.md                       | reference/auth.md                  | qovery qove
 auth-readonly.md              | reference/auth-readonly.md         | qovery-assess
 local-demo-cluster.md         | reference/local-demo-cluster.md    | qovery-deploy qovery-onboard qovery-signup
 scripts/track-skill-usage.sh  | scripts/track-skill-usage.sh       | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup qovery-assess qovery-switch-source qovery-support
+org-preset.md                 | reference/org-preset.md            | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup qovery-assess qovery-switch-source qovery-support
+scripts/org-preset.sh         | scripts/org-preset.sh              | qovery qovery-deploy qovery-troubleshoot qovery-onboard qovery-optimize qovery-speedup qovery-preview qovery-terraform qovery-policy-token qovery-signup qovery-assess qovery-switch-source qovery-support
 pricing/aws.md                | reference/pricing/aws.md           | qovery-optimize
 pricing/gcp.md                | reference/pricing/gcp.md           | qovery-optimize
 pricing/azure.md              | reference/pricing/azure.md         | qovery-optimize

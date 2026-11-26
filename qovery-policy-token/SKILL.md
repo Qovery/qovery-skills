@@ -70,6 +70,13 @@ Never call the legacy tracking endpoint as a fallback.
 > -H "User-Agent: QoverySkill/qovery-policy-token (version:__QOVERY_SKILLS_VERSION__; https://github.com/Qovery/qovery-skills)"
 > ```
 
+## Organization preset
+
+After authentication, once the member has chosen or confirmed the organization, apply your
+organization's skill preset before doing the task: read `reference/org-preset.md` and follow it. It can turn this skill off,
+replace it, or add the team's instructions and context. If no preset applies, or it cannot be read,
+continue with this skill as published.
+
 ## CRITICAL SAFETY RULES
 
 > **Confirm the policy BEFORE creating the token.** Policies are **immutable** — there is no edit endpoint. To change a policy you must delete the token and create a new one. Get the policy green in local testing (Phase 3) and get explicit user sign-off first.

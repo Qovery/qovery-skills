@@ -1,7 +1,7 @@
 name: Skill tracking
 on:
   pull_request:
-    paths: ['tracking/**', '_shared/scripts/**', 'qovery*/scripts/track-skill-usage.sh', 'scripts/sync-shared.sh', 'install.sh', 'local-install.sh', 'scripts/test-tracking-install.sh', '.github/workflows/skill-tracking.yml']
+    paths: ['tracking/**', '_shared/scripts/**', 'qovery*/scripts/track-skill-usage.sh', 'scripts/sync-shared.sh', 'install.sh', 'local-install.sh', 'scripts/test-tracking-install.sh', 'scripts/test-org-preset.sh', '.github/workflows/skill-tracking.yml']
   workflow_dispatch:
     inputs:
       publish_draft:
@@ -47,6 +47,8 @@ jobs:
         run: cargo build --manifest-path tracking/Cargo.toml --locked
       - name: Test installer without network
         run: bash scripts/test-tracking-install.sh
+      - name: Test the organization preset loader
+        run: bash scripts/test-org-preset.sh
       - name: Build release asset
         run: |
           cargo build --manifest-path tracking/Cargo.toml --locked --release --target '${{ matrix.target }}'
